@@ -1,4 +1,4 @@
-{ lib, fetchurl, fetchzip, ocamlPackages
+{ lib, fetchurl, fetchzip, ocaml-ng
 , version
 , tarballName ? "ocamlformat-${version}.tbz",
 }:
@@ -22,6 +22,12 @@ let src =
   }
 ; in
 
+let ocamlPackages =
+  if lib.versionAtLeast version "0.14.3"
+  then ocaml-ng.ocamlPackages
+  else ocaml-ng.ocamlPackages_4_07
+; in
+
 with ocamlPackages;
 
 buildDunePackage rec {
@@ -30,7 +36,7 @@ buildDunePackage rec {
 
   minimumOCamlVersion = "4.06";
 
-  useDune2 = lib.versionAtLeast version "0.14";
+  useDune2 = true;
 
   buildInputs =
     if lib.versionAtLeast version "0.14"

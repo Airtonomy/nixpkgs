@@ -234,7 +234,17 @@
      </listitem>
     </itemizedlist>
    </listitem>
-
+   <listitem>
+    <para>
+     Starting with this release, the hydra-build-result
+     <literal>nixos-<replaceable>YY.MM</replaceable></literal>
+     branches no longer exist in the <link
+     xlink:href="https://github.com/nixos/nixpkgs-channels">deprecated
+     nixpkgs-channels repository</link>.  These branches are now in
+     <link xlink:href="https://github.com/nixos/nixpkgs">the main nixpkgs
+     repository</link>.
+    </para>
+   </listitem>
   </itemizedlist>
  </section>
 
@@ -1332,6 +1342,12 @@ CREATE ROLE postgres LOGIN SUPERUSER;
       The GNOME desktop manager no longer default installs <package>gnome3.epiphany</package>.
       It was chosen to do this as it has a usability breaking issue (see issue <link xlink:href="https://github.com/NixOS/nixpkgs/issues/98819">#98819</link>)
       that makes it unsuitable to be a default app.
+    </para>
+   </listitem>
+   <listitem>
+     <para>
+       If you want to manage the configuration of <package>wpa_supplicant</package> outside of NixOS you must ensure that none of <xref linkend="opt-networking.wireless.networks" />, <xref linkend="opt-networking.wireless.extraConfig" /> or <xref linkend="opt-networking.wireless.userControlled.enable" /> is being used or <literal>true</literal>.
+       Using any of those options will cause <package>wpa_supplicant</package> to be started with a NixOS generated configuration file instead of your own.
     </para>
    </listitem>
   </itemizedlist>

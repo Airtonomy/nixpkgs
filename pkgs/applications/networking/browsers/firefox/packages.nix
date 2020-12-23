@@ -1,4 +1,4 @@
-{ config, stdenv, lib, callPackage, fetchurl, nss_3_44 }:
+{ stdenv, lib, callPackage, fetchurl, fetchpatch }:
 
 let
   common = opts: callPackage (import ./common.nix opts) {};
@@ -7,26 +7,21 @@ in
 rec {
   firefox = common rec {
     pname = "firefox";
-    ffversion = "82.0.2";
+    ffversion = "84.0";
     src = fetchurl {
       url = "mirror://mozilla/firefox/releases/${ffversion}/source/firefox-${ffversion}.source.tar.xz";
-      sha512 = "25wkgsqnafmq30m1kd1axkm454dhl2bmz6100i3ccqnn31vw3nyy6k3k1apsn62siqswpm55iclzcb10y4dfyyqcszvflim47c8i37k";
+      sha512 = "37d5hc2wv1b6il4flgsw5g7ihw2jx3qrrmgm4cjg3lmk91q8k7908sy79z24na6529y7jxpj4m05l6yb850wnnwjhyc4c3vxqbldnba";
     };
-
-    patches = [
-      ./no-buildconfig-ffx76.patch
-    ];
 
     meta = {
       description = "A web browser built from Firefox source tree";
       homepage = "http://www.mozilla.com/en-US/firefox/";
-      maintainers = with lib.maintainers; [ eelco andir ];
+      maintainers = with lib.maintainers; [ eelco ];
       platforms = lib.platforms.unix;
       badPlatforms = lib.platforms.darwin;
       broken = stdenv.buildPlatform.is32bit; # since Firefox 60, build on 32-bit platforms fails with "out of memory".
                                              # not in `badPlatforms` because cross-compilation on 64-bit machine might work.
       license = lib.licenses.mpl20;
-      timeout = 28800; # eight hours
     };
     updateScript = callPackage ./update.nix {
       attrPath = "firefox-unwrapped";
@@ -36,20 +31,16 @@ rec {
 
   firefox-esr-78 = common rec {
     pname = "firefox-esr";
-    ffversion = "78.4.0esr";
+    ffversion = "78.5.0esr";
     src = fetchurl {
       url = "mirror://mozilla/firefox/releases/${ffversion}/source/firefox-${ffversion}.source.tar.xz";
-      sha512 = "13640ssp1nq9dsfv8jqfw2paqk3wzwc4r47mvbhb4l9h990gzzb2chhlcjq066b7r3q9s0nq3iyk847vzi7z1yvhrhsnzfgk9g9gpnr";
+      sha512 = "20h53cn7p4dds1yfm166iwbjdmw4fkv5pfk4z0pni6x8ddjvg19imzs6ggmpnfhaji8mnlknm7xp5j7x9vi24awvdxdds5n88rh25hd";
     };
-
-    patches = [
-      ./no-buildconfig-ffx76.patch
-    ];
 
     meta = {
       description = "A web browser built from Firefox Extended Support Release source tree";
       homepage = "http://www.mozilla.com/en-US/firefox/";
-      maintainers = with lib.maintainers; [ eelco andir ];
+      maintainers = with lib.maintainers; [ eelco ];
       platforms = lib.platforms.unix;
       badPlatforms = lib.platforms.darwin;
       broken = stdenv.buildPlatform.is32bit; # since Firefox 60, build on 32-bit platforms fails with "out of memory".

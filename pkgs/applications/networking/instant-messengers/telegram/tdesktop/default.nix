@@ -4,7 +4,7 @@
 , dee, ffmpeg, openalSoft, minizip, libopus, alsaLib, libpulseaudio, range-v3
 , tl-expected, hunspell
 # TODO: Shouldn't be required:
-, pcre, xorg, utillinux, libselinux, libsepol, epoxy, at-spi2-core, libXtst
+, pcre, xorg, util-linux, libselinux, libsepol, epoxy, at-spi2-core, libXtst
 , xdg_utils
 }:
 
@@ -22,12 +22,12 @@ let
 
 in mkDerivation rec {
   pname = "telegram-desktop";
-  version = "2.4.7";
+  version = "2.5.1";
 
   # Telegram-Desktop with submodules
   src = fetchurl {
     url = "https://github.com/telegramdesktop/tdesktop/releases/download/v${version}/tdesktop-${version}-full.tar.gz";
-    sha256 = "1j2v29952l0am357pqvvgzm2zghmwhlr833kgp85hssxpr9xy4vv";
+    sha256 = "1qpap599h2c4hlmr00k82r6138ym4zqrbfpvm97gm97adn3mxk7i";
   };
 
   postPatch = ''
@@ -49,7 +49,7 @@ in mkDerivation rec {
     tl-expected hunspell
     tg_owt
     # TODO: Shouldn't be required:
-    pcre xorg.libpthreadstubs xorg.libXdmcp utillinux libselinux libsepol epoxy at-spi2-core libXtst
+    pcre xorg.libpthreadstubs xorg.libXdmcp util-linux libselinux libsepol epoxy at-spi2-core libXtst
   ];
 
   enableParallelBuilding = true;
@@ -80,9 +80,6 @@ in mkDerivation rec {
   # TODO: Package mapbox-variant
 
   postFixup = ''
-    # Nuke refs to `tg_owt` which is introduced by `__FILE__` in headers.
-    remove-references-to -t ${tg_owt} $out/bin/telegram-desktop
-
     # This is necessary to run Telegram in a pure environment.
     # We also use gappsWrapperArgs from wrapGAppsHook.
     wrapProgram $out/bin/telegram-desktop \

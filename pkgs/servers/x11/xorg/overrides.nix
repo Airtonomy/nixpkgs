@@ -4,7 +4,7 @@
   freetype, tradcpp, fontconfig, meson, ninja, ed, fontforge,
   libGL, spice-protocol, zlib, libGLU, dbus, libunwind, libdrm,
   mesa, udev, bootstrap_cmds, bison, flex, clangStdenv, autoreconfHook,
-  mcpp, epoxy, openssl, pkgconfig, llvm_6, python3, libxslt,
+  mcpp, epoxy, openssl, pkgconfig, llvm_6, libxslt,
   ApplicationServices, Carbon, Cocoa, Xplugin
 }:
 
@@ -73,9 +73,7 @@ self: super:
 
   mkfontdir = self.mkfontscale;
 
-  libxcb = (super.libxcb.override {
-    python = python3;
-  }).overrideAttrs (attrs: {
+  libxcb = super.libxcb.overrideAttrs (attrs: {
     configureFlags = [ "--enable-xkb" "--enable-xinput" ];
     outputs = [ "out" "dev" "man" "doc" ];
   });
@@ -332,10 +330,6 @@ self: super:
     buildInputs = attrs.buildInputs ++ [ freetype fontconfig ];
   });
 
-  xcbproto = super.xcbproto.override {
-    python = python3;
-  };
-
   xcbutil = super.xcbutil.overrideAttrs (attrs: {
     outputs = [ "out" "dev" ];
   });
@@ -463,8 +457,8 @@ self: super:
   });
 
   xkeyboardconfig = super.xkeyboardconfig.overrideAttrs (attrs: {
+    prePatch = "patchShebangs rules/merge.py";
     nativeBuildInputs = attrs.nativeBuildInputs ++ [ intltool libxslt ];
-
     configureFlags = [ "--with-xkb-rules-symlink=xorg" ];
 
     # 1: compatibility for X11/xkb location
@@ -577,7 +571,7 @@ self: super:
       attrs =
         if (abiCompat == null || lib.hasPrefix abiCompat version) then
           attrs_passed // {
-            buildInputs = attrs_passed.buildInputs ++ [ libdrm.dev ]; patchPhase = ''
+            buildInputs = attrs_passed.buildInputs ++ [ libdrm.dev ]; postPatch = ''
             for i in dri3/*.c
             do
               sed -i -e "s|#include <drm_fourcc.h>|#include <libdrm/drm_fourcc.h>|" $i
@@ -632,20 +626,16 @@ self: super:
       if (!isDarwin)
       then {
         outputs = [ "out" "dev" ];
+        patches = [
+          # The build process tries to create the specified logdir when building.
+          #
+          # We set it to /var/log which can't be touched from inside the sandbox causing the build to hard-fail
+          ./dont-create-logdir-during-build.patch
+        ];
         buildInputs = commonBuildInputs ++ [ libdrm mesa ];
         propagatedBuildInputs = attrs.propagatedBuildInputs or [] ++ [ libpciaccess epoxy ] ++ commonPropagatedBuildInputs ++ lib.optionals stdenv.isLinux [
           udev
         ];
-        # patchPhase is not working, this is a hack but we can remove it in the next xorg-server release
-        preConfigure = let
-          # https://gitlab.freedesktop.org/xorg/xserver/-/issues/1067
-          headerFix = fetchpatch {
-            url = "https://gitlab.freedesktop.org/xorg/xserver/-/commit/919f1f46fc67dae93b2b3f278fcbfc77af34ec58.patch";
-            sha256 = "0w48rdpl01v0c97n9zdxhf929y76r1f6rqkfs9mfygkz3xcmrfsq";
-          };
-        in ''
-          patch -p1 < ${headerFix}
-        '';
         prePatch = stdenv.lib.optionalString stdenv.hostPlatform.isMusl ''
           export CFLAGS+=" -D__uid_t=uid_t -D__gid_t=gid_t"
         '';
@@ -658,6 +648,7 @@ self: super:
           "--with-xkb-bin-directory=${self.xkbcomp}/bin"
           "--with-xkb-path=${self.xkeyboardconfig}/share/X11/xkb"
           "--with-xkb-output=$out/share/X11/xkb/compiled"
+          "--with-log-dir=/var/log"
           "--enable-glamor"
         ] ++ lib.optionals stdenv.hostPlatform.isMusl [
           "--disable-tls"
@@ -774,8 +765,8 @@ self: super:
     ];
     propagatedBuildInputs = attrs.propagatedBuildInputs or [] ++ [ self.xauth ]
                          ++ lib.optionals isDarwin [ self.libX11 self.xorgproto ];
-    prePatch = ''
-      sed -i 's|^defaultserverargs="|&-logfile \"$HOME/.xorg.log\"|p' startx.cpp
+    postFixup = ''
+      substituteInPlace $out/bin/startx --replace $out/etc/X11/xinit/xserverrc /etc/X11/xinit/xserverrc
     '';
   });
 
@@ -790,7 +781,7 @@ self: super:
       rev = "f66d39544bb8339130c96d282a80f87ca1606caf";
       sha256 = "14rwbbn06l8qpx7s5crxghn80vgcx8jmfc7qvivh72d81r0kvywl";
     };
-    buildInputs = attrs.buildInputs ++ [self.libXfixes self.libXScrnSaver self.pixman];
+    buildInputs = attrs.buildInputs ++ [ self.libXScrnSaver self.libXfixes self.libXv self.pixman ];
     nativeBuildInputs = attrs.nativeBuildInputs ++ [autoreconfHook self.utilmacros];
     configureFlags = [ "--with-default-dri=3" "--enable-tools" ];
 

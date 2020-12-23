@@ -30,6 +30,8 @@
 , gnome3
 , gsettings-desktop-schemas
 , sassc
+, trackerSupport ? stdenv.isLinux
+, tracker
 , x11Support ? stdenv.isLinux
 , waylandSupport ? stdenv.isLinux
 , mesa
@@ -49,7 +51,7 @@ with stdenv.lib;
 
 stdenv.mkDerivation rec {
   pname = "gtk+3";
-  version = "3.24.23";
+  version = "3.24.24";
 
   outputs = [ "out" "dev" ] ++ optional withGtkDoc "devdoc";
   outputBin = "dev";
@@ -61,7 +63,7 @@ stdenv.mkDerivation rec {
 
   src = fetchurl {
     url = "mirror://gnome/sources/gtk+/${stdenv.lib.versions.majorMinor version}/gtk+-${version}.tar.xz";
-    sha256 = "1cg2vbwbcp7bc84ky0b69ipgdr9djhspnf5k8lajb8jphcj4v1jx";
+    sha256 = "12ipk1d376bai9v820qzhxba93kkh5abi6mhyqr4hwjvqmkl77fc";
   };
 
   patches = [
@@ -70,13 +72,6 @@ stdenv.mkDerivation rec {
       name = "Xft-setting-fallback-compute-DPI-properly.patch";
       url = "https://bug757142.bugzilla-attachments.gnome.org/attachment.cgi?id=344123";
       sha256 = "0g6fhqcv8spfy3mfmxpyji93k8d4p4q4fz1v9a1c1cgcwkz41d7p";
-    })
-
-    # Fix path handling in pkg-config. MR for the gtk-3-24 branch:
-    # https://gitlab.gnome.org/GNOME/gtk/-/merge_requests/2605
-    (fetchpatch {
-      url = "https://gitlab.gnome.org/GNOME/gtk/commit/6d9db8610eff8c12d594d53b7813d9eea1247801.patch";
-      sha256 = "0rd1kjh0m4mrj2hkcqlsq1j0d6ahn5c237fd211r158gd1jiwys0";
     })
   ] ++ optionals stdenv.isDarwin [
     # X11 module requires <gio/gdesktopappinfo.h> which is not installed on Darwin
@@ -91,6 +86,7 @@ stdenv.mkDerivation rec {
   mesonFlags = [
     "-Dgtk_doc=${boolToString withGtkDoc}"
     "-Dtests=false"
+    "-Dtracker3=${boolToString trackerSupport}"
   ];
 
   # These are the defines that'd you'd get with --enable-debug=minimum (default).
@@ -137,6 +133,7 @@ stdenv.mkDerivation rec {
     isocodes
   ]
   ++ optional stdenv.isDarwin AppKit
+  ++ optional trackerSupport tracker
   ;
 
   propagatedBuildInputs = with xorg; [

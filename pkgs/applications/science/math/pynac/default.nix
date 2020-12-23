@@ -1,11 +1,13 @@
 { stdenv
 , fetchFromGitHub
+, fetchurl
 , autoreconfHook
 , pkgconfig
 , flint
 , gmp
-, python2
+, python3
 , singular
+, ncurses
 }:
 
 stdenv.mkDerivation rec {
@@ -23,13 +25,21 @@ stdenv.mkDerivation rec {
     flint
     gmp
     singular
-    singular
-    python2
+    python3
+    ncurses
   ];
 
   nativeBuildInputs = [
     autoreconfHook
     pkgconfig
+  ];
+
+  patches = [
+    (fetchurl {
+      name = "py_ssize_t_clean.patch";
+      url = "https://git.sagemath.org/sage.git/plain/build/pkgs/pynac/patches/py_ssize_t_clean.patch?h=9.2";
+      sha256 = "0l3gbg9hc4v671zf4w376krnk3wh8hj3649610nlvzzxckcryzab";
+    })
   ];
 
   meta = with stdenv.lib; {
@@ -42,7 +52,7 @@ stdenv.mkDerivation rec {
     '';
     homepage    = "http://pynac.org";
     license = licenses.gpl3;
-    maintainers = with maintainers; [ timokau ];
+    maintainers = teams.sage.members;
     platforms   = platforms.unix;
   };
 }

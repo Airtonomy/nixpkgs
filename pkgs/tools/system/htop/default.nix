@@ -4,13 +4,13 @@
 
 stdenv.mkDerivation rec {
   pname = "htop";
-  version = "3.0.2";
+  version = "3.0.4";
 
   src = fetchFromGitHub {
     owner = "htop-dev";
     repo = pname;
     rev = version;
-    sha256 = "1qmqhbnc5yw4brd24yrp85k09770c1c00nl03mkv5pdz2bvqivk7";
+    sha256 = "1fckfv96vzqjs3lzy0cgwsqv5vh1sxca3fhvgskmnkvr5bq6cia9";
   };
 
   nativeBuildInputs = [ autoreconfHook ];

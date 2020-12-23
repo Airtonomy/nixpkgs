@@ -27,14 +27,14 @@ in
 with stdenv.lib;
 stdenv.mkDerivation rec {
   pname = "libinput";
-  version = "1.16.2";
+  version = "1.16.4";
 
   src = fetchFromGitLab {
     domain = "gitlab.freedesktop.org";
     owner = pname;
     repo = pname;
     rev = version;
-    sha256 = "0qii6yh3dlhgv9z970cpzbz19ii8zjvq4k7pg75sy2gmia7smwd1";
+    sha256 = "1c81429kh9av9fanxmnjw5rvsjbzcyi7d0dx0gkyq5yysmpmrppi";
   };
 
   outputs = [ "bin" "out" "dev" ];

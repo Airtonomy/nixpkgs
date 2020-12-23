@@ -190,7 +190,7 @@ let
               '' else ''
               ''}
             '';
-          buildInputs = [ pkgs.utillinux ];
+          buildInputs = [ pkgs.util-linux ];
           QEMU_OPTS = "-nographic -serial stdio -monitor none"
                       + lib.optionalString cfg.useEFIBoot (
                         " -drive if=pflash,format=raw,unit=0,readonly=on,file=${efiFirmware}"
@@ -604,6 +604,10 @@ in
       ++ optional (cfg.qemu.diskInterface == "scsi") "sym53c8xx";
 
     virtualisation.bootDevice = mkDefault (driveDeviceName 1);
+
+    virtualisation.useEFIBoot = mkDefault
+      (config.boot.loader.systemd-boot.enable ||
+       config.boot.loader.efi.canTouchEfiVariables);
 
     virtualisation.pathsInNixDB = [ config.system.build.toplevel ];
 

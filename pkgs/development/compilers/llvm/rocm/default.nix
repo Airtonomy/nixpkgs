@@ -1,12 +1,12 @@
 { stdenv, fetchFromGitHub, callPackage, wrapCCWith }:
 
 let
-  version = "3.9.0";
+  version = "4.0.0";
   src = fetchFromGitHub {
     owner = "RadeonOpenCompute";
     repo = "llvm-project";
     rev = "rocm-${version}";
-    sha256 = "01ljx6mhix3z2pgddgn0ymhrsbigs1nqlz3kkwkr6p2igprrly9f";
+    hash = "sha256-nIvqEk18NLtY8Hec2Iq6ufWMblzYJ8SOIXgqomtqa0s=";
   };
 in rec {
   clang = wrapCCWith rec {

@@ -1,4 +1,4 @@
-{ go, cacert, git, lib, removeReferencesTo, stdenv, vend }:
+{ go, cacert, git, lib, stdenv, vend }:
 
 { name ? "${args'.pname}-${args'.version}"
 , src
@@ -36,16 +36,15 @@
 
 , meta ? {}
 
+# Not needed with buildGoModule
+, goPackagePath ? null
+
 , ... }@args':
 
 with builtins;
 
 let
   args = removeAttrs args' [ "overrideModAttrs" "vendorSha256" "disabled" ];
-
-  removeReferences = [ ] ++ lib.optional (!allowGoReference) go;
-
-  removeExpr = refs: ''remove-references-to ${lib.concatMapStrings (ref: " -t ${ref}") refs}'';
 
   go-modules = if vendorSha256 != null then go.stdenv.mkDerivation (let modArgs = {
 
@@ -121,12 +120,12 @@ let
   ) // overrideModAttrs modArgs) else "";
 
   package = go.stdenv.mkDerivation (args // {
-    nativeBuildInputs = [ removeReferencesTo go ] ++ nativeBuildInputs;
+    nativeBuildInputs = [ go ] ++ nativeBuildInputs;
 
     inherit (go) GOOS GOARCH;
 
     GO111MODULE = "on";
-    GOFLAGS = "-mod=vendor";
+    GOFLAGS = [ "-mod=vendor" ] ++ lib.optionals (!allowGoReference) [ "-trimpath" ];
 
     configurePhase = args.configurePhase or ''
       runHook preConfigure
@@ -229,10 +228,6 @@ let
       runHook postInstall
     '';
 
-    preFixup = (args.preFixup or "") + ''
-      find $out/{bin,libexec,lib} -type f 2>/dev/null | xargs -r ${removeExpr removeReferences} || true
-    '';
-
     strictDeps = true;
 
     disallowedReferences = lib.optional (!allowGoReference) go;
@@ -250,5 +245,7 @@ let
   });
 in if disabled then
   throw "${package.name} not supported for go ${go.meta.branch}"
+else if (goPackagePath != null) then
+  throw "`goPackagePath` not needed with `buildGoModule`"
 else
   package

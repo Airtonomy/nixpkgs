@@ -12,11 +12,11 @@
 
 stdenv.mkDerivation rec {
   pname = "gst-devtools";
-  version = "1.18.0";
+  version = "1.18.2";
 
   src = fetchurl {
     url = "${meta.homepage}/src/${pname}/${pname}-${version}.tar.xz";
-    sha256 = "05jzjkkdr5hg01mjihlqdcxqnjfrm4mqk0zp83212kv5nm0p2cw2";
+    sha256 = "0mhascwvgirgh7b5dykpnk06f7f5g62gh3sl30i6kygiidqkv9vf";
   };
 
   patches = [

@@ -18,6 +18,11 @@ lib.mapAttrs (n: v: v // { shortName = n; }) {
     fullName = "Abstyles License";
   };
 
+  afl20 = spdx {
+    spdxId = "AFL-2.0";
+    fullName = "Academic Free License v2.0";
+  };
+
   afl21 = spdx {
     spdxId = "AFL-2.1";
     fullName = "Academic Free License v2.1";
@@ -392,6 +397,11 @@ lib.mapAttrs (n: v: v // { shortName = n; }) {
     fullName = "Historic Permission Notice and Disclaimer";
   };
 
+  hpndSellVariant = spdx {
+    fullName = "Historical Permission Notice and Disclaimer - sell variant";
+    spdxId = "HPND-sell-variant";
+  };
+
   # Intel's license, seems free
   iasl = {
     fullName = "iASL";
@@ -611,6 +621,12 @@ lib.mapAttrs (n: v: v // { shortName = n; }) {
   osl3 = spdx {
     spdxId = "OSL-3.0";
     fullName = "Open Software License 3.0";
+  };
+
+  parity70 = spdx {
+    spdxId = "Parity-7.0.0";
+    fullName = "Parity Public License 7.0.0";
+    url = "https://paritylicense.com/versions/7.0.0.html";
   };
 
   php301 = spdx {
