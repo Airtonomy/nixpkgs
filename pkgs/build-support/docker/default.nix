@@ -871,7 +871,7 @@ rec {
     in result;
 
   # This function builds a docker image that behaves like a nix-shell
-  buildNixShellImage =
+  mkNixShellImageConfig =
     # Use the environment of this derivation
     { name ? drv.name + "-env"
     , drv
@@ -943,7 +943,7 @@ rec {
         exec ${lib.escapeShellArg (stringValue drv.drvAttrs.builder)} ${lib.escapeShellArgs (map stringValue drv.drvAttrs.args)}
       '';
 
-    in buildLayeredImage {
+    in {
       inherit name tag;
       contents = [ setupPackage ] ++ contents;
       extraCommands = ''
@@ -962,4 +962,6 @@ rec {
       config.WorkingDir = "/home/user";
       config.Env = lib.mapAttrsToList (name: value: "${name}=${value}") envVars;
     };
+
+    buildNixShellImage = args: buildLayeredImage (mkNixShellImageConfig args);
 }
