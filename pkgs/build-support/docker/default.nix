@@ -881,6 +881,7 @@ rec {
     # uid/gid to run as inside the container
     # Some compilers don't like to run as root
     , uid ? 1000, gid ? 1000
+    , Cmd ? [ "bash" ]
   }:
     assert lib.assertMsg (! (drv.__structuredAttrs or false))
       "buildNixShellImage does not work with the derivation ${drv.drvPath} because it uses __structuredAttrs";
@@ -957,7 +958,7 @@ rec {
       inherit uid gid;
 
       # By default just starts a shell
-      config.Cmd = [ "bash" ];
+      config.Cmd = Cmd;
       config.WorkingDir = "/home/user";
       config.Env = lib.mapAttrsToList (name: value: "${name}=${value}") envVars;
     };
