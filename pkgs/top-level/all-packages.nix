@@ -20036,13 +20036,27 @@ with pkgs;
   #  go = buildPackages.go_1_17;
   #};
 
-  buildGoPackage = buildGo116Package;
+  go_1_17 = callPackage ../development/compilers/go/1.17.nix ({
+    inherit (darwin.apple_sdk.frameworks) Foundation Security;
+  } // lib.optionalAttrs (stdenv.cc.isGNU && stdenv.isAarch64) {
+    stdenv = gcc8Stdenv;
+    buildPackages = buildPackages // { stdenv = buildPackages.gcc8Stdenv; };
+  });
+  buildGo117Module = callPackage ../build-support/go/module.nix {
+    go = buildPackages.go_1_17;
+  };
+  buildGo117Package = callPackage ../build-support/go/package.nix {
+    go = buildPackages.go_1_17;
+  };
 
   buildGo115Module = callPackage ../development/go-modules/generic {
     go = buildPackages.go_1_15;
   };
-  buildGo116Module = callPackage ../development/go-modules/generic {
-    go = buildPackages.go_1_16;
+  buildGo118Module = darwin.apple_sdk_11_0.callPackage ../build-support/go/module.nix {
+    go = buildPackages.go_1_18;
+  };
+  buildGo118Package = darwin.apple_sdk_11_0.callPackage ../build-support/go/package.nix{
+    go = buildPackages.go_1_18;
   };
   # go_1_17 has go module changes which may not be portable
   # across different go versions and/or platforms,
@@ -20054,7 +20068,16 @@ with pkgs;
   #  go = buildPackages.go_1_17;
   #};
 
-  buildGoModule = buildGo116Module;
+  # requires a newer Apple SDK
+  go_1_19 = darwin.apple_sdk_11_0.callPackage ../development/compilers/go/1.19.nix {
+    inherit (darwin.apple_sdk_11_0.frameworks) Foundation Security;
+  };
+  buildGo119Module = darwin.apple_sdk_11_0.callPackage ../build-support/go/module.nix {
+    go = buildPackages.go_1_19;
+  };
+  buildGo119Package = darwin.apple_sdk_11_0.callPackage ../build-support/go/package.nix {
+    go = buildPackages.go_1_19;
+  };
 
   go2nix = callPackage ../development/tools/go2nix { };
 
