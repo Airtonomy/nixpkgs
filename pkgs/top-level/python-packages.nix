@@ -2370,6 +2370,8 @@ in {
 
   emoji = callPackage ../development/python-modules/emoji { };
 
+  empy = callPackage ../development/python-modules/empy { };
+
   emulated-roku = callPackage ../development/python-modules/emulated-roku { };
 
   enaml = callPackage ../development/python-modules/enaml { };
