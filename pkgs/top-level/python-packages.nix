@@ -455,11 +455,6 @@ in {
 
   astral = callPackage ../development/python-modules/astral { };
 
-  astroid = if isPy3k then
-    callPackage ../development/python-modules/astroid { }
-  else
-    callPackage ../development/python-modules/astroid/1.6.nix { };
-
   astropy = callPackage ../development/python-modules/astropy { };
 
   astropy-healpix = callPackage ../development/python-modules/astropy-healpix { };
