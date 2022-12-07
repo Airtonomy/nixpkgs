@@ -1847,6 +1847,8 @@ in {
 
   emoji = callPackage ../development/python-modules/emoji { };
 
+  empy = callPackage ../development/python-modules/empy { };
+
   enaml = callPackage ../development/python-modules/enaml { };
 
   enamlx = callPackage ../development/python-modules/enamlx { };
