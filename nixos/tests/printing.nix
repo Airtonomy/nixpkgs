@@ -4,6 +4,7 @@ import ./make-test-python.nix ({pkgs, ... }:
 let
   printingServer = startWhenNeeded: {
     services.printing.enable = true;
+    services.printing.stateless = true;
     services.printing.startWhenNeeded = startWhenNeeded;
     services.printing.listenAddresses = [ "*:631" ];
     services.printing.defaultShared = true;
@@ -35,7 +36,7 @@ let
 
 in {
   name = "printing";
-  meta = with pkgs.stdenv.lib.maintainers; {
+  meta = with pkgs.lib.maintainers; {
     maintainers = [ domenkozar eelco matthewbauer ];
   };
 
@@ -50,22 +51,13 @@ in {
   testScript = ''
     import os
     import re
-    import sys
 
     start_all()
 
-    with subtest("Make sure that cups is up on both sides"):
+    with subtest("Make sure that cups is up on both sides and printers are set up"):
         serviceServer.wait_for_unit("cups.service")
         serviceClient.wait_for_unit("cups.service")
-
-    with subtest(
-        "Wait until cups is fully initialized and ensure-printers has "
-        "executed with 10s delay"
-    ):
-        serviceClient.sleep(20)
-        socketActivatedClient.wait_until_succeeds(
-            "systemctl status ensure-printers | grep -q -E 'code=exited, status=0/SUCCESS'"
-        )
+        socketActivatedClient.wait_for_unit("ensure-printers.service")
 
 
     def test_printing(client, server):

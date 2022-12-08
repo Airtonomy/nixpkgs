@@ -1,35 +1,35 @@
 { lib
 , buildPythonPackage
 , fetchPypi
-, python
-, isPy3k
 , msrest
 , msrestazure
 , azure-common
-, azure-mgmt-nspkg
+, azure-mgmt-core
 }:
 
 buildPythonPackage rec {
   pname = "azure-mgmt-loganalytics";
-  version = "2.0.0";
+  version = "12.0.0";
 
   src = fetchPypi {
     inherit pname version;
     extension = "zip";
-    sha256 = "947cada6e52fea6ecae7011d7532cf8edbe90250753a58749c473b863331fcc6";
+    sha256 = "da128a7e0291be7fa2063848df92a9180cf5c16d42adc09d2bc2efd711536bfb";
   };
 
   propagatedBuildInputs = [
     msrest
     msrestazure
     azure-common
-    azure-mgmt-nspkg
+    azure-mgmt-core
   ];
 
   pythonNamespaces = [ "azure.mgmt" ];
 
   # has no tests
   doCheck = false;
+
+  pythonImportsCheck = [ "azure.mgmt.loganalytics" ];
 
   meta = with lib; {
     description = "This is the Microsoft Azure Log Analytics Management Client Library";

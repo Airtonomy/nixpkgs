@@ -1,14 +1,14 @@
-{ stdenv, buildGoModule, fetchFromGitHub }:
+{ lib, buildGoModule, fetchFromGitHub }:
 
 buildGoModule rec {
   pname = "dstask";
-  version = "0.23.1";
+  version = "0.25";
 
   src = fetchFromGitHub {
     owner = "naggie";
     repo = pname;
     rev = "v${version}";
-    sha256 = "0rfz8jim0xqcwdb5n28942v9r3hbvhjrwdgzvbwc9f9psqg2s8d2";
+    sha256 = "sha256-nsEn9ZhrSWO0kltyEXaehMcFpqVbivSsXOxu/AX7A9U=";
   };
 
   # Set vendorSha256 to null because dstask vendors its dependencies (meaning
@@ -24,19 +24,17 @@ buildGoModule rec {
   # The other variables are set so that the output of dstask version shows the
   # git ref and the release version from github.
   # Ref <https://github.com/NixOS/nixpkgs/pull/87383#discussion_r432097657>
-  buildFlagsArray = [ ''
-    -ldflags=-w -s
-    -X "github.com/naggie/dstask.VERSION=${version}"
-    -X "github.com/naggie/dstask.GIT_COMMIT=v${version}"
-  '' ];
+  ldflags = [
+    "-w" "-s"
+    "-X github.com/naggie/dstask.VERSION=${version}"
+    "-X github.com/naggie/dstask.GIT_COMMIT=v${version}"
+  ];
 
-  subPackages = [ "cmd/dstask.go" ];
-
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Command line todo list with super-reliable git sync";
     homepage = src.meta.homepage;
     license = licenses.mit;
-    maintainers = with maintainers; [ stianlagstad foxit64 ];
+    maintainers = with maintainers; [ stianlagstad ];
     platforms = platforms.linux;
   };
 }

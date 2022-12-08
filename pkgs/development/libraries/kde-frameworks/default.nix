@@ -28,12 +28,19 @@ existing packages here and modify it as necessary.
 
 let
 
+  minQtVersion = "5.15";
+  broken = lib.versionOlder libsForQt5.qtbase.version minQtVersion;
+  maintainers = with lib.maintainers; [ ttuegel nyanloutre ];
+  license = with lib.licenses; [
+    lgpl21Plus lgpl3Plus bsd2 mit gpl2Plus gpl3Plus fdl12
+  ];
+
   srcs = import ./srcs.nix {
     inherit fetchurl;
     mirror = "mirror://kde";
   };
 
-  mkDerivation = libsForQt5.callPackage ({ mkDerivation }: mkDerivation) {};
+  mkDerivation = libsForQt5.callPackage ({ stdenv, mkDerivation ? stdenv.mkDerivation }: mkDerivation) {};
 
   packages = self: with self;
     # SUPPORT
@@ -63,8 +70,8 @@ let
         mkDerivation = args:
           let
 
-            inherit (args) name;
-            inherit (srcs.${name}) src version;
+            inherit (args) pname;
+            inherit (srcs.${pname}) src version;
 
             outputs = args.outputs or [ "bin" "dev" "out" ];
             hasSeparateDev = lib.elem "dev" outputs;
@@ -72,18 +79,18 @@ let
             defaultSetupHook = if hasSeparateDev then propagateBin else null;
             setupHook = args.setupHook or defaultSetupHook;
 
-            meta = {
-              homepage = "http://www.kde.org";
-              license = with lib.licenses; [
-                lgpl21Plus lgpl3Plus bsd2 mit gpl2Plus gpl3Plus fdl12
-              ];
-              maintainers = with lib.maintainers; [ ttuegel nyanloutre ];
-              platforms = lib.platforms.linux;
-            } // (args.meta or {});
+            meta =
+              let meta = args.meta or {}; in
+              meta // {
+                homepage = meta.homepage or "https://kde.org";
+                license = meta.license or license;
+                maintainers = (meta.maintainers or []) ++ maintainers;
+                platforms = meta.platforms or lib.platforms.linux;
+                broken = meta.broken or broken;
+              };
 
           in mkDerivation (args // {
-            name = "${name}-${version}";
-            inherit meta outputs setupHook src version;
+            inherit pname meta outputs setupHook src version;
           });
 
       };
@@ -145,8 +152,8 @@ let
     # TIER 3
       baloo = callPackage ./baloo.nix {};
       kbookmarks = callPackage ./kbookmarks.nix {};
-      kcmutils = callPackage ./kcmutils {};
-      kconfigwidgets = callPackage ./kconfigwidgets {};
+      kcmutils = callPackage ./kcmutils.nix {};
+      kconfigwidgets = callPackage ./kconfigwidgets.nix {};
       kdav = callPackage ./kdav.nix {};
       kdeclarative = callPackage ./kdeclarative.nix {};
       kded = callPackage ./kded.nix {};
@@ -158,7 +165,7 @@ let
       kiconthemes = callPackage ./kiconthemes {};
       kinit = callPackage ./kinit {};
       kio = callPackage ./kio {};
-      knewstuff = callPackage ./knewstuff.nix {};
+      knewstuff = callPackage ./knewstuff {};
       knotifyconfig = callPackage ./knotifyconfig.nix {};
       kparts = callPackage ./kparts.nix {};
       kpeople = callPackage ./kpeople.nix {};

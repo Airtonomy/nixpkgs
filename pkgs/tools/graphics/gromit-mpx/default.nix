@@ -1,29 +1,28 @@
-{ stdenv, fetchFromGitHub, cmake, pkgconfig
-, gtk, glib, pcre, libappindicator, libpthreadstubs, libXdmcp
-, libxkbcommon, epoxy, at-spi2-core, dbus, libdbusmenu
+{ lib, stdenv, fetchFromGitHub, cmake, pkg-config
+, gtk, glib, pcre, libappindicator, libpthreadstubs, xorg
+, libxkbcommon, libepoxy, at-spi2-core, dbus, libdbusmenu
 , wrapGAppsHook
 }:
 
 stdenv.mkDerivation rec {
   pname = "gromit-mpx";
-  version = "1.4";
+  version = "1.4.2";
 
   src = fetchFromGitHub {
     owner = "bk138";
     repo = "gromit-mpx";
     rev = version;
-    sha256 = "1xn14r7lhay720y78j1fs4amp5lia39kpq7vzv02x4nnwhgbsd9r";
+    sha256 = "sha256-2inmcKSdvHs7WaU095liH12Og9ezsNSs2qygltWOclw=";
   };
 
-  nativeBuildInputs = [ pkgconfig wrapGAppsHook ];
+  nativeBuildInputs = [ cmake pkg-config wrapGAppsHook ];
   buildInputs = [
-    cmake
     gtk glib pcre libappindicator libpthreadstubs
-    libXdmcp libxkbcommon epoxy at-spi2-core
+    xorg.libXdmcp libxkbcommon libepoxy at-spi2-core
     dbus libdbusmenu
   ];
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Desktop annotation tool";
 
     longDescription = ''
@@ -34,6 +33,6 @@ stdenv.mkDerivation rec {
     homepage = "https://github.com/bk138/gromit-mpx";
     maintainers = with maintainers; [ pjones ];
     platforms = platforms.linux;
-    license = licenses.gpl2;
+    license = licenses.gpl2Plus;
   };
 }

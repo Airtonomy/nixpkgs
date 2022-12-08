@@ -1,19 +1,17 @@
-{ stdenv
+{ lib
+, stdenv
 , fetchFromGitHub
 , nix-update-script
-, substituteAll
 , desktop-file-utils
 , pkg-config
 , writeScript
-, pantheon
 , gnome-keyring
 , gnome-session
 , wingpanel
 , orca
 , onboard
-, at-spi2-core
 , elementary-default-settings
-, elementary-settings-daemon
+, gnome-settings-daemon
 , runtimeShell
 , writeText
 , meson
@@ -82,7 +80,7 @@ let
     Name=Pantheon
     Comment=This session provides elementary experience
     Exec=@out@/libexec/pantheon
-    TryExec=${wingpanel}/bin/wingpanel
+    TryExec=${wingpanel}/bin/io.elementary.wingpanel
     Icon=
     DesktopNames=Pantheon
     Type=Application
@@ -91,16 +89,14 @@ let
 in
 
 stdenv.mkDerivation rec {
-  pname = "elementary-session-settings-unstable";
-  version = "2020-07-06";
-
-  repoName = "session-settings";
+  pname = "elementary-session-settings";
+  version = "6.0.0";
 
   src = fetchFromGitHub {
     owner = "elementary";
-    repo = repoName;
-    rev = "fa15cbd83fba0ba30e9a302db880350bff5ace52";
-    hash = "sha256-26H791c7OAjFYtjVChIatICSocMt0uTej1TKBOvw+6w=";
+    repo = "session-settings";
+    rev = version;
+    sha256 = "1faglpa7q3a4335gnd074a3lnsdspyjdnskgy4bfnf6xmwjx7kjx";
   };
 
   nativeBuildInputs = [
@@ -111,8 +107,8 @@ stdenv.mkDerivation rec {
   ];
 
   buildInputs = [
-    pantheon.elementary-settings-daemon
     gnome-keyring
+    gnome-settings-daemon
     onboard
     orca
   ];
@@ -126,7 +122,6 @@ stdenv.mkDerivation rec {
 
   postInstall = ''
     # our mimeapps patched from upstream to exclude:
-    # * pantheon-mail -> geary
     # * evince.desktop -> org.gnome.Evince.desktop
     mkdir -p $out/share/applications
     cp -av ${./pantheon-mimeapps.list} $out/share/applications/pantheon-mimeapps.list
@@ -153,11 +148,11 @@ stdenv.mkDerivation rec {
     ];
   };
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Session settings for elementary";
     homepage = "https://github.com/elementary/session-settings";
-    license = licenses.lgpl3;
+    license = licenses.gpl2Plus;
     platforms = platforms.linux;
-    maintainers = pantheon.maintainers;
+    maintainers = teams.pantheon.members;
   };
 }

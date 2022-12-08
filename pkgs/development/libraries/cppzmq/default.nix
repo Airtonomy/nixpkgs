@@ -1,14 +1,14 @@
-{ stdenv, fetchFromGitHub, cmake, zeromq }:
+{ lib, stdenv, fetchFromGitHub, cmake, zeromq }:
 
 stdenv.mkDerivation rec {
   pname = "cppzmq";
-  version = "4.7.1";
+  version = "4.9.0";
 
   src = fetchFromGitHub {
     owner = "zeromq";
     repo = "cppzmq";
     rev = "v${version}";
-    sha256 = "00lb3pv923nbpaf7ric2cv6lbpspknj0pxj6yj5jyah7r3zw692m";
+    sha256 = "sha256-hKMHJF/FXPeQjkEXLTN6zjKMaVGa3LdIebXya3NRSzU=";
   };
 
   nativeBuildInputs = [ cmake ];
@@ -20,7 +20,7 @@ stdenv.mkDerivation rec {
     "-DCPPZMQ_BUILD_TESTS=OFF"
   ];
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     homepage = "https://github.com/zeromq/cppzmq";
     license = licenses.bsd2;
     description = "C++ binding for 0MQ";

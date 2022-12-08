@@ -1,24 +1,24 @@
-{ stdenv, fetchurl, mkfontscale
-, libfaketime, fonttosfnt
+{ lib, stdenv, fetchurl, xorg
+, libfaketime
 }:
 
 stdenv.mkDerivation rec {
   pname = "unifont";
-  version = "13.0.04";
+  version = "15.0.01";
 
   ttf = fetchurl {
     url = "mirror://gnu/unifont/${pname}-${version}/${pname}-${version}.ttf";
-    sha256 = "sha256-p0wSTyXCXuWIw+hDZ4HZPxgdBJ6oOOqOuX6FzZJmwrE=";
+    hash = "sha256-KZRZvDTpFbHBjdOGd3OfQdCyptebk/SAzRV+8k2mdas=";
   };
 
   pcf = fetchurl {
     url = "mirror://gnu/unifont/${pname}-${version}/${pname}-${version}.pcf.gz";
-    sha256 = "sha256-sKY2qshNV3zXfD2BSbfs0qom1gPt7vD5QmVEkACmx18=";
+    hash = "sha256-77rkcU0YajAVugWHnGscaFvcFTgWm+1WPLknQZvTjN0=";
   };
 
-  nativeBuildInputs = [ libfaketime fonttosfnt mkfontscale ];
+  nativeBuildInputs = [ libfaketime xorg.fonttosfnt xorg.mkfontscale ];
 
-  phases = [ "buildPhase" "installPhase" ];
+  dontUnpack = true;
 
   buildPhase =
     ''
@@ -41,12 +41,12 @@ stdenv.mkDerivation rec {
       mkfontscale
     '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Unicode font for Base Multilingual Plane";
-    homepage = "http://unifoundry.com/unifont.html";
+    homepage = "https://unifoundry.com/unifont/";
 
     # Basically GPL2+ with font exception.
-    license = "http://unifoundry.com/LICENSE.txt";
+    license = "https://unifoundry.com/LICENSE.txt";
     maintainers = [ maintainers.rycee maintainers.vrthra ];
     platforms = platforms.all;
   };

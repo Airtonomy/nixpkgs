@@ -1,5 +1,5 @@
-{ stdenv, fetchFromGitHub
-, yosys, symbiyosys, python3
+{ lib, stdenv, fetchFromGitHub
+, yosys, python3
 }:
 
 let
@@ -44,8 +44,8 @@ stdenv.mkDerivation {
   meta = {
     description = "Mutation-based coverage testing for hardware designs, with Yosys";
     homepage    = "https://github.com/YosysHQ/mcy";
-    license     = stdenv.lib.licenses.isc;
-    maintainers = with stdenv.lib.maintainers; [ thoughtpolice ];
-    platforms   = stdenv.lib.platforms.all;
+    license     = lib.licenses.isc;
+    maintainers = with lib.maintainers; [ thoughtpolice ];
+    platforms   = lib.platforms.all;
   };
 }

@@ -1,4 +1,4 @@
-{ buildEnv, stdenv, callPackage, makeWrapper, makeDesktopItem }:
+{ buildEnv, lib, callPackage, makeWrapper, makeDesktopItem }:
 
 let
   description = "Action-adventure game, starring a certain quixotic frog";
@@ -7,18 +7,18 @@ let
   desktopItem = makeDesktopItem {
     name = "frogatto";
     exec = "frogatto";
-    startupNotify = "true";
+    startupNotify = true;
     icon = "${data}/share/frogatto/modules/frogatto/images/os/frogatto-icon.png";
     comment = description;
     desktopName = "Frogatto";
     genericName = "frogatto";
-    categories = "Game;ArcadeGame;";
+    categories = [ "Game" "ArcadeGame" ];
   };
   version = "unstable-2020-12-04";
 in buildEnv {
   name = "frogatto-${version}";
 
-  buildInputs = [ makeWrapper ];
+  nativeBuildInputs = [ makeWrapper ];
   paths = [ engine data desktopItem ];
   pathsToLink = [
     "/bin"
@@ -30,11 +30,10 @@ in buildEnv {
 
   postBuild = ''
     wrapProgram $out/bin/frogatto \
-      --run "cd $out/share/frogatto"
+      --chdir "$out/share/frogatto"
   '';
 
-  meta = with stdenv.lib; {
-    broken = true;
+  meta = with lib; {
     homepage = "https://frogatto.com";
     description = description;
     license = with licenses; [ cc-by-30 unfree ];

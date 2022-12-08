@@ -1,17 +1,15 @@
-{ stdenv, fetchurl, makeWrapper, jre }:
+{ lib, stdenv, fetchurl, makeWrapper, jre }:
 
 stdenv.mkDerivation rec {
   pname = "riemann";
-  version = "0.3.6";
+  version = "0.3.8";
 
   src = fetchurl {
     url = "https://github.com/riemann/riemann/releases/download/${version}/${pname}-${version}.tar.bz2";
-    sha256 = "0hz69rka4f9h8i8cnswfz80fs0nm7j5436iiyd5i8lzd2avj4bps";
+    sha256 = "sha256-MjTUrqdi9K71PhpLzR3lqdOiNM7Ilmh8HWf3BUOr+b0=";
   };
 
   nativeBuildInputs = [ makeWrapper ];
-
-  phases = [ "unpackPhase" "installPhase" ];
 
   installPhase = ''
     substituteInPlace bin/riemann --replace '$top/lib/riemann.jar' "$out/share/java/riemann.jar"
@@ -24,9 +22,10 @@ stdenv.mkDerivation rec {
     wrapProgram "$out/bin/riemann" --prefix PATH : "${jre}/bin"
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     homepage = "http://riemann.io/";
     description = "A network monitoring system";
+    sourceProvenance = with sourceTypes; [ binaryBytecode ];
     license = licenses.epl10;
     platforms = platforms.all;
     maintainers = [];

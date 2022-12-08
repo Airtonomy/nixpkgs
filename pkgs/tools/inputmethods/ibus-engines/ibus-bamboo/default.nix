@@ -1,8 +1,9 @@
-{ stdenv
+{ lib, stdenv
 , fetchFromGitHub
+, glib
 , gettext
 , xorg
-, pkgconfig
+, pkg-config
 , wrapGAppsHook
 , ibus
 , gtk3
@@ -11,23 +12,25 @@
 
 stdenv.mkDerivation rec {
   pname = "ibus-bamboo";
-  version = "0.6.8";
+  version = "0.7.8";
 
   src = fetchFromGitHub {
     owner = "BambooEngine";
     repo = pname;
     rev = "v${version}";
-    sha256 = "17zgxqlsjkqyjywynqzmymw310aypcsjdrwnc7hx7v7xwal8iwjk";
+    sha256 = "sha256-H7me34KfhDD7BNEEKkhYXo9DLeclO7N19e961BOh1Ho=";
   };
 
   nativeBuildInputs = [
     gettext
-    pkgconfig
+    pkg-config
     wrapGAppsHook
     go
   ];
 
   buildInputs = [
+    glib
+    gtk3
     xorg.libX11
     xorg.xorgproto
     xorg.libXtst
@@ -44,7 +47,7 @@ stdenv.mkDerivation rec {
   ];
 
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     isIbusEngine = true;
     description = "A Vietnamese IME for IBus";
     homepage = "https://github.com/BambooEngine/ibus-bamboo";

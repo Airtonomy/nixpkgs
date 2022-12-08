@@ -1,4 +1,4 @@
-{ stdenv
+{ lib, stdenv
 , fetchurl
 , bash
 , unzip
@@ -8,7 +8,7 @@
 , libGLU, libGL
 , freetype
 , xorg
-, alsaLib
+, alsa-lib
 , cairo
 , libuuid
 , autoreconfHook
@@ -39,7 +39,7 @@ stdenv.mkDerivation rec {
     else throw "Unsupported platform: only Linux/Darwin x86/x64 are supported.";
 
   # Shared data (for the sources file)
-  pharo-share = import ./share.nix { inherit stdenv fetchurl unzip; };
+  pharo-share = import ./share.nix { inherit lib stdenv fetchurl unzip; };
 
   # Note: -fPIC causes the VM to segfault.
   hardeningDisable = [ "format" "pic"
@@ -53,10 +53,9 @@ stdenv.mkDerivation rec {
   # http://forum.world.st/OSProcess-fork-issue-with-Debian-built-VM-td4947326.html
   #
   # (stack protection is disabled above for gcc 4.8 compatibility.)
-  nativeBuildInputs = [ autoreconfHook ];
+  nativeBuildInputs = [ autoreconfHook unzip ];
   buildInputs = [
     bash
-    unzip
     glibc
     openssl
     gcc48
@@ -65,7 +64,7 @@ stdenv.mkDerivation rec {
     xorg.libX11
     xorg.libICE
     xorg.libSM
-    alsaLib
+    alsa-lib
     cairo
     pharo-share
     libuuid
@@ -86,6 +85,13 @@ stdenv.mkDerivation rec {
   configureFlags = [ "--without-npsqueak"
                      "--with-vmversion=5.0"
                      "--with-src=${vm}" ];
+
+  # -fcommon is a workaround build failure on -fno-common toolchains like upstream
+  # gcc-10. Otherwise build fails as:
+  #   ld: vm/vm.a(cogit.o):/build/source/spur64src/vm/cointerp.h:358: multiple definition of `checkAllocFiller';
+  #     vm/vm.a(gcc3x-cointerp.o):/build/source/spur64src/vm/cointerp.h:358: first defined here
+  NIX_CFLAGS_COMPILE = "-fcommon";
+
   CFLAGS = "-DPharoVM -DIMMUTABILITY=1 -msse2 -D_GNU_SOURCE -DCOGMTVM=0 -g -O2 -DNDEBUG -DDEBUGVM=0";
   LDFLAGS = "-Wl,-z,now";
 
@@ -116,7 +122,7 @@ stdenv.mkDerivation rec {
       freetype
       openssl
       libuuid
-      alsaLib
+      alsa-lib
       xorg.libICE
       xorg.libSM
     ];
@@ -138,7 +144,7 @@ stdenv.mkDerivation rec {
     mkdir -p "$out/bin"
 
     # Note: include ELF rpath in LD_LIBRARY_PATH for finding libc.
-    libs=$out:$(patchelf --print-rpath "$out/pharo"):${stdenv.lib.makeLibraryPath libs}
+    libs=$out:$(patchelf --print-rpath "$out/pharo"):${lib.makeLibraryPath libs}
 
     # Create the script
     cat > "$out/bin/${cmd}" <<EOF
@@ -150,7 +156,7 @@ stdenv.mkDerivation rec {
     ln -s ${libgit2}/lib/libgit2.so* "$out/"
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Clean and innovative Smalltalk-inspired environment";
     homepage = "https://pharo.org";
     longDescription = ''

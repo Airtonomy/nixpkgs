@@ -1,30 +1,32 @@
-{ stdenv, fetchurl, lib, zlib, pcre
-, tlsSupport ? true, gnutls ? null
-# ^ set { tlsSupport = false; } to reduce closure size by ~= 18.6 MB
+{ stdenv, fetchFromGitHub, lib, zlib, pcre
+, memorymappingHook, memstreamHook
+, gnutls
 }:
 
-assert tlsSupport -> gnutls != null;
-
 stdenv.mkDerivation rec {
-  name = "tintin-2.02.03";
+  pname = "tintin";
+  version = "2.02.20";
 
-  src = fetchurl {
-    url    = "mirror://sourceforge/tintin/${name}.tar.gz";
-    sha256 = "0ybgy8j8i36d7f892x539vl6fl5zvvfyy5ffc98550vjr6qqhk74";
+  src = fetchFromGitHub {
+    owner = "scandum";
+    repo = "tintin";
+    rev = version;
+    hash = "sha256-H9Cjg/GkyV50pgewv77zOJ8/Op78P9sQmZ5LorO4L+A=";
   };
 
-  nativeBuildInputs = lib.optional tlsSupport gnutls.dev;
-  buildInputs = [ zlib pcre ] ++ lib.optional tlsSupport gnutls;
+  buildInputs = [ zlib pcre gnutls ]
+    ++ lib.optionals (stdenv.system == "x86_64-darwin") [ memorymappingHook memstreamHook ];
 
   preConfigure = ''
     cd src
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "A free MUD client for macOS, Linux and Windows";
-    homepage    = "http://tintin.sourceforge.net";
-    license     = licenses.gpl2;
-    maintainers = with maintainers; [ lovek323 ];
+    homepage    = "https://tintin.mudhalla.net/index.php";
+    license     = licenses.gpl3Plus;
+    maintainers = with maintainers; [ abathur ];
+    mainProgram = "tt++";
     platforms   = platforms.unix;
   };
 }

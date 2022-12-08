@@ -1,6 +1,5 @@
-{ stdenv
+{ lib, stdenv
 , fetchFromGitHub
-, fetchpatch
 , autoreconfHook
 , pkg-config
 , puredata
@@ -43,8 +42,8 @@ stdenv.mkDerivation rec {
   meta = {
     description = "Graphics Environment for Multimedia";
     homepage = "http://puredata.info/downloads/gem";
-    license = stdenv.lib.licenses.gpl2Plus;
-    maintainers = [ stdenv.lib.maintainers.raboof ];
-    platforms = stdenv.lib.platforms.linux;
+    license = lib.licenses.gpl2Plus;
+    maintainers = [ lib.maintainers.raboof ];
+    platforms = lib.platforms.linux;
   };
 }

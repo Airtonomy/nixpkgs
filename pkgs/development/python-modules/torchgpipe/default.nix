@@ -1,18 +1,16 @@
 { lib
 , buildPythonPackage
 , fetchFromGitHub
-, isPy27
-, pytest
-, pytestrunner
+, pythonOlder
 , pytestCheckHook
-, pytorch
+, torch
 }:
 
 buildPythonPackage rec {
   pname = "torchgpipe";
   version = "0.0.7";
 
-  disabled = isPy27;
+  disabled = pythonOlder "3.6";
 
   src = fetchFromGitHub {
     owner = "kakaobrain";
@@ -21,14 +19,18 @@ buildPythonPackage rec {
     sha256 = "0ki0njhmz1i3pkpr3y6h6ac7p5qh1kih06mknc2s18mfw34f2l55";
   };
 
-  propagatedBuildInputs = [ pytorch ];
+  postPatch = ''
+    substituteInPlace setup.py \
+      --replace "'pytest-runner'" ""
+  '';
 
-  checkInputs = [ pytest pytestrunner pytestCheckHook ];
-  disabledTests = [ "test_inplace_on_requires_grad" ];
-  # seems like a harmless failure:
-  ## AssertionError:
-  ## Pattern 'a leaf Variable that requires grad has been used in an in-place operation.'
-  ## does not match 'a leaf Variable that requires grad is being used in an in-place operation.'
+  propagatedBuildInputs = [ torch ];
+
+  checkInputs = [ pytestCheckHook ];
+  disabledTests = [
+    "test_inplace_on_requires_grad"
+    "test_input_requiring_grad"
+  ];
 
   meta = with lib; {
     description = "GPipe implemented in Pytorch and optimized for CUDA rather than TPU";

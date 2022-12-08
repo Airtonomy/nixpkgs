@@ -1,14 +1,12 @@
-{ stdenv
+{ lib, stdenvNoCC
 , fetchFromGitHub
 , perl
-, perlPackages
 , inkscape
-, pngcrush
 , librsvg
 , targets ? [ "all" ]
 }:
 
-stdenv.mkDerivation {
+stdenvNoCC.mkDerivation {
   pname = "iso-flags";
   version = "unstable-18012020";
 
@@ -37,7 +35,7 @@ stdenv.mkDerivation {
     mv build $out/share/iso-flags
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     homepage = "https://github.com/joielechong/iso-country-flags-svg-collection";
     description = "248 country flag SVG & PNG icons with different icon styles";
     license = [ licenses.publicDomain ];

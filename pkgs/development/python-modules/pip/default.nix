@@ -1,5 +1,4 @@
 { lib
-, python
 , buildPythonPackage
 , bootstrapped-pip
 , fetchFromGitHub
@@ -8,20 +7,21 @@
 , virtualenv
 , pretend
 , pytest
-, setuptools
-, wheel
+
+# coupled downsteam dependencies
+, pip-tools
 }:
 
 buildPythonPackage rec {
   pname = "pip";
-  version = "20.3";
+  version = "22.2.2";
   format = "other";
 
   src = fetchFromGitHub {
     owner = "pypa";
     repo = pname;
     rev = version;
-    sha256 = "e/2/0MrGY3myELmvuTAbNfXCBuT8kmvz9qTwITdDtQU=";
+    sha256 = "sha256-SLjmxFUFmvgy8E8kxfc6lxxCRo+GN4L77pqkWkRR8aE=";
     name = "${pname}-${version}-source";
   };
 
@@ -34,6 +34,8 @@ buildPythonPackage rec {
   checkInputs = [ mock scripttest virtualenv pretend pytest ];
   # Pip wants pytest, but tests are not distributed
   doCheck = false;
+
+  passthru.tests = { inherit pip-tools; };
 
   meta = {
     description = "The PyPA recommended tool for installing Python packages";

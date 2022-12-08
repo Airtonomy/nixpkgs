@@ -2,40 +2,39 @@
 , buildPythonPackage
 , fetchPypi
 , python-dateutil
-, pytest
+, pytestCheckHook
 , pytz
-, natsort
 , tzlocal
 }:
 
 buildPythonPackage rec {
   pname = "croniter";
-  version = "0.3.36";
+  version = "1.3.7";
+  format = "setuptools";
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "9d3098e50f7edc7480470455d42f09c501fa1bb7e2fc113526ec6e90b068f32c";
+    hash = "sha256-cu940PgzfrNTk7iJPr+/vrNA8tKuR+DS14Ew40sN2Lk=";
   };
 
   propagatedBuildInputs = [
     python-dateutil
-    natsort
   ];
 
   checkInputs = [
-    pytest
+    pytestCheckHook
     pytz
     tzlocal
   ];
 
-  checkPhase = ''
-    pytest src/croniter
-  '';
+  pythonImportsCheck = [
+    "croniter"
+  ];
 
   meta = with lib; {
-    description = "croniter provides iteration for datetime object with cron like format";
+    description = "Library to iterate over datetime object with cron like format";
     homepage = "https://github.com/kiorky/croniter";
     license = licenses.mit;
-    maintainers = [ maintainers.costrouc ];
+    maintainers = with maintainers; [ costrouc ];
   };
 }

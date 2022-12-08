@@ -1,7 +1,8 @@
-{ stdenv, fetchFromGitHub, wmctrl }:
+{ lib, stdenv, fetchFromGitHub, wmctrl }:
 
 stdenv.mkDerivation {
-  name = "urxvt-perl-2015-01-16";
+  pname = "urxvt-perl";
+  version = "unstable-2015-01-16";
 
   src = fetchFromGitHub {
     owner = "effigies";
@@ -19,7 +20,7 @@ stdenv.mkDerivation {
     cp newterm $out/lib/urxvt/perl
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Perl extensions for the rxvt-unicode terminal emulator";
     homepage = "https://github.com/effigies/urxvt-perl";
     license = licenses.gpl3;

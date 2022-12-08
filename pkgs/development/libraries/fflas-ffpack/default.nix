@@ -1,4 +1,4 @@
-{ stdenv, fetchFromGitHub, autoreconfHook, givaro, pkgconfig, blas, lapack
+{ lib, stdenv, fetchFromGitHub, autoreconfHook, givaro, pkg-config, blas, lapack
 , gmpxx
 }:
 
@@ -6,13 +6,13 @@ assert (!blas.isILP64) && (!lapack.isILP64);
 
 stdenv.mkDerivation rec {
   pname = "fflas-ffpack";
-  version = "2.4.3";
+  version = "2.5.0";
 
   src = fetchFromGitHub {
     owner = "linbox-team";
     repo = pname;
-    rev = version;
-    sha256 = "1ynbjd72qrwp0b4kpn0p5d7gddpvj8dlb5fwdxajr5pvkvi3if74";
+    rev = "v${version}";
+    sha256 = "sha256-Eztc2jUyKRVUiZkYEh+IFHkDuPIy+Gx3ZW/MsuOVaMc=";
   };
 
   checkInputs = [
@@ -23,15 +23,15 @@ stdenv.mkDerivation rec {
 
   nativeBuildInputs = [
     autoreconfHook
-    pkgconfig
-  ] ++ stdenv.lib.optionals doCheck checkInputs;
+    pkg-config
+  ] ++ lib.optionals doCheck checkInputs;
 
   buildInputs = [ givaro blas lapack ];
 
   configureFlags = [
     "--with-blas-libs=-lcblas"
     "--with-lapack-libs=-llapacke"
-  ] ++ stdenv.lib.optionals stdenv.isx86_64 [
+  ] ++ lib.optionals stdenv.isx86_64 [
     # disable SIMD instructions (which are enabled *when available* by default)
     # for now we need to be careful to disable *all* relevant versions of an instruction set explicitly (https://github.com/linbox-team/fflas-ffpack/issues/284)
     "--${if stdenv.hostPlatform.sse3Support   then "enable" else "disable"}-sse3"
@@ -48,9 +48,9 @@ stdenv.mkDerivation rec {
   ];
   doCheck = true;
 
-  meta = with stdenv.lib; {
-    inherit version;
-    description = ''Finite Field Linear Algebra Subroutines'';
+  meta = with lib; {
+    broken = stdenv.isDarwin;
+    description = "Finite Field Linear Algebra Subroutines";
     license = licenses.lgpl21Plus;
     maintainers = teams.sage.members;
     platforms = platforms.unix;

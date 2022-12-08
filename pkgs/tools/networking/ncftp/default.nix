@@ -1,4 +1,4 @@
-{ stdenv, fetchurl, ncurses, coreutils }:
+{ lib, stdenv, fetchurl, ncurses, coreutils }:
 
 stdenv.mkDerivation rec {
   pname = "ncftp";
@@ -12,6 +12,12 @@ stdenv.mkDerivation rec {
   buildInputs = [ ncurses ];
 
   enableParallelBuilding = true;
+
+  # Workaround build failure on -fno-common toolchains like upstream
+  # gcc-10. Otherwise build fails as:
+  #   ld: bookmark.o: (.bss+0x20): multiple definition of `gBm';
+  #     gpshare.o:(.bss+0x0): first defined here
+  NIX_CFLAGS_COMPILE = "-fcommon";
 
   preConfigure = ''
     find -name Makefile.in | xargs sed -i '/^TMPDIR=/d'
@@ -32,7 +38,7 @@ stdenv.mkDerivation rec {
     "--mandir=$(out)/share/man/"
   ];
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Command line FTP (File Transfer Protocol) client";
     homepage = "https://www.ncftp.com/ncftp/";
     maintainers = with maintainers; [ bjornfor ];

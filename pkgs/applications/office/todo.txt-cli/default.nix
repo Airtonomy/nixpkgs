@@ -1,4 +1,4 @@
-{ stdenv, fetchurl }:
+{ lib, stdenv, fetchurl }:
 let
   version = "2.12.0";
 in stdenv.mkDerivation {
@@ -22,7 +22,8 @@ in stdenv.mkDerivation {
   meta = {
     description = "Simple plaintext todo list manager";
     homepage = "http://todotxt.com";
-    license = stdenv.lib.licenses.gpl3;
-    platforms = stdenv.lib.platforms.all;
+    license = lib.licenses.gpl3;
+    mainProgram = "todo.sh";
+    platforms = lib.platforms.all;
   };
 }

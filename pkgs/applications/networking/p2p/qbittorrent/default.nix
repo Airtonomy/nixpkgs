@@ -1,4 +1,4 @@
-{ mkDerivation, lib, fetchFromGitHub, makeWrapper, pkgconfig
+{ mkDerivation, lib, fetchFromGitHub, pkg-config
 , boost, libtorrent-rasterbar, qtbase, qttools, qtsvg
 , debugSupport ? false
 , guiSupport ? true, dbus ? null # GUI (disable to run headless)
@@ -12,17 +12,19 @@ assert trackerSearch -> (python3 != null);
 with lib;
 mkDerivation rec {
   pname = "qbittorrent";
-  version = "4.3.1";
+  version = "4.4.5";
 
   src = fetchFromGitHub {
     owner = "qbittorrent";
-    repo = "qbittorrent";
+    repo = "qBittorrent";
     rev = "release-${version}";
-    sha256 = "17ih00q7idrpl3b2vgh4smva6lazs5jw06pblriscn1lrwdvrc38";
+    sha256 = "sha256-EgRDNOJ4szdZA5ipOuGy2R0oVdjWcuqPU3ecU3ZNK3g=";
   };
 
+  enableParallelBuilding = true;
+
   # NOTE: 2018-05-31: CMake is working but it is not officially supported
-  nativeBuildInputs = [ makeWrapper pkgconfig ];
+  nativeBuildInputs = [ pkg-config ];
 
   buildInputs = [ boost libtorrent-rasterbar qtbase qttools qtsvg ]
     ++ optional guiSupport dbus # D(esktop)-Bus depends on GUI support
@@ -38,18 +40,13 @@ mkDerivation rec {
     ++ optional (!webuiSupport) "--disable-webui"
     ++ optional debugSupport "--enable-debug";
 
-  postInstall = "wrapProgram $out/bin/${
-    if guiSupport
-    then "qbittorrent"
-    else "qbittorrent-nox"
-  } --prefix PATH : ${makeBinPath [ python3 ]}";
-
-  enableParallelBuilding = true;
+  qtWrapperArgs = optional trackerSearch "--prefix PATH : ${makeBinPath [ python3 ]}";
 
   meta = {
     description = "Featureful free software BitTorrent client";
     homepage    = "https://www.qbittorrent.org/";
-    license     = licenses.gpl2;
+    changelog   = "https://github.com/qbittorrent/qBittorrent/blob/release-${version}/Changelog";
+    license     = licenses.gpl2Plus;
     platforms   = platforms.linux;
     maintainers = with maintainers; [ Anton-Latukha ];
   };

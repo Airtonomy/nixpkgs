@@ -1,11 +1,12 @@
-{ stdenv
-, lib
+{ lib
 , buildPythonPackage
 , fetchPypi
 , isPyPy
 , python
-, blas, lapack # build segfaults with 64-bit blas
+, blas
+, lapack # build segfaults with 64-bit blas
 , suitesparse
+, unittestCheckHook
 , glpk ? null
 , gsl ? null
 , fftw ? null
@@ -18,13 +19,13 @@ assert (!blas.isILP64) && (!lapack.isILP64);
 
 buildPythonPackage rec {
   pname = "cvxopt";
-  version = "1.2.5";
+  version = "1.3.0";
 
   disabled = isPyPy; # hangs at [translation:info]
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "0widrfxr0x0cyg72ibkv7fdzkvmf5mllchq1x4fs2a36plv8rv4l";
+    sha256 = "sha256-ALGyMvnR+QLVeKnXWBS2f6AgdY1a5CLijKjO9iafpcY=";
   };
 
   buildInputs = [ blas lapack ];
@@ -50,9 +51,9 @@ buildPythonPackage rec {
     export CVXOPT_FFTW_INC_DIR=${fftw.dev}/include
   '';
 
-  checkPhase = ''
-    ${python.interpreter} -m unittest discover -s tests
-  '';
+  checkInputs = [ unittestCheckHook ];
+
+  unittestFlagsArray = [ "-s" "tests" ];
 
   meta = with lib; {
     homepage = "http://cvxopt.org/";

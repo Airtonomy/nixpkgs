@@ -1,4 +1,4 @@
-{ stdenv, cmake, fetchFromGitHub, fixDarwinDylibNames }:
+{ lib, stdenv, cmake, fetchFromGitHub, fixDarwinDylibNames }:
 
 stdenv.mkDerivation rec {
   pname = "btor2tools";
@@ -11,7 +11,7 @@ stdenv.mkDerivation rec {
     sha256 = "0mfqmkgvyw8fa2c09kww107dmk180ch1hp98r5kv41vnc04iqb0s";
   };
 
-  nativeBuildInputs = [ cmake ] ++ stdenv.lib.optional stdenv.isDarwin fixDarwinDylibNames;
+  nativeBuildInputs = [ cmake ] ++ lib.optional stdenv.isDarwin fixDarwinDylibNames;
 
   installPhase = ''
     mkdir -p $out $dev/include/btor2parser/ $lib/lib
@@ -23,7 +23,12 @@ stdenv.mkDerivation rec {
 
   outputs = [ "out" "dev" "lib" ];
 
-  meta = with stdenv.lib; {
+  cmakeFlags = [
+    # RPATH of binary /nix/store/.../bin/btorsim contains a forbidden reference to /build/
+    "-DCMAKE_SKIP_BUILD_RPATH=ON"
+  ];
+
+  meta = with lib; {
     description = "A generic parser and tool package for the BTOR2 format";
     homepage    = "https://github.com/Boolector/btor2tools";
     license     = licenses.mit;

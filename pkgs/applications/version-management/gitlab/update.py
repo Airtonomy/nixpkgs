@@ -1,5 +1,5 @@
 #!/usr/bin/env nix-shell
-#! nix-shell -i python3 -p bundix bundler common-updater-scripts nix nix-universal-prefetch python3 python3Packages.requests python3Packages.click python3Packages.click-log vgo2nix yarn2nix
+#! nix-shell -I nixpkgs=../../../.. -i python3 -p bundix bundler nix-update nix nix-universal-prefetch python3 python3Packages.requests python3Packages.click python3Packages.click-log python3Packages.packaging prefetch-yarn-deps
 
 import click
 import click_log
@@ -9,11 +9,28 @@ import logging
 import subprocess
 import json
 import pathlib
-from distutils.version import LooseVersion
+import tempfile
+from packaging.version import Version
 from typing import Iterable
 
 import requests
 
+# Always keep this in sync with the GitLaab version you're updating to.
+# If you see any errors about vendored dependencies during an update, check the Gemfile.
+VENDORED_GEMS = [
+    "bundler-checksum",
+    "devise-pbkdf2-encryptable",
+    "omniauth-azure-oauth2",
+    "omniauth-cas3",
+    "omniauth-gitlab",
+    "omniauth-google-oauth2",
+    "omniauth_crowd",
+    "omniauth-salesforce",
+    "mail-smtp_pool",
+    "microsoft_graph_mailer",
+    "ipynbdiff",
+    "error_tracking_open_api",
+]
 logger = logging.getLogger(__name__)
 
 
@@ -36,11 +53,17 @@ class GitLabRepo:
         versions = list(filter(self.version_regex.match, tags))
 
         # sort, but ignore v and -ee for sorting comparisons
-        versions.sort(key=lambda x: LooseVersion(x.replace("v", "").replace("-ee", "")), reverse=True)
+        versions.sort(key=lambda x: Version(x.replace("v", "").replace("-ee", "")), reverse=True)
         return versions
 
     def get_git_hash(self, rev: str):
         return subprocess.check_output(['nix-universal-prefetch', 'fetchFromGitLab', '--owner', self.owner, '--repo', self.repo, '--rev', rev]).decode('utf-8').strip()
+
+    def get_yarn_hash(self, rev: str):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            with open(tmp_dir + '/yarn.lock', 'w') as f:
+                f.write(self.get_file('yarn.lock', rev))
+            return subprocess.check_output(['prefetch-yarn-deps', tmp_dir + '/yarn.lock']).decode('utf-8').strip()
 
     @staticmethod
     def rev2version(tag: str) -> str:
@@ -68,13 +91,18 @@ class GitLabRepo:
         version = self.rev2version(rev)
 
         passthru = {v: self.get_file(v, rev).strip() for v in ['GITALY_SERVER_VERSION', 'GITLAB_PAGES_VERSION',
-                                                               'GITLAB_SHELL_VERSION', 'GITLAB_WORKHORSE_VERSION']}
+                                                               'GITLAB_SHELL_VERSION']}
+
+        passthru["GITLAB_WORKHORSE_VERSION"] = version
+
         return dict(version=self.rev2version(rev),
                     repo_hash=self.get_git_hash(rev),
+                    yarn_hash=self.get_yarn_hash(rev),
                     owner=self.owner,
                     repo=self.repo,
                     rev=rev,
-                    passthru=passthru)
+                    passthru=passthru,
+                    vendored_gems=VENDORED_GEMS)
 
 
 def _get_data_json():
@@ -83,10 +111,10 @@ def _get_data_json():
         return json.load(f)
 
 
-def _call_update_source_version(pkg, version):
-    """calls update-source-version from nixpkgs root dir"""
+def _call_nix_update(pkg, version):
+    """calls nix-update from nixpkgs root dir"""
     nixpkgs_path = pathlib.Path(__file__).parent / '../../../../'
-    return subprocess.check_output(['update-source-version', pkg, version], cwd=nixpkgs_path)
+    return subprocess.check_output(['nix-update', pkg, '--version', version], cwd=nixpkgs_path)
 
 
 @click_log.simple_verbosity_option(logger)
@@ -128,32 +156,34 @@ def update_rubyenv():
     data = _get_data_json()
     rev = data['rev']
 
-    for fn in ['Gemfile.lock', 'Gemfile']:
-        with open(rubyenv_dir / fn, 'w') as f:
-            f.write(repo.get_file(fn, rev))
+    gemfile = repo.get_file('Gemfile', rev)
+    gemfile_lock = repo.get_file('Gemfile.lock', rev)
+
+    if "pg (1.4.1)" in gemfile_lock:
+        gemfile_lock = gemfile_lock.replace("pg (1.4.1)", "pg (1.4.3)")
+    else:
+        logger.info("Looks like pg was updated! Please remove update-pg.patch, as this will cause a build failure")
+
+    with open(rubyenv_dir / 'Gemfile', 'w') as f:
+        f.write(re.sub(f'.*({"|".join(VENDORED_GEMS)}).*', "", gemfile))
+
+    with open(rubyenv_dir / 'Gemfile.lock', 'w') as f:
+        f.write(gemfile_lock)
 
     subprocess.check_output(['bundle', 'lock'], cwd=rubyenv_dir)
     subprocess.check_output(['bundix'], cwd=rubyenv_dir)
 
+    with open(rubyenv_dir / 'Gemfile', 'w') as f:
+        for gem in VENDORED_GEMS:
+            gemfile = gemfile.replace(f'path: \'vendor/gems/{gem}\'', f'path: \'{gem}\'')
 
-@cli.command('update-yarnpkgs')
-def update_yarnpkgs():
-    """Update yarnPkgs"""
+        f.write(gemfile)
 
-    repo = GitLabRepo()
-    yarnpkgs_dir = pathlib.Path(__file__).parent
+    with open(rubyenv_dir / 'Gemfile.lock', 'w') as f:
+        for gem in VENDORED_GEMS:
+            gemfile_lock = gemfile_lock.replace(f'remote: vendor/gems/{gem}', f'remote: {gem}')
 
-    # load rev from data.json
-    data = _get_data_json()
-    rev = data['rev']
-
-    with open(yarnpkgs_dir / 'yarn.lock', 'w') as f:
-        f.write(repo.get_file('yarn.lock', rev))
-
-    with open(yarnpkgs_dir / 'yarnPkgs.nix', 'w') as f:
-        subprocess.run(['yarn2nix'], cwd=yarnpkgs_dir, check=True, stdout=f)
-
-    os.unlink(yarnpkgs_dir / 'yarn.lock')
+        f.write(gemfile_lock)
 
 
 @cli.command('update-gitaly')
@@ -168,20 +198,10 @@ def update_gitaly():
         with open(gitaly_dir / fn, 'w') as f:
             f.write(repo.get_file(f"ruby/{fn}", f"v{gitaly_server_version}"))
 
-    for fn in ['go.mod', 'go.sum']:
-        with open(gitaly_dir / fn, 'w') as f:
-            f.write(repo.get_file(fn, f"v{gitaly_server_version}"))
-
     subprocess.check_output(['bundle', 'lock'], cwd=gitaly_dir)
     subprocess.check_output(['bundix'], cwd=gitaly_dir)
 
-    os.environ['GOROOT'] = ""
-    subprocess.check_output(['vgo2nix', '--keep-going'], cwd=gitaly_dir)
-
-    for fn in ['go.mod', 'go.sum']:
-        os.unlink(gitaly_dir / fn)
-
-    _call_update_source_version('gitaly', gitaly_server_version)
+    _call_nix_update('gitaly', gitaly_server_version)
 
 
 @cli.command('update-gitlab-shell')
@@ -189,20 +209,7 @@ def update_gitlab_shell():
     """Update gitlab-shell"""
     data = _get_data_json()
     gitlab_shell_version = data['passthru']['GITLAB_SHELL_VERSION']
-    _call_update_source_version('gitlab-shell', gitlab_shell_version)
-
-    repo = GitLabRepo(repo='gitlab-shell')
-    gitlab_shell_dir = pathlib.Path(__file__).parent / 'gitlab-shell'
-
-    for fn in ['go.mod', 'go.sum']:
-        with open(gitlab_shell_dir / fn, 'w') as f:
-            f.write(repo.get_file(fn, f"v{gitlab_shell_version}"))
-
-    os.environ['GOROOT'] = ""
-    subprocess.check_output(['vgo2nix', '--keep-going'], cwd=gitlab_shell_dir)
-
-    for fn in ['go.mod', 'go.sum']:
-        os.unlink(gitlab_shell_dir / fn)
+    _call_nix_update('gitlab-shell', gitlab_shell_version)
 
 
 @cli.command('update-gitlab-workhorse')
@@ -210,20 +217,8 @@ def update_gitlab_workhorse():
     """Update gitlab-workhorse"""
     data = _get_data_json()
     gitlab_workhorse_version = data['passthru']['GITLAB_WORKHORSE_VERSION']
-    _call_update_source_version('gitlab-workhorse', gitlab_workhorse_version)
+    _call_nix_update('gitlab-workhorse', gitlab_workhorse_version)
 
-    repo = GitLabRepo('gitlab-org', 'gitlab-workhorse')
-    gitlab_workhorse_dir = pathlib.Path(__file__).parent / 'gitlab-workhorse'
-
-    for fn in ['go.mod', 'go.sum']:
-        with open(gitlab_workhorse_dir / fn, 'w') as f:
-            f.write(repo.get_file(fn, f"v{gitlab_workhorse_version}"))
-
-    os.environ['GOROOT'] = ""
-    subprocess.check_output(['vgo2nix', '--keep-going'], cwd=gitlab_workhorse_dir)
-
-    for fn in ['go.mod', 'go.sum']:
-        os.unlink(gitlab_workhorse_dir / fn)
 
 @cli.command('update-all')
 @click.option('--rev', default='latest', help='The rev to use (vX.Y.Z-ee), or \'latest\'')
@@ -232,7 +227,6 @@ def update_all(ctx, rev: str):
     """Update all gitlab components to the latest stable release"""
     ctx.invoke(update_data, rev=rev)
     ctx.invoke(update_rubyenv)
-    ctx.invoke(update_yarnpkgs)
     ctx.invoke(update_gitaly)
     ctx.invoke(update_gitlab_shell)
     ctx.invoke(update_gitlab_workhorse)

@@ -1,9 +1,9 @@
-{ stdenv, fetchurl, ocaml, findlib, ocamlbuild, topkg }:
+{ stdenv, lib, fetchurl, ocaml, findlib, ocamlbuild, topkg }:
 
 let
   # Use astring 0.8.3 for OCaml < 4.05
   param =
-    if stdenv.lib.versionAtLeast ocaml.version "4.05"
+    if lib.versionAtLeast ocaml.version "4.05"
     then {
       version = "0.8.5";
       sha256 = "1ykhg9gd3iy7zsgyiy2p9b1wkpqg9irw5pvcqs3sphq71iir4ml6";
@@ -14,7 +14,7 @@ let
 in
 
 stdenv.mkDerivation {
-  name = "ocaml${ocaml.version}-astring-${param.version}";
+  pname = "ocaml${ocaml.version}-astring";
   inherit (param) version;
 
   src = fetchurl {
@@ -22,7 +22,10 @@ stdenv.mkDerivation {
     inherit (param) sha256;
   };
 
-  buildInputs = [ ocaml findlib ocamlbuild topkg ];
+  nativeBuildInputs = [ ocaml findlib ocamlbuild topkg ];
+  buildInputs = [ topkg ];
+
+  strictDeps = true;
 
   inherit (topkg) buildPhase installPhase;
 
@@ -41,7 +44,7 @@ stdenv.mkDerivation {
       adds a few missing functions and fully exploits OCaml's newfound string
       immutability.
     '';
-    license = stdenv.lib.licenses.isc;
-    maintainers = with stdenv.lib.maintainers; [ sternenseemann ];
+    license = lib.licenses.isc;
+    maintainers = with lib.maintainers; [ sternenseemann ];
   };
 }

@@ -1,4 +1,6 @@
-{ stdenv, fetchFromGitHub, fetchpatch, cmake, enableShared ? true }:
+{ lib, stdenv, fetchFromGitHub, fetchpatch, cmake
+, enableShared ? !stdenv.hostPlatform.isStatic
+}:
 
 let
   generic = { version, sha256, patches ? [ ] }:
@@ -21,21 +23,20 @@ let
 
       cmakeFlags = [
         "-DBUILD_SHARED_LIBS=${if enableShared then "ON" else "OFF"}"
-        "-DCMAKE_SKIP_BUILD_RPATH=OFF" # for tests
       ];
 
       doCheck = true;
 
-      meta = with stdenv.lib; {
+      meta = with lib; {
         description = "Small, safe and fast formatting library";
         longDescription = ''
           fmt (formerly cppformat) is an open-source formatting library. It can be
           used as a fast and safe alternative to printf and IOStreams.
         '';
-        homepage = "http://fmtlib.net/";
+        homepage = "https://fmt.dev/";
         downloadPage = "https://github.com/fmtlib/fmt/";
         maintainers = [ maintainers.jdehaas ];
-        license = licenses.bsd2;
+        license = licenses.mit;
         platforms = platforms.all;
       };
     };
@@ -44,5 +45,15 @@ in
   fmt_7 = generic {
     version = "7.1.3";
     sha256 = "08hyv73qp2ndbs0isk8pspsphdzz5qh8czl3wgyxy3mmif9xdg29";
+  };
+
+  fmt_8 = generic {
+    version = "8.1.1";
+    sha256 = "sha256-leb2800CwdZMJRWF5b1Y9ocK0jXpOX/nwo95icDf308=";
+  };
+
+  fmt_9 = generic {
+    version = "9.1.0";
+    sha256 = "sha256-rP6ymyRc7LnKxUXwPpzhHOQvpJkpnRFOt2ctvUNlYI0=";
   };
 }

@@ -1,14 +1,12 @@
-{ stdenv
+{ lib, stdenv
 , cmake
 , fetchFromGitHub
 , wrapQtAppsHook
 , qtmultimedia
 , qttools
-, qtscript
 , qtdeclarative
+, qtnetworkauth
 , qtbase
-, autogen
-, automake
 , makeWrapper
 , catch2
 , nodejs
@@ -17,30 +15,32 @@
 , rsync
 , typescript
 }:
+
 stdenv.mkDerivation rec {
   pname = "imgbrd-grabber";
+  version = "7.9.1";
 
-  version = "7.3.2";
   src = fetchFromGitHub {
     owner = "Bionus";
     repo = "imgbrd-grabber";
     rev = "v${version}";
-    sha256 = "053rwvcr88fcba0447a6r115cgnqsm9rl066z8d5jacqnhdij58k";
+    sha256 = "sha256-0CceSXH1GJbWKOnxZkjmbuyj7NBOQ6tpCYrCl7z4Vrw=";
     fetchSubmodules = true;
   };
 
   buildInputs = [
     openssl
-    makeWrapper
     libpulseaudio
     typescript
   ];
 
   nativeBuildInputs = [
+    makeWrapper
     qtmultimedia
     qtbase
     qtdeclarative
     qttools
+    qtnetworkauth
     nodejs
     cmake
     wrapQtAppsHook
@@ -67,6 +67,8 @@ stdenv.mkDerivation rec {
 
     # link the catch2 sources from nixpkgs
     ln -sf ${catch2.src} tests/src/vendor/catch
+
+    sed "s|strict\": true|strict\": false|g" -i ./sites/tsconfig.json
   '';
 
   postInstall = ''
@@ -85,7 +87,7 @@ stdenv.mkDerivation rec {
 
   sourceRoot = "source/src";
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Very customizable imageboard/booru downloader with powerful filenaming features";
     license = licenses.asl20;
     homepage = "https://bionus.github.io/imgbrd-grabber/";

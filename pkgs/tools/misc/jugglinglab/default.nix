@@ -1,7 +1,7 @@
-{ stdenv, fetchFromGitHub, jre, makeWrapper, ant, jdk }:
+{ lib, stdenv, fetchFromGitHub, jre, makeWrapper, ant, jdk }:
 stdenv.mkDerivation rec {
   version = "1.2.1";
-  name = "jugglinglab";
+  pname = "jugglinglab";
   src = fetchFromGitHub {
     owner = "jkboyce";
     repo = "jugglinglab";
@@ -21,7 +21,7 @@ stdenv.mkDerivation rec {
       --add-flags "-jar $out/lib/JugglingLab.jar"
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
       description = "A program to visualize different juggling pattens";
       license = licenses.gpl2;
       maintainers = with maintainers; [ wnklmnn ];

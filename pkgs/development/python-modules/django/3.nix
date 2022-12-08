@@ -1,32 +1,40 @@
-{ stdenv
+{ lib
+, stdenv
 , buildPythonPackage
 , fetchPypi
 , substituteAll
-, geos
+, geos39
 , gdal
 , asgiref
 , pytz
 , sqlparse
+, tzdata
 , pythonOlder
 , withGdal ? false
 }:
 
 buildPythonPackage rec {
-  pname = "Django";
-  version = "3.1.4";
+  pname = "django";
+  version = "3.2.16";
 
   disabled = pythonOlder "3.7";
 
   src = fetchPypi {
-    inherit pname version;
-    sha256 = "edb10b5c45e7e9c0fb1dc00b76ec7449aca258a39ffd613dbd078c51d19c9f03";
+    pname = "Django";
+    inherit version;
+    hash = "sha256-OtwoUSQkRySjlPqbmDnMjNEW+vfRWVVMQ+zaqM3wuU0=";
   };
 
-  patches = stdenv.lib.optional withGdal
+  patches = [
+    (substituteAll {
+      src = ./django_3_set_zoneinfo_dir.patch;
+      zoneinfo = tzdata + "/share/zoneinfo";
+    })
+  ] ++ lib.optional withGdal
     (substituteAll {
       src = ./django_3_set_geos_gdal_lib.patch;
-      geos = geos;
-      gdal = gdal;
+      inherit geos39;
+      inherit gdal;
       extension = stdenv.hostPlatform.extensions.sharedLibrary;
     });
 
@@ -39,10 +47,12 @@ buildPythonPackage rec {
   # too complicated to setup
   doCheck = false;
 
-  meta = with stdenv.lib; {
+  pythonImportsCheck = [ "django" ];
+
+  meta = with lib; {
     description = "A high-level Python Web framework";
     homepage = "https://www.djangoproject.com/";
     license = licenses.bsd3;
-    maintainers = with maintainers; [ georgewhewell lsix ];
+    maintainers = with maintainers; [ georgewhewell ];
   };
 }

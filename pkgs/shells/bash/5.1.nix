@@ -1,4 +1,4 @@
-{ stdenv
+{ lib, stdenv
 , buildPackages
 , fetchurl
 , binutils ? null
@@ -7,14 +7,15 @@
 
   # patch for cygwin requires readline support
 , interactive ? stdenv.isCygwin
-, readline80 ? null
+, readline81 ? null
 , withDocs ? false
 , texinfo ? null
+, forFHSEnv ? false
 }:
 
-with stdenv.lib;
+with lib;
 
-assert interactive -> readline80 != null;
+assert interactive -> readline81 != null;
 assert withDocs -> texinfo != null;
 assert stdenv.hostPlatform.isDarwin -> binutils != null;
 let
@@ -32,20 +33,26 @@ stdenv.mkDerivation rec {
     sha256 = "1alv68wplnfdm6mh39hm57060xgssb9vqca4yr1cyva0c342n0fc";
   };
 
-  hardeningDisable = [ "format" ];
+  hardeningDisable = [ "format" ]
+  # bionic libc is super weird and has issues with fortify outside of its own libc, check this comment:
+  # https://github.com/NixOS/nixpkgs/pull/192630#discussion_r978985593
+  # or you can check libc/include/sys/cdefs.h in bionic source code
+  ++ optional (stdenv.hostPlatform.libc == "bionic") "fortify";
 
   outputs = [ "out" "dev" "man" "doc" "info" ];
 
   NIX_CFLAGS_COMPILE = ''
     -DSYS_BASHRC="/etc/bashrc"
     -DSYS_BASH_LOGOUT="/etc/bash_logout"
+  '' + optionalString (!forFHSEnv) ''
     -DDEFAULT_PATH_VALUE="/no-such-path"
     -DSTANDARD_UTILS_PATH="/no-such-path"
+  '' + ''
     -DNON_INTERACTIVE_LOGIN_SHELLS
     -DSSH_SOURCE_BASHRC
   '';
 
-  patchFlags = [ "-p0" "-T" ];
+  patchFlags = [ "-p0" ];
 
   patches = upstreamPatches
     ++ [ ./pgrp-pipe-5.1.patch ];
@@ -68,17 +75,18 @@ stdenv.mkDerivation rec {
     "--disable-nls"
   ];
 
+  strictDeps = true;
   # Note: Bison is needed because the patches above modify parse.y.
   depsBuildBuild = [ buildPackages.stdenv.cc ];
   nativeBuildInputs = [ bison ]
     ++ optional withDocs texinfo
     ++ optional stdenv.hostPlatform.isDarwin binutils;
 
-  buildInputs = optional interactive readline80;
+  buildInputs = optional interactive readline81;
 
   enableParallelBuilding = true;
 
-  makeFlags = optional stdenv.hostPlatform.isCygwin [
+  makeFlags = optionals stdenv.hostPlatform.isCygwin [
     "LOCAL_LDFLAGS=-Wl,--export-all,--out-implib,libbash.dll.a"
     "SHOBJ_LIBS=-lbash"
   ];
@@ -95,14 +103,14 @@ stdenv.mkDerivation rec {
     if interactive
     then ''
       substituteInPlace "$out/bin/bashbug" \
-        --replace '${stdenv.shell}' "$out/bin/bash"
+        --replace '#!/bin/sh' "#!$out/bin/bash"
     ''
     # most space is taken by locale data
     else ''
       rm -rf "$out/share" "$out/bin/bashbug"
     '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     homepage = "https://www.gnu.org/software/bash/";
     description =
       "GNU Bourne-Again Shell, the de facto standard shell on Linux" +
@@ -123,7 +131,9 @@ stdenv.mkDerivation rec {
 
     platforms = platforms.all;
 
-    maintainers = with maintainers; [ peti dtzWill ];
+    maintainers = with maintainers; [ dtzWill ];
+
+    mainProgram = "bash";
   };
 
   passthru = {

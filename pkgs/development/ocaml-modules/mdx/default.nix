@@ -1,34 +1,47 @@
-{ lib, fetchurl, buildDunePackage, opaline, ocaml
+{ lib, fetchFromGitHub, buildDunePackage, ocaml
 , alcotest
-, astring, cmdliner, cppo, fmt, logs, ocaml-migrate-parsetree, ocaml-version, odoc, ocaml_lwt, pandoc, re }:
+, astring, cmdliner, cppo, fmt, logs, ocaml-version, odoc-parser, ocaml_lwt, re, result, csexp
+, pandoc
+, gitUpdater
+}:
 
 buildDunePackage rec {
   pname = "mdx";
-  version = "1.7.0";
-  useDune2 = true;
+  version = "2.1.0";
 
-  src = fetchurl {
-    url = "https://github.com/realworldocaml/mdx/releases/download/${version}/mdx-${version}.tbz";
-    sha256 = "0vpc30sngl3vpychrfvjwyi93mk311x3f2azlkxasgcj69fq03i7";
+  minimalOCamlVersion = "4.08";
+
+  src = fetchFromGitHub {
+    owner = "realworldocaml";
+    repo = pname;
+    rev = version;
+    hash = "sha256-p7jmksltgfLFTSkPxMuJWJexLq2VvPWT/DJtDveOL/A=";
   };
 
   nativeBuildInputs = [ cppo ];
   buildInputs = [ cmdliner ];
-  propagatedBuildInputs = [ astring fmt logs ocaml-migrate-parsetree ocaml-version odoc re ];
+  propagatedBuildInputs = [ astring fmt logs result csexp ocaml-version odoc-parser re ];
   checkInputs = [ alcotest ocaml_lwt pandoc ];
 
-  doCheck = true;
+  # Check fails with cmdliner ≥ 1.1
+  doCheck = false;
 
   outputs = [ "bin" "lib" "out" ];
 
   installPhase = ''
-    ${opaline}/bin/opaline -prefix $bin -libdir $lib/lib/ocaml/${ocaml.version}/site-lib
+    runHook preInstall
+    dune install --prefix=$bin --libdir=$lib/lib/ocaml/${ocaml.version}/site-lib ${pname}
+    runHook postInstall
   '';
 
+  passthru.updateScript = gitUpdater { };
+
   meta = {
-    homepage = "https://github.com/realworldocaml/mdx";
     description = "Executable OCaml code blocks inside markdown files";
+    homepage = "https://github.com/realworldocaml/mdx";
+    changelog = "https://github.com/realworldocaml/mdx/raw/${version}/CHANGES.md";
     license = lib.licenses.isc;
     maintainers = [ lib.maintainers.romildo ];
+    mainProgram = "ocaml-mdx";
   };
 }

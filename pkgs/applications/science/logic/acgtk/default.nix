@@ -1,24 +1,29 @@
-{ stdenv, fetchurl, dune, ocamlPackages }:
+{ lib, stdenv, fetchFromGitLab, dune_2, ocamlPackages }:
 
 stdenv.mkDerivation {
 
   pname = "acgtk";
-  version = "1.5.1";
+  version = "1.5.4";
 
-  src = fetchurl {
-    url = "https://acg.loria.fr/software/acg-1.5.1-20191113.tar.gz";
-    sha256 = "17595qfwhzz5q091ak6i6bg5wlppbn8zfn58x3hmmmjvx2yfajn1";
+  src = fetchFromGitLab {
+    domain = "gitlab.inria.fr";
+    owner = "acg";
+    repo = "dev/acgtk";
+    rev = "8e630b6d91bad022bd1d1a075e7768034065c428";
+    sha256 = "sha256-W/BDhbng5iYuiB7desMKvRtDFdhoaxiJNvNvtbLlA6E=";
   };
 
-  buildInputs = [ dune ] ++ (with ocamlPackages; [
-    ocaml findlib ansiterminal cairo2 cmdliner fmt logs menhir mtime yojson
+  buildInputs = [ dune_2 ] ++ (with ocamlPackages; [
+    ocaml findlib ansiterminal cairo2 cmdliner fmt logs menhir menhirLib mtime sedlex yojson
   ]);
 
-  buildPhase = "dune build";
+  buildPhase = "dune build --profile=release";
 
-  inherit (dune) installPhase;
+  installPhase = ''
+    dune install --prefix $out --libdir $OCAMLFIND_DESTDIR
+  '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     homepage = "https://acg.loria.fr/";
     description = "A toolkit for developing ACG signatures and lexicon";
     license = licenses.cecill20;

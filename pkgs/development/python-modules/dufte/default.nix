@@ -1,41 +1,52 @@
-{ stdenv
+{ lib
 , buildPythonPackage
-, fetchPypi
-, isPy3k
+, fetchFromGitHub
 , pythonOlder
 , importlib-metadata
 , matplotlib
 , numpy
 , pytestCheckHook
+, setuptools
 }:
 
 buildPythonPackage rec {
   pname = "dufte";
-  version = "0.2.9";
-  disabled = !isPy3k;
-
-  src = fetchPypi {
-    inherit pname version;
-    sha256 = "0nkaczipbsm8c14j9svxry2wigmn5iharibb6b8g062sjaph8x17";
-  };
+  version = "0.2.29";
   format = "pyproject";
+  disabled = pythonOlder "3.6";
+
+  src = fetchFromGitHub {
+    owner = "nschloe";
+    repo = pname;
+    rev = "v${version}";
+    hash = "sha256:0ccsmpj160xj6w503a948aw8icj55mw9414xnmijmmjvlwhm0p48";
+  };
+
+  nativeBuildInputs = [
+    setuptools
+  ];
 
   propagatedBuildInputs = [
     matplotlib
     numpy
-  ] ++ stdenv.lib.optionals (pythonOlder "3.8") [
+  ] ++ lib.optionals (pythonOlder "3.8") [
     importlib-metadata
   ];
 
   preCheck = ''
-    export HOME=$TMPDIR
-    mkdir -p $HOME/.matplotlib
-    echo "backend: ps" > $HOME/.matplotlib/matplotlibrc
+    export HOME=$(mktemp -d)
+    mkdir -p $HOME/.config/matplotlib
+    echo "backend: ps" > $HOME/.config/matplotlib/matplotlibrc
+    ln -s $HOME/.config/matplotlib $HOME/.matplotlib
   '';
-  checkInputs = [ pytestCheckHook ];
+
+  checkInputs = [
+    pytestCheckHook
+  ];
+
   pythonImportsCheck = [ "dufte" ];
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Clean matplotlib plots";
     homepage = "https://github.com/nschloe/dufte";
     license = licenses.gpl3Plus;

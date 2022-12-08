@@ -1,20 +1,20 @@
 { lib, fetchFromGitHub, ocamlPackages, rsync }:
 
-ocamlPackages.buildDunePackage {
+ocamlPackages.buildDunePackage rec {
   pname = "beluga";
-  version = "unstable-2020-03-11";
+  version = "1.0";
 
   src = fetchFromGitHub {
     owner  = "Beluga-lang";
     repo   = "Beluga";
-    rev    = "6133b2f572219333f304bb4f77c177592324c55b";
-    sha256 = "0sy6mi50z3mvs5z7dx38piydapk89all81rh038x3559b5fsk68q";
+    rev    = "v${version}";
+    sha256 = "1ziqjfv8jwidl8lj2mid2shhgqhv31dfh5wad2zxjpvf6038ahsw";
   };
 
   useDune2 = true;
 
   buildInputs = with ocamlPackages; [
-    gen sedlex_2 ocaml_extlib dune-build-info linenoise
+    gen sedlex ocaml_extlib dune-build-info linenoise
   ];
 
   postPatch = ''

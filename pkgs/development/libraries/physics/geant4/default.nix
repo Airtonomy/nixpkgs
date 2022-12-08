@@ -1,26 +1,23 @@
 { enableMultiThreading ? true
-, enableG3toG4         ? false
 , enableInventor       ? false
-, enableGDML           ? false
-, enableQT             ? false
+, enableQT             ? false # deprecated name
+, enableQt             ? enableQT
 , enableXM             ? false
 , enableOpenGLX11      ? true
 , enablePython         ? false
 , enableRaytracerX11   ? false
 
 # Standard build environment with cmake.
-, stdenv, fetchurl, fetchpatch, cmake
+, lib, stdenv, fetchurl, fetchpatch, cmake
 
-# Optional system packages, otherwise internal GEANT4 packages are used.
-, clhep ? null # not packaged currently
+, clhep
 , expat
+, xercesc
 , zlib
 
-# For enableGDML.
-, xercesc
-
-# For enableQT.
+# For enableQt.
 , qtbase
+, wrapQtAppsHook
 
 # For enableXM.
 , motif
@@ -30,7 +27,7 @@
 , soxt
 , libXpm
 
-# For enableQT, enableXM, enableOpenGLX11, enableRaytracerX11.
+# For enableQt, enableXM, enableOpenGLX11, enableRaytracerX11.
 , libGLU, libGL
 , xlibsWrapper
 , libXmu
@@ -47,72 +44,73 @@ let
   boost_python = boost.override { enablePython = true; python = python3; };
 in
 
+lib.warnIf (enableQT != false) "geant4: enableQT is deprecated, please use enableQt"
+
 stdenv.mkDerivation rec {
-  version = "10.7.0";
+  version = "11.0.3";
   pname = "geant4";
 
   src = fetchurl{
-    url = "https://geant4-data.web.cern.ch/geant4-data/releases/geant4.10.07.tar.gz";
-    sha256 = "0jmdxb8z20d4l6sf2w0gk9ska48kylm38yngy3mzyvyj619a8vkp";
+    url = "https://cern.ch/geant4-data/releases/geant4-v${version}.tar.gz";
+    hash = "sha256-cvi2h1EtbmMNxsZMXEG6cRIgRoVAEymZ0A5PzhkIrkg=";
   };
-
-  boost_python_lib = "python${builtins.replaceStrings ["."] [""] python3.pythonVersion}";
-  postPatch = ''
-    # Fix for boost 1.67+
-    substituteInPlace environments/g4py/CMakeLists.txt \
-      --replace "REQUIRED python" \
-                "REQUIRED COMPONENTS $boost_python_lib"
-    substituteInPlace environments/g4py/G4PythonHelpers.cmake \
-      --replace "Boost::python" "Boost::$boost_python_lib"
-  '';
 
   cmakeFlags = [
     "-DGEANT4_INSTALL_DATA=OFF"
-    "-DGEANT4_USE_GDML=${if enableGDML then "ON" else "OFF"}"
-    "-DGEANT4_USE_G3TOG4=${if enableG3toG4 then "ON" else "OFF"}"
-    "-DGEANT4_USE_QT=${if enableQT then "ON" else "OFF"}"
+    "-DGEANT4_USE_GDML=ON"
+    "-DGEANT4_USE_G3TOG4=ON"
+    "-DGEANT4_USE_QT=${if enableQt then "ON" else "OFF"}"
     "-DGEANT4_USE_XM=${if enableXM then "ON" else "OFF"}"
     "-DGEANT4_USE_OPENGL_X11=${if enableOpenGLX11 then "ON" else "OFF"}"
     "-DGEANT4_USE_INVENTOR=${if enableInventor then "ON" else "OFF"}"
     "-DGEANT4_USE_PYTHON=${if enablePython then "ON" else "OFF"}"
     "-DGEANT4_USE_RAYTRACER_X11=${if enableRaytracerX11 then "ON" else "OFF"}"
-    "-DGEANT4_USE_SYSTEM_CLHEP=${if clhep != null then "ON" else "OFF"}"
-    "-DGEANT4_USE_SYSTEM_EXPAT=${if expat != null then "ON" else "OFF"}"
-    "-DGEANT4_USE_SYSTEM_ZLIB=${if zlib != null then "ON" else "OFF"}"
+    "-DGEANT4_USE_SYSTEM_CLHEP=ON"
+    "-DGEANT4_USE_SYSTEM_EXPAT=ON"
+    "-DGEANT4_USE_SYSTEM_ZLIB=ON"
     "-DGEANT4_BUILD_MULTITHREADED=${if enableMultiThreading then "ON" else "OFF"}"
-  ] ++ stdenv.lib.optionals (enableMultiThreading && enablePython) [
+  ] ++ lib.optionals stdenv.isDarwin [
+    "-DXQuartzGL_INCLUDE_DIR=${libGL.dev}/include"
+    "-DXQuartzGL_gl_LIBRARY=${libGL}/lib/libGL.dylib"
+  ] ++ lib.optionals (enableMultiThreading && enablePython) [
     "-DGEANT4_BUILD_TLS_MODEL=global-dynamic"
-  ] ++ stdenv.lib.optionals enableInventor [
+  ] ++ lib.optionals enableInventor [
     "-DINVENTOR_INCLUDE_DIR=${coin3d}/include"
     "-DINVENTOR_LIBRARY_RELEASE=${coin3d}/lib/libCoin.so"
   ];
 
-  enableParallelBuilding = true;
-  nativeBuildInputs =  [ cmake ];
+  nativeBuildInputs =  [
+    cmake
+  ];
+
+  propagatedNativeBuildInputs = lib.optionals enableQt [
+    wrapQtAppsHook
+  ];
+  dontWrapQtApps = true; # no binaries
 
   buildInputs = [ libGLU xlibsWrapper libXmu ]
-    ++ stdenv.lib.optionals enableInventor [ libXpm coin3d soxt motif ]
-    ++ stdenv.lib.optionals enablePython [ boost_python python3 ];
+    ++ lib.optionals enableInventor [ libXpm coin3d soxt motif ]
+    ++ lib.optionals enablePython [ boost_python python3 ];
 
-  propagatedBuildInputs = [ clhep expat zlib libGL ]
-    ++ stdenv.lib.optionals enableGDML [ xercesc ]
-    ++ stdenv.lib.optionals enableXM [ motif ]
-    ++ stdenv.lib.optionals enableQT [ qtbase ];
+  propagatedBuildInputs = [ clhep expat xercesc zlib libGL ]
+    ++ lib.optionals enableXM [ motif ]
+    ++ lib.optionals enableQt [ qtbase ];
 
   postFixup = ''
     # Don't try to export invalid environment variables.
     sed -i 's/export G4\([A-Z]*\)DATA/#export G4\1DATA/' "$out"/bin/geant4.sh
+  '' + lib.optionalString enableQt ''
+    wrapQtAppsHook
   '';
 
   setupHook = ./geant4-hook.sh;
 
   passthru = {
-    data = import ./datasets.nix {
-          inherit stdenv fetchurl;
-          geant_version = version;
-      };
+    data = callPackage ./datasets.nix {};
 
     tests = callPackage ./tests.nix {};
+
+    inherit enableQt;
   };
 
   # Set the myriad of envars required by Geant4 if we use a nix-shell.
@@ -120,7 +118,8 @@ stdenv.mkDerivation rec {
     source $out/nix-support/setup-hook
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
+    broken = (stdenv.isLinux && stdenv.isAarch64);
     description = "A toolkit for the simulation of the passage of particles through matter";
     longDescription = ''
       Geant4 is a toolkit for the simulation of the passage of particles through matter.
@@ -129,7 +128,7 @@ stdenv.mkDerivation rec {
     '';
     homepage = "http://www.geant4.org";
     license = licenses.g4sl;
-    maintainers = with maintainers; [ tmplt omnipotententity ];
-    platforms = platforms.linux;
+    maintainers = with maintainers; [ omnipotententity veprbl ];
+    platforms = platforms.unix;
   };
 }

@@ -28,30 +28,23 @@ let
     ];
   };
 
-  nixos-rebuild =
-    let fallback = import ./nix-fallback-paths.nix; in
-    makeProg {
-      name = "nixos-rebuild";
-      src = ./nixos-rebuild.sh;
-      inherit (pkgs) runtimeShell;
-      nix = config.nix.package.out;
-      nix_x86_64_linux = fallback.x86_64-linux;
-      nix_i686_linux = fallback.i686-linux;
-      path = makeBinPath [ pkgs.jq ];
-    };
+  nixos-rebuild = pkgs.nixos-rebuild.override { nix = config.nix.package.out; };
 
   nixos-generate-config = makeProg {
     name = "nixos-generate-config";
     src = ./nixos-generate-config.pl;
-    path = lib.optionals (lib.elem "btrfs" config.boot.supportedFilesystems) [ pkgs.btrfs-progs ];
-    perl = "${pkgs.perl}/bin/perl -I${pkgs.perlPackages.FileSlurp}/${pkgs.perl.libPrefix}";
+    perl = "${pkgs.perl.withPackages (p: [ p.FileSlurp ])}/bin/perl";
+    nixInstantiate = "${pkgs.nix}/bin/nix-instantiate";
+    detectvirt = "${config.systemd.package}/bin/systemd-detect-virt";
+    btrfs = "${pkgs.btrfs-progs}/bin/btrfs";
     inherit (config.system.nixos-generate-config) configuration desktopConfiguration;
+    xserverEnabled = config.services.xserver.enable;
   };
 
   nixos-option =
-    if lib.versionAtLeast (lib.getVersion pkgs.nix) "2.4pre"
+    if lib.versionAtLeast (lib.getVersion config.nix.package) "2.4pre"
     then null
-    else pkgs.callPackage ./nixos-option { };
+    else pkgs.nixos-option;
 
   nixos-version = makeProg {
     name = "nixos-version";
@@ -82,38 +75,51 @@ in
     configuration = mkOption {
       internal = true;
       type = types.str;
-      description = ''
-        The NixOS module that <literal>nixos-generate-config</literal>
-        saves to <literal>/etc/nixos/configuration.nix</literal>.
+      description = lib.mdDoc ''
+        The NixOS module that `nixos-generate-config`
+        saves to `/etc/nixos/configuration.nix`.
 
         This is an internal option. No backward compatibility is guaranteed.
         Use at your own risk!
 
         Note that this string gets spliced into a Perl script. The perl
-        variable <literal>$bootLoaderConfig</literal> can be used to
+        variable `$bootLoaderConfig` can be used to
         splice in the boot loader configuration.
       '';
     };
 
     desktopConfiguration = mkOption {
       internal = true;
-      type = types.str;
-      default = "";
-      description = ''
-        Text to preseed the desktop configuration that <literal>nixos-generate-config</literal>
-        saves to <literal>/etc/nixos/configuration.nix</literal>.
+      type = types.listOf types.lines;
+      default = [];
+      description = lib.mdDoc ''
+        Text to preseed the desktop configuration that `nixos-generate-config`
+        saves to `/etc/nixos/configuration.nix`.
 
         This is an internal option. No backward compatibility is guaranteed.
         Use at your own risk!
 
         Note that this string gets spliced into a Perl script. The perl
-        variable <literal>$bootLoaderConfig</literal> can be used to
+        variable `$bootLoaderConfig` can be used to
         splice in the boot loader configuration.
       '';
     };
   };
 
-  config = {
+  options.system.disableInstallerTools = mkOption {
+    internal = true;
+    type = types.bool;
+    default = false;
+    description = lib.mdDoc ''
+      Disable nixos-rebuild, nixos-generate-config, nixos-installer
+      and other NixOS tools. This is useful to shrink embedded,
+      read-only systems which are not expected to be rebuild or
+      reconfigure themselves. Use at your own risk!
+    '';
+  };
+
+  config = lib.mkIf (config.nix.enable && !config.system.disableInstallerTools) {
+
     system.nixos-generate-config.configuration = mkDefault ''
       # Edit this configuration file to define what should be installed on
       # your system.  Help is available in the configuration.nix(5) man page
@@ -129,12 +135,13 @@ in
 
       $bootLoaderConfig
         # networking.hostName = "nixos"; # Define your hostname.
+        # Pick only one of the below networking options.
         # networking.wireless.enable = true;  # Enables wireless support via wpa_supplicant.
+        # networking.networkmanager.enable = true;  # Easiest to use and most distros use this by default.
 
         # Set your time zone.
         # time.timeZone = "Europe/Amsterdam";
 
-      $networkingDhcpConfig
         # Configure network proxy if necessary
         # networking.proxy.default = "http://user:password\@proxy:port/";
         # networking.proxy.noProxy = "127.0.0.1,localhost,internal.domain";
@@ -144,12 +151,18 @@ in
         # console = {
         #   font = "Lat2-Terminus16";
         #   keyMap = "us";
+        #   useXkbConfig = true; # use xkbOptions in tty.
         # };
+
+      $xserverConfig
 
       $desktopConfiguration
         # Configure keymap in X11
         # services.xserver.layout = "us";
-        # services.xserver.xkbOptions = "eurosign:e";
+        # services.xserver.xkbOptions = {
+        #   "eurosign:e";
+        #   "caps:escape" # map caps to escape.
+        # };
 
         # Enable CUPS to print documents.
         # services.printing.enable = true;
@@ -162,16 +175,20 @@ in
         # services.xserver.libinput.enable = true;
 
         # Define a user account. Don't forget to set a password with ‘passwd’.
-        # users.users.jane = {
+        # users.users.alice = {
         #   isNormalUser = true;
         #   extraGroups = [ "wheel" ]; # Enable ‘sudo’ for the user.
+        #   packages = with pkgs; [
+        #     firefox
+        #     thunderbird
+        #   ];
         # };
 
         # List packages installed in system profile. To search, run:
         # \$ nix search wget
         # environment.systemPackages = with pkgs; [
-        #   wget vim
-        #   firefox
+        #   vim # Do not forget to add an editor to edit configuration.nix! The Nano editor is also installed by default.
+        #   wget
         # ];
 
         # Some programs need SUID wrappers, can be configured further or are
@@ -192,6 +209,11 @@ in
         # networking.firewall.allowedUDPPorts = [ ... ];
         # Or disable the firewall altogether.
         # networking.firewall.enable = false;
+
+        # Copy the NixOS configuration file and link it from the resulting system
+        # (/run/current-system/configuration.nix). This is useful in case you
+        # accidentally delete configuration.nix.
+        # system.copySystemConfiguration = true;
 
         # This value determines the NixOS release from which the default
         # settings for stateful data, like file locations and database versions

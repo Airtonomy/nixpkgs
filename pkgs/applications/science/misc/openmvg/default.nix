@@ -1,4 +1,4 @@
-{ stdenv, fetchFromGitHub, pkgconfig, cmake
+{ lib, stdenv, fetchFromGitHub, pkg-config, cmake
 , libjpeg ? null
 , zlib ? null
 , libpng ? null
@@ -8,20 +8,20 @@
 , enableDocs ? false }:
 
 stdenv.mkDerivation rec {
-  version = "1.6";
+  version = "2.0";
   pname = "openmvg";
 
   src = fetchFromGitHub {
     owner = "openmvg";
     repo = "openmvg";
     rev = "v${version}";
-    sha256 = "0mrsi0dzgi7cjzn13r9xv7rnc8c9a4h8ip78xy88m9xsyr21wd1h";
+    sha256 = "sha256-6F/xUgZpqY+v6CpwTBhIXI4JdT8HVB0P5JzOL66AVd8=";
     fetchSubmodules = true;
   };
 
   buildInputs = [ libjpeg zlib libpng eigen libtiff ];
 
-  nativeBuildInputs = [ cmake pkgconfig ];
+  nativeBuildInputs = [ cmake pkg-config ];
 
   cmakeFlags = [
     "-DCMAKE_CXX_FLAGS=-std=c++11"
@@ -40,10 +40,11 @@ stdenv.mkDerivation rec {
   hardeningDisable = [ "all" ];
 
   meta = {
+    broken = (stdenv.isLinux && stdenv.isAarch64);
     description = "A library for computer-vision scientists and targeted for the Multiple View Geometry community";
     homepage = "https://openmvg.readthedocs.io/en/latest/";
-    license = stdenv.lib.licenses.mpl20;
-    platforms = stdenv.lib.platforms.linux;
-    maintainers = with stdenv.lib.maintainers; [ mdaiter ];
+    license = lib.licenses.mpl20;
+    platforms = lib.platforms.linux;
+    maintainers = with lib.maintainers; [ mdaiter ];
   };
 }

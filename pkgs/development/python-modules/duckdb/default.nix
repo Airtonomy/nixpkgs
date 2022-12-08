@@ -1,38 +1,31 @@
 { lib
 , buildPythonPackage
+, fetchpatch
 , duckdb
+, google-cloud-storage
+, mypy
 , numpy
 , pandas
+, psutil
 , pybind11
-, setuptools_scm
-, pytestrunner
-, pytest
+, setuptools-scm
+, pytestCheckHook
 }:
 
 buildPythonPackage rec {
   pname = "duckdb";
-  inherit (duckdb) version src;
+  inherit (duckdb) version src patches;
+  format = "setuptools";
 
-  # build attempts to use git to figure out its own version. don't want to add
-  # the dependency for something pointless.
-  postPatch = ''
-    substituteInPlace scripts/package_build.py --replace \
-      "'git'" "'false'"
-  '';
-
-  postConfigure = ''
+  preConfigure = ''
     cd tools/pythonpkg
-    export SETUPTOOLS_SCM_PRETEND_VERSION=${version}
   '';
+
+  SETUPTOOLS_SCM_PRETEND_VERSION = version;
 
   nativeBuildInputs = [
     pybind11
-    setuptools_scm
-    pytestrunner
-  ];
-
-  checkInputs = [
-    pytest
+    setuptools-scm
   ];
 
   propagatedBuildInputs = [
@@ -40,14 +33,21 @@ buildPythonPackage rec {
     pandas
   ];
 
-  checkPhase = ''
-    pytest
-  '';
+  checkInputs = [
+    google-cloud-storage
+    mypy
+    psutil
+    pytestCheckHook
+  ];
+
+  pythonImportsCheck = [
+    "duckdb"
+  ];
 
   meta = with lib; {
-    description = "DuckDB is an embeddable SQL OLAP Database Management System";
-    homepage = "https://pypi.python.org/pypi/duckdb";
+    description = "Python binding for DuckDB";
+    homepage = "https://duckdb.org/";
     license = licenses.mit;
-    maintainers = [ maintainers.costrouc ];
+    maintainers = with maintainers; [ costrouc cpcloud ];
   };
 }

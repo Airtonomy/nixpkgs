@@ -1,61 +1,68 @@
 { stdenv
+, lib
 , fetchFromGitLab
-, cargo
 , dbus
 , desktop-file-utils
 , gdk-pixbuf
 , gettext
+, gitMinimal
 , glib
 , gst_all_1
-, gtk3
-, libhandy_0
+, gtk4
+, libadwaita
 , meson
 , ninja
 , openssl
 , pkg-config
-, python3
-, rust
-, rustc
 , rustPlatform
 , sqlite
-, wrapGAppsHook
+, wrapGAppsHook4
+, cmake
+, libshumate
 }:
 
-rustPlatform.buildRustPackage rec {
+stdenv.mkDerivation rec {
   pname = "shortwave";
-  version = "1.1.1";
+  version = "3.1.0";
 
   src = fetchFromGitLab {
     domain = "gitlab.gnome.org";
     owner = "World";
     repo = "Shortwave";
     rev = version;
-    sha256 = "1vlhp2ss06j41simjrrjg38alp85jddhqyvccy6bhfzm0gzynwld";
+    sha256 = "sha256-N0ftIq0+sxkpo56IGHZYAK6MgRNW7T6C2jWEiJsYy/Y=";
   };
 
-  cargoSha256 = "181699rlpr5dszc18wg0kbss3gfskxaz9lpxpgsc4yfb6ip89qnk";
+  cargoDeps = rustPlatform.fetchCargoTarball {
+    inherit src;
+    name = "${pname}-${version}";
+    hash = "sha256-90JBN3cJKqIJX6DRq5FtEpIr5Isxf+jb1SlxGMbBwMQ=";
+  };
 
   nativeBuildInputs = [
-    cargo
     desktop-file-utils
     gettext
+    gitMinimal
     glib # for glib-compile-schemas
     meson
     ninja
     pkg-config
-    python3
-    rustc
-    wrapGAppsHook
+    rustPlatform.rust.cargo
+    rustPlatform.cargoSetupHook
+    rustPlatform.rust.rustc
+    wrapGAppsHook4
+    cmake
   ];
 
   buildInputs = [
     dbus
     gdk-pixbuf
     glib
-    gtk3
-    libhandy_0
+    gtk4
+    libadwaita
     openssl
     sqlite
+    libshumate
   ] ++ (with gst_all_1; [
     gstreamer
     gst-plugins-base
@@ -63,17 +70,7 @@ rustPlatform.buildRustPackage rec {
     gst-plugins-bad
   ]);
 
-  # Don't use buildRustPackage phases, only use it for rust deps setup
-  configurePhase = null;
-  buildPhase = null;
-  checkPhase = null;
-  installPhase = null;
-
-  postPatch = ''
-    patchShebangs build-aux/meson/postinstall.py
-  '';
-
-  meta = with stdenv.lib; {
+  meta = with lib; {
     homepage = "https://gitlab.gnome.org/World/Shortwave";
     description = "Find and listen to internet radio stations";
     longDescription = ''

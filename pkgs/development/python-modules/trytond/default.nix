@@ -1,49 +1,46 @@
-{ stdenv
-, buildPythonApplication
+{ lib
+, buildPythonPackage
 , fetchPypi
 , pythonOlder
-, mock
+, defusedxml
 , lxml
 , relatorio
 , genshi
-, dateutil
+, python-dateutil
 , polib
 , python-sql
 , werkzeug
 , wrapt
 , passlib
-, bcrypt
 , pydot
 , python-Levenshtein
-, simplejson
 , html2text
-, psycopg2
+, weasyprint
+, gevent
+, pillow
 , withPostgresql ? true
+, psycopg2
+, unittestCheckHook
 }:
 
-with stdenv.lib;
-
-buildPythonApplication rec {
+buildPythonPackage rec {
   pname = "trytond";
-  version = "5.8.1";
-  disabled = pythonOlder "3.5";
+  version = "6.4.5";
+  format = "setuptools";
+
+  disabled = pythonOlder "3.7";
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "9c1afca73b13ede07680015d69f611c7dec33b8c22565de70f0cbbf0464b8db7";
+    sha256 = "sha256-AF8LG68K+CvHpFOIoGbxD+lF7IVwBDk8K06I4uTNguI=";
   };
 
-  # Tells the tests which database to use
-  DB_NAME = ":memory:";
-
-  buildInputs = [
-    mock
-  ];
   propagatedBuildInputs = [
+    defusedxml
     lxml
     relatorio
     genshi
-    dateutil
+    python-dateutil
     polib
     python-sql
     werkzeug
@@ -51,19 +48,28 @@ buildPythonApplication rec {
     passlib
 
     # extra dependencies
-    bcrypt
     pydot
     python-Levenshtein
-    simplejson
     html2text
-  ] ++ stdenv.lib.optional withPostgresql psycopg2;
+    weasyprint
+    gevent
+    pillow
+  ] ++ relatorio.optional-dependencies.fodt
+  ++ passlib.optional-dependencies.bcrypt
+  ++ passlib.optional-dependencies.argon2
+  ++ lib.optional withPostgresql psycopg2;
 
-  # If unset, trytond will try to mkdir /homeless-shelter
+  checkInputs = [ unittestCheckHook ];
+
   preCheck = ''
     export HOME=$(mktemp -d)
+    export TRYTOND_DATABASE_URI="sqlite://"
+    export DB_NAME=":memory:";
   '';
 
-  meta = {
+  unittestFlagsArray = [ "-s" "trytond.tests" ];
+
+  meta = with lib; {
     description = "The server of the Tryton application platform";
     longDescription = ''
       The server for Tryton, a three-tier high-level general purpose
@@ -74,6 +80,7 @@ buildPythonApplication rec {
       modularity, scalability and security.
     '';
     homepage = "http://www.tryton.org/";
+    changelog = "https://hg.tryton.org/trytond/file/${version}/CHANGELOG";
     license = licenses.gpl3Plus;
     maintainers = with maintainers; [ udono johbo ];
   };

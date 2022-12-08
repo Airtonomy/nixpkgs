@@ -1,30 +1,47 @@
-{ lib, stdenv, fetchurl, mono, makeWrapper, curl, icu60, openssl, zlib }:
+{ lib
+, stdenv
+, buildDotnetModule
+, fetchFromGitHub
+, dotnetCorePackages
+, openssl
+, mono
+}:
 
-stdenv.mkDerivation rec {
+buildDotnetModule rec {
   pname = "jackett";
-  version = "0.17.15";
+  version = "0.20.2175";
 
-  src = fetchurl {
-    url = "https://github.com/Jackett/Jackett/releases/download/v${version}/Jackett.Binaries.Mono.tar.gz";
-    sha256 = "1pp5pnnmy8m0jvpxrldshcx71dl5g16dqvnnzaqhvs4cjhpgq8fw";
+  src = fetchFromGitHub {
+    owner = pname;
+    repo = pname;
+    rev = "v${version}";
+    sha256 = "MkMEsD8hU23RPvLJvEN2IT5BiuE1ySuVRLmPK2Yqsa0=";
   };
 
-  nativeBuildInputs = [ makeWrapper ];
+  projectFile = "src/Jackett.Server/Jackett.Server.csproj";
+  nugetDeps = ./deps.nix;
 
-  installPhase = ''
-    mkdir -p $out/{bin,share/${pname}-${version}}
-    cp -r * $out/share/${pname}-${version}
+  dotnet-runtime = dotnetCorePackages.aspnetcore_6_0;
 
-    makeWrapper "${mono}/bin/mono" $out/bin/Jackett \
-      --add-flags "$out/share/${pname}-${version}/JackettConsole.exe" \
-      --prefix LD_LIBRARY_PATH : ${stdenv.lib.makeLibraryPath [ curl icu60 openssl zlib ]}
+  dotnetInstallFlags = [ "-p:TargetFramework=net6.0" ];
+
+  runtimeDeps = [ openssl ];
+
+  doCheck = !(stdenv.isDarwin && stdenv.isAarch64); # mono is not available on aarch64-darwin
+  checkInputs = [ mono ];
+  testProjectFile = "src/Jackett.Test/Jackett.Test.csproj";
+
+  postFixup = ''
+    # For compatibility
+    ln -s $out/bin/jackett $out/bin/Jackett || :
+    ln -s $out/bin/Jackett $out/bin/jackett || :
   '';
+  passthru.updateScript = ./updater.sh;
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "API Support for your favorite torrent trackers";
     homepage = "https://github.com/Jackett/Jackett/";
-    license = licenses.gpl2;
+    license = licenses.gpl2Only;
     maintainers = with maintainers; [ edwtjo nyanloutre purcell ];
-    platforms = platforms.all;
   };
 }

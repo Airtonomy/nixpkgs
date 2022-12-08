@@ -1,5 +1,5 @@
-{ stdenv, lib, fetchFromGitHub, bash, pkgconfig, autoconf, cpio, file, which, unzip
-, zip, perl, cups, freetype, alsaLib, libjpeg, giflib, libpng, zlib, lcms2
+{ stdenv, lib, fetchFromGitHub, bash, pkg-config, autoconf, cpio, file, which, unzip
+, zip, perl, cups, freetype, harfbuzz, alsa-lib, libjpeg, giflib, libpng, zlib, lcms2
 , libX11, libICE, libXrender, libXext, libXt, libXtst, libXi, libXinerama
 , libXcursor, libXrandr, fontconfig, openjdk11-bootstrap
 , setJavaClassPath
@@ -11,8 +11,8 @@
 let
   major = "11";
   minor = "0";
-  update = "9";
-  build = "11";
+  update = "15";
+  build = "10";
 
   openjdk = stdenv.mkDerivation rec {
     pname = "openjdk" + lib.optionalString headless "-headless";
@@ -22,12 +22,12 @@ let
       owner = "openjdk";
       repo = "jdk${major}u";
       rev = "jdk-${version}";
-      sha256 = "11j2rqz9nag5y562g99py4p72f2kv4wwwyrnaspmrzax00wynyx7";
+      sha256 = "le2JDxPJPSuga4JxLJNRZwCaodptSb2kh4TsJXumTXs=";
     };
 
-    nativeBuildInputs = [ pkgconfig autoconf ];
+    nativeBuildInputs = [ pkg-config autoconf unzip ];
     buildInputs = [
-      cpio file which unzip zip perl zlib cups freetype alsaLib libjpeg giflib
+      cpio file which zip perl zlib cups freetype harfbuzz alsa-lib libjpeg giflib
       libpng zlib lcms2 libX11 libICE libXrender libXext libXtst libXt libXtst
       libXi libXinerama libXcursor libXrandr fontconfig openjdk11-bootstrap
     ] ++ lib.optionals (!headless && enableGnome2) [
@@ -39,6 +39,7 @@ let
       ./read-truststore-from-env-jdk10.patch
       ./currency-date-range-jdk10.patch
       ./increase-javadoc-heap.patch
+      ./fix-library-path-jdk11.patch
     ] ++ lib.optionals (!headless && enableGnome2) [
       ./swing-use-gtk-jdk10.patch
     ];
@@ -53,25 +54,37 @@ let
       "--with-version-pre="
       "--enable-unlimited-crypto"
       "--with-native-debug-symbols=internal"
+      "--with-freetype=system"
+      "--with-harfbuzz=system"
       "--with-libjpeg=system"
       "--with-giflib=system"
       "--with-libpng=system"
       "--with-zlib=system"
       "--with-lcms=system"
       "--with-stdc++lib=dynamic"
+      "--disable-warnings-as-errors"
     ] ++ lib.optional stdenv.isx86_64 "--with-jvm-features=zgc"
       ++ lib.optional headless "--enable-headless-only"
       ++ lib.optional (!headless && enableJavaFX) "--with-import-modules=${openjfx}";
 
     separateDebugInfo = true;
 
-    NIX_CFLAGS_COMPILE = "-Wno-error";
+    # Workaround for
+    # `cc1plus: error: '-Wformat-security' ignored without '-Wformat' [-Werror=format-security]`
+    # when building jtreg
+    NIX_CFLAGS_COMPILE = "-Wformat";
 
     NIX_LDFLAGS = toString (lib.optionals (!headless) [
       "-lfontconfig" "-lcups" "-lXinerama" "-lXrandr" "-lmagic"
     ] ++ lib.optionals (!headless && enableGnome2) [
       "-lgtk-3" "-lgio-2.0" "-lgnomevfs-2" "-lgconf-2"
     ]);
+
+    # -j flag is explicitly rejected by the build system:
+    #     Error: 'make -jN' is not supported, use 'make JOBS=N'
+    # Note: it does not make build sequential. Build system
+    # still runs in parallel.
+    enableParallelBuilding = false;
 
     buildFlags = [ "all" ];
 
@@ -136,13 +149,7 @@ let
 
     disallowedReferences = [ openjdk11-bootstrap ];
 
-    meta = with stdenv.lib; {
-      homepage = "http://openjdk.java.net/";
-      license = licenses.gpl2;
-      description = "The open-source Java Development Kit";
-      maintainers = with maintainers; [ edwtjo asbachb ];
-      platforms = [ "i686-linux" "x86_64-linux" "aarch64-linux" "armv7l-linux" "armv6l-linux" ];
-    };
+    meta = import ./meta.nix lib version;
 
     passthru = {
       architecture = "";

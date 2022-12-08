@@ -1,48 +1,35 @@
 { buildGoModule
-, buildGoPackage
 , fetchFromGitHub
+, fetchurl
+, fetchpatch
 , go-bindata
 , lib
 , llvmPackages
-, mkYarnPackage
+, perl
 , pkg-config
 , rustPlatform
+, stdenv
+, libiconv
 }:
 
-# Note for maintainers: use ./update-influxdb2.sh to update the Yarn
-# dependencies nix expression.
-
 let
-  version = "2.0.2";
-  shorthash = "84496e507a"; # git rev-parse HEAD with 2.0.2 checked out
-  libflux_version = "0.95.0";
+  version = "2.4.0";
+  # Despite the name, this is not a rolling release. This is the
+  # version of the UI assets for 2.4.0, as specified in
+  # scripts/fetch-ui-assets.sh in the 2.4.0 tag of influxdb.
+  ui_version = "Master";
+  libflux_version = "0.179.0";
 
   src = fetchFromGitHub {
     owner = "influxdata";
     repo = "influxdb";
     rev = "v${version}";
-    sha256 = "05s09crqgbyfdck33zwax5l47jpc4wh04yd8zsm658iksdgzpmnn";
+    sha256 = "sha256-ufJnrVWVfia2/xLRmFkauCw8ktdSJUybJkv42Gd0npg=";
   };
 
-  ui = mkYarnPackage {
-    src = src;
-    packageJSON = ./influx-ui-package.json;
-    yarnLock = "${src}/ui/yarn.lock";
-    yarnNix = ./influx-ui-yarndeps.nix;
-    configurePhase = ''
-      cp -r $node_modules ui/node_modules
-      rsync -r $node_modules/../deps/chronograf-ui/node_modules/ ui/node_modules
-    '';
-    INFLUXDB_SHA = shorthash;
-    buildPhase = ''
-      pushd ui
-      yarn build:ci
-      popd
-    '';
-    installPhase = ''
-      mv ui/build $out
-    '';
-    distPhase = "true";
+  ui = fetchurl {
+    url = "https://github.com/influxdata/ui/releases/download/OSS-${ui_version}/build.tar.gz";
+    sha256 = "sha256-YKDp1jLyo4n+YTeMaWl8dhN4Lr3H8FXV7stJ3p3zFe8=";
   };
 
   flux = rustPlatform.buildRustPackage {
@@ -52,12 +39,23 @@ let
       owner = "influxdata";
       repo = "flux";
       rev = "v${libflux_version}";
-      sha256 = "07jz2nw3zswg9f4p5sb5r4hpg3n4qibjcgs9sk9csns70h5rp9j3";
+      sha256 = "sha256-xcsmvT8Ve1WbfwrdVPnJcj7RAvrk795N3C95ubbGig0=";
     };
+    patches = [
+      # https://github.com/influxdata/flux/pull/5273
+      # fix compile error with Rust 1.64
+      (fetchpatch {
+        url = "https://github.com/influxdata/flux/commit/20ca62138a0669f2760dd469ca41fc333e04b8f2.patch";
+        stripLen = 2;
+        extraPrefix = "";
+        sha256 = "sha256-Fb4CuH9ZvrPha249dmLLI8MqSNQRKqKPxPbw2pjqwfY=";
+      })
+    ];
     sourceRoot = "source/libflux";
-    cargoSha256 = "0y5xjkqpaxp9qq1qj39zw3mnvkbbb9g4fa5cli77nhfwz288xx6h";
+    cargoSha256 = "sha256-+hJQFV0tWeTQDN560DzROUNpdkcZ5h2sc13akHCgqPc=";
     nativeBuildInputs = [ llvmPackages.libclang ];
-    LIBCLANG_PATH = "${llvmPackages.libclang}/lib";
+    buildInputs = lib.optional stdenv.isDarwin libiconv;
+    LIBCLANG_PATH = "${llvmPackages.libclang.lib}/lib";
     pkgcfg = ''
       Name: flux
       Version: ${libflux_version}
@@ -71,58 +69,61 @@ let
       cp -r $NIX_BUILD_TOP/source/libflux/include/influxdata $out/include
       substitute $pkgcfgPath $out/pkgconfig/flux.pc \
         --replace /out $out
+    '' + lib.optionalString stdenv.isDarwin ''
+      install_name_tool -id $out/lib/libflux.dylib $out/lib/libflux.dylib
     '';
   };
 
-  # Can't use the nixpkgs version of go-bindata, it's an ancient
-  # ancestor of this more modern one.
-  bindata = buildGoPackage {
-    pname = "go-bindata";
-    version = "v3.22.0";
-    src = fetchFromGitHub {
-      owner = "kevinburke";
-      repo = "go-bindata";
-      rev = "v3.22.0";
-      sha256 = "10dq77dml5jvvq2jkdq81a9yjg7rncq8iw8r84cc3dz6l9hxzj0x";
-    };
-
-    goPackagePath = "github.com/kevinburke/go-bindata";
-    subPackages = [ "go-bindata" ];
-  };
 in buildGoModule {
   pname = "influxdb";
   version = version;
   src = src;
 
-  nativeBuildInputs = [ bindata pkg-config ];
+  nativeBuildInputs = [ go-bindata pkg-config perl ];
 
-  vendorSha256 = "0lviz7l5zbghyfkp0lvlv8ykpak5hhkfal8d7xwvpsm8q3sghc8a";
-  subPackages = [ "cmd/influxd" "cmd/influx" ];
+  vendorSha256 = "sha256-DZsd6qPKfRbnvz0UAww+ubaeTEqQxLeil1S3SZAmmJk=";
+  subPackages = [ "cmd/influxd" "cmd/telemetryd" ];
 
   PKG_CONFIG_PATH = "${flux}/pkgconfig";
-  # We have to run a bunch of go:generate commands to embed the UI
-  # assets into the source code. Ideally we'd run `make generate`, but
-  # that ends up running a ton of non-hermetic stuff. Instead, we find
-  # the relevant go:generate directives, and run them by hand without
-  # breaking hermeticity.
-  preBuild = ''
-    ln -s ${ui} ui/build
-    grep -RI -e 'go:generate.*go-bindata' | cut -f1 -d: | while read -r filename; do
-      sed -i -e 's/go:generate.*go-bindata/go:generate go-bindata/' $filename
-      pushd $(dirname $filename)
-      go generate
-      popd
-    done
-    export buildFlagsArray=(
-      -tags="assets"
-      -ldflags="-X main.commit=${shorthash} -X main.version=${version}"
-    )
+
+  postPatch = ''
+    # use go-bindata from environment
+    substituteInPlace static/static.go \
+      --replace 'go run github.com/kevinburke/go-bindata/' ""
   '';
+
+  # Check that libflux and the UI are at the right version, and embed
+  # the UI assets into the Go source tree.
+  preBuild = ''
+    (
+      flux_ver=$(grep github.com/influxdata/flux go.mod | awk '{print $2}')
+      if [ "$flux_ver" != "v${libflux_version}" ]; then
+        echo "go.mod wants libflux $flux_ver, but nix derivation provides ${libflux_version}"
+        exit 1
+      fi
+
+      ui_ver=$(egrep 'influxdata/ui/releases/.*/sha256.txt' scripts/fetch-ui-assets.sh | perl -pe 's#.*/OSS-([^/]+)/.*#$1#')
+      if [ "$ui_ver" != "${ui_version}" ]; then
+        echo "scripts/fetch-ui-assets.sh wants UI $ui_ver, but nix derivation provides ${ui_version}"
+        exit 1
+      fi
+    )
+
+    mkdir -p static/data
+    tar -xzf ${ui} -C static/data
+    pushd static
+    go generate
+    popd
+  '';
+
+  tags = [ "assets" ];
+
+  ldflags = [ "-X main.commit=v${version}" "-X main.version=${version}" ];
 
   meta = with lib; {
     description = "An open-source distributed time series database";
     license = licenses.mit;
     homepage = "https://influxdata.com/";
-    maintainers = with maintainers; [ danderson ];
+    maintainers = with maintainers; [ abbradar danderson ];
   };
 }

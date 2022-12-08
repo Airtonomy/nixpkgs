@@ -1,23 +1,21 @@
-{ stdenv, mkDerivation, fetchFromGitHub, pkgconfig, qmake
-, python, qtbase, qttools }:
+{ lib, mkDerivation, fetchFromGitHub, pkg-config, qmake
+, python3, qtbase, qttools }:
 
 mkDerivation rec {
   pname = "tiled";
-  version = "1.4.3";
+  version = "1.8.4";
 
   src = fetchFromGitHub {
     owner = "bjorn";
     repo = pname;
     rev = "v${version}";
-    sha256 = "0n8p7bp5pqq72c65av3v7wbazwphh78pw27nqvpiyp9y8k5w4pg0";
+    sha256 = "sha256-QYA2krbwH807BkzVST+/+sjSR6So/aGY/YenEjYxE48=";
   };
 
-  nativeBuildInputs = [ pkgconfig qmake ];
-  buildInputs = [ python qtbase qttools ];
+  nativeBuildInputs = [ pkg-config qmake ];
+  buildInputs = [ python3 qtbase qttools ];
 
-  enableParallelBuilding = true;
-
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Free, easy to use and flexible tile map editor";
     homepage = "https://www.mapeditor.org/";
     license = with licenses; [

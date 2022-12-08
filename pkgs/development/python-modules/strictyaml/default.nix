@@ -2,21 +2,26 @@
 , lib
 , fetchPypi
 , isPy27
-, ruamel_yaml
+, ruamel-yaml
 , python-dateutil
 }:
 
 buildPythonPackage rec {
-  version = "1.1.1";
+  version = "1.6.2";
   pname = "strictyaml";
   disabled = isPy27;
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "ea2bb97aacc12fff7df11bd4cb4ae64b1418a0311fbd1611445cc59dc650bdd3";
+    sha256 = "sha256-cM1VmA/ikp3AOJJMoI9o+WFIIjqHd4EPphbjR46+cco=";
   };
 
-  propagatedBuildInputs = [ ruamel_yaml python-dateutil ];
+  postPatch = ''
+    substituteInPlace setup.py \
+      --replace "ruamel.yaml==0.17.4" "ruamel.yaml"
+  '';
+
+  propagatedBuildInputs = [ ruamel-yaml python-dateutil ];
 
   # Library tested with external tool
   # https://hitchdev.com/approach/contributing-to-hitch-libraries/

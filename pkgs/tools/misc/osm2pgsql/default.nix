@@ -1,7 +1,8 @@
-{ stdenv
+{ lib, stdenv
 , fetchFromGitHub
 , cmake
 , expat
+, fmt
 , proj
 , bzip2
 , zlib
@@ -12,35 +13,48 @@
 , luajit
 , libosmium
 , protozero
+, rapidjson
+, testers
 }:
 
-stdenv.mkDerivation rec {
+stdenv.mkDerivation (finalAttrs: {
   pname = "osm2pgsql";
-  version = "1.4.0";
+  version = "1.7.1";
 
   src = fetchFromGitHub {
     owner = "openstreetmap";
-    repo = pname;
-    rev = version;
-    sha256 = "1if76vw9jkc9jn4v0vvgwnpscjckk2cap93a8iqah8mqzx233y8s";
+    repo = "osm2pgsql";
+    rev = finalAttrs.version;
+    hash = "sha256-+//cAoN8m66SboEYP5Dhtm0q0+oyvEr5o584e4JQ9xM=";
   };
+
+  postPatch = ''
+    # Remove bundled libraries
+    rm -r contrib
+  '';
 
   nativeBuildInputs = [ cmake ];
 
-  buildInputs = [ expat proj bzip2 zlib boost postgresql libosmium protozero ]
-    ++ stdenv.lib.optional withLuaJIT luajit
-    ++ stdenv.lib.optional (!withLuaJIT) lua;
+  buildInputs = [ expat fmt proj bzip2 zlib boost postgresql libosmium protozero rapidjson ]
+    ++ lib.optional withLuaJIT luajit
+    ++ lib.optional (!withLuaJIT) lua;
 
-  cmakeFlags = [ "-DEXTERNAL_LIBOSMIUM=ON" "-DEXTERNAL_PROTOZERO=ON" ]
-    ++ stdenv.lib.optional withLuaJIT "-DWITH_LUAJIT:BOOL=ON";
+  cmakeFlags = [
+    "-DEXTERNAL_LIBOSMIUM=ON"
+    "-DEXTERNAL_PROTOZERO=ON"
+    "-DEXTERNAL_RAPIDJSON=ON"
+    "-DEXTERNAL_FMT=ON"
+  ] ++ lib.optional withLuaJIT "-DWITH_LUAJIT:BOOL=ON";
 
-  NIX_CFLAGS_COMPILE = "-DACCEPT_USE_OF_DEPRECATED_PROJ_API_H";
+  passthru.tests.version = testers.testVersion {
+    package = finalAttrs.finalPackage;
+  };
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "OpenStreetMap data to PostgreSQL converter";
     homepage = "https://osm2pgsql.org";
-    license = licenses.gpl2;
-    platforms = with platforms; linux ++ darwin;
+    license = licenses.gpl2Plus;
+    platforms = platforms.unix;
     maintainers = with maintainers; [ jglukasik das-g ];
   };
-}
+})

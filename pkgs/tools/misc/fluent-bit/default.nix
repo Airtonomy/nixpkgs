@@ -1,31 +1,43 @@
-{ stdenv, fetchFromGitHub, cmake, flex, bison }:
+{ lib, stdenv, fetchFromGitHub, cmake, flex, bison, systemd, openssl, libyaml }:
 
 stdenv.mkDerivation rec {
   pname = "fluent-bit";
-  version = "1.6.8";
+  version = "2.0.3";
 
   src = fetchFromGitHub {
     owner = "fluent";
     repo = "fluent-bit";
     rev = "v${version}";
-    sha256 = "1k8ghz8xwy7v4y4r4xc690ig7qmn0mkvynplwn66j44fgdpg0v1s";
+    sha256 = "sha256-8P28xaFyaU0GrIrO+D+Rp9H4xgOymHtbAbd2mI79vSI=";
   };
 
   nativeBuildInputs = [ cmake flex bison ];
 
-  patches = [ ./fix-luajit-darwin.patch ];
+  buildInputs = [ openssl libyaml ]
+    ++ lib.optionals stdenv.isLinux [ systemd ];
+
+  cmakeFlags = [ "-DFLB_METRICS=ON" "-DFLB_HTTP_SERVER=ON" ];
+
+  # _FORTIFY_SOURCE requires compiling with optimization (-O)
+  NIX_CFLAGS_COMPILE = lib.optionals stdenv.cc.isGNU [ "-O" ]
+    # Workaround build failure on -fno-common toolchains:
+    #   ld: /monkey/mk_tls.h:81: multiple definition of `mk_tls_server_timeout';
+    #     flb_config.c.o:include/monkey/mk_tls.h:81: first defined here
+    # TODO: drop when upstream gets a fix for it:
+    #   https://github.com/fluent/fluent-bit/issues/5537
+    ++ lib.optionals stdenv.isDarwin [ "-fcommon" ];
+
+  outputs = [ "out" "dev" ];
 
   postPatch = ''
     substituteInPlace src/CMakeLists.txt \
       --replace /lib/systemd $out/lib/systemd
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Log forwarder and processor, part of Fluentd ecosystem";
     homepage = "https://fluentbit.io";
-    maintainers = with maintainers; [
-      samrose
-    ];
+    maintainers = with maintainers; [ samrose fpletz ];
     license = licenses.asl20;
     platforms = platforms.unix;
   };

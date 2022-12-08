@@ -1,10 +1,13 @@
-{ stdenv
+{ lib, stdenv
 , fetchurl
+, cairo
 , meson
 , ninja
-, pkgconfig
+, pkg-config
 , gstreamer
 , gst-plugins-base
+, gst-plugins-bad
+, gst-rtsp-server
 , python3
 , gobject-introspection
 , json-glib
@@ -12,16 +15,12 @@
 
 stdenv.mkDerivation rec {
   pname = "gst-devtools";
-  version = "1.18.2";
+  version = "1.20.3";
 
   src = fetchurl {
-    url = "${meta.homepage}/src/${pname}/${pname}-${version}.tar.xz";
-    sha256 = "0mhascwvgirgh7b5dykpnk06f7f5g62gh3sl30i6kygiidqkv9vf";
+    url = "https://gstreamer.freedesktop.org/src/${pname}/${pname}-${version}.tar.xz";
+    sha256 = "sha256-u71F6tcDNn6o9L6bPAgte2K+9HskCjkIPyeETih1jEc=";
   };
-
-  patches = [
-    ./fix_pkgconfig_includedir.patch
-  ];
 
   outputs = [
     "out"
@@ -29,10 +28,14 @@ stdenv.mkDerivation rec {
     # "devdoc" # disabled until `hotdoc` is packaged in nixpkgs
   ];
 
+  depsBuildBuild = [
+    pkg-config
+  ];
+
   nativeBuildInputs = [
     meson
     ninja
-    pkgconfig
+    pkg-config
     gobject-introspection
 
     # documentation
@@ -40,20 +43,24 @@ stdenv.mkDerivation rec {
   ];
 
   buildInputs = [
+    cairo
     python3
     json-glib
+    gobject-introspection
   ];
 
   propagatedBuildInputs = [
     gstreamer
     gst-plugins-base
+    gst-plugins-bad
+    gst-rtsp-server
   ];
 
   mesonFlags = [
     "-Ddoc=disabled" # `hotdoc` not packaged in nixpkgs as of writing
   ];
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Integration testing infrastructure for the GStreamer framework";
     homepage = "https://gstreamer.freedesktop.org";
     license = licenses.lgpl2Plus;

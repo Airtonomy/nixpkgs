@@ -5,12 +5,12 @@
 
 let
   pname = "zulip";
-  version = "5.5.0";
+  version = "5.9.3";
   name = "${pname}-${version}";
 
   src = fetchurl {
     url = "https://github.com/zulip/zulip-desktop/releases/download/v${version}/Zulip-${version}-x86_64.AppImage";
-    sha256 = "059zfcvaq8wnsz2lfd4gdb17b6nngqk3vgisy2kb29ifqf3lpzqi";
+    hash = "sha256-Hws9vENGzCLQqav4uXtbbI0iNoS3JozC5m2DG38+3Fk=";
     name="${pname}-${version}.AppImage";
   };
 
@@ -34,7 +34,7 @@ in appimageTools.wrapType2 {
     description = "Desktop client for Zulip Chat";
     homepage = "https://zulip.com";
     license = licenses.asl20;
-    maintainers = with maintainers; [ jonafato ];
+    maintainers = with maintainers; [ andersk jonafato ];
     platforms = [ "x86_64-linux" ];
   };
 }

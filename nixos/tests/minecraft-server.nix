@@ -4,7 +4,7 @@ let
   rcon-port = 43000;
 in import ./make-test-python.nix ({ pkgs, ... }: {
   name = "minecraft-server";
-  meta = with pkgs.stdenv.lib.maintainers; { maintainers = [ nequissimus ]; };
+  meta = with pkgs.lib.maintainers; { maintainers = [ nequissimus ]; };
 
   nodes.server = { ... }: {
     environment.systemPackages = [ pkgs.mcrcon ];
@@ -18,13 +18,15 @@ in import ./make-test-python.nix ({ pkgs, ... }: {
       serverProperties = {
         enable-rcon = true;
         level-seed = seed;
+        level-type = "flat";
+        generate-structures = false;
         online-mode = false;
         "rcon.password" = rcon-pass;
         "rcon.port" = rcon-port;
       };
     };
 
-    virtualisation.memorySize = 2048;
+    virtualisation.memorySize = 2047;
   };
 
   testScript = ''
@@ -33,5 +35,6 @@ in import ./make-test-python.nix ({ pkgs, ... }: {
     assert "${seed}" in server.succeed(
         "mcrcon -H localhost -P ${toString rcon-port} -p '${rcon-pass}' -c 'seed'"
     )
+    server.succeed("systemctl stop minecraft-server")
   '';
 })

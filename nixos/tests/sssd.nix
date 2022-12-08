@@ -2,10 +2,10 @@ import ./make-test-python.nix ({ pkgs, ... }:
 
 {
   name = "sssd";
-  meta = with pkgs.stdenv.lib.maintainers; {
+  meta = with pkgs.lib.maintainers; {
     maintainers = [ bbigras ];
   };
-  machine = { pkgs, ... }: {
+  nodes.machine = { pkgs, ... }: {
     services.sssd.enable = true;
   };
 

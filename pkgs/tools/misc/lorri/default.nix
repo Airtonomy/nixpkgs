@@ -1,37 +1,30 @@
-{ stdenv
+{ lib
+, stdenv
 , pkgs
+, rustPackages
 , fetchFromGitHub
 , rustPlatform
-  # Updater script
-, runtimeShell
 , writers
-  # Tests
 , nixosTests
-  # Apple dependencies
 , CoreServices
 , Security
 }:
 
 let
   # Run `eval $(nix-build -A lorri.updater)` after updating the revision!
-  version = "1.2";
-  gitRev = "43a260c221d5dac4a44fd82271736c8444474eec";
-  sha256 = "0g6zq27dpr8bdan5xrqchybpbqwnhhc7x8sxbfygigbqd3xv9i6n";
-  cargoSha256 = "1zmlp14v7av0znmjyy2aq83lc74503p6r0l11l9iw7s3xad8rda4";
+  # It will copy some required files if necessary.
+  # Also don’t forget to run `nix-build -A lorri.tests`
+  version = "1.6.0";
+  gitRev = "1.6.0";
+  sha256 = "sha256-peelMKv9GOTPdyb1iifzlFikeayTchqaYCgeXyR5EgM=";
+  cargoSha256 = "sha256-UFAmTYnCqsQxBnCm1zMu+BcWIZMuuxvpF7poLlzC6Kg=";
 
 in (rustPlatform.buildRustPackage rec {
   pname = "lorri";
   inherit version;
 
-  meta = with stdenv.lib; {
-    description = "Your project's nix-env";
-    homepage = "https://github.com/target/lorri";
-    license = licenses.asl20;
-    maintainers = with maintainers; [ grahamc Profpatsch ];
-  };
-
   src = fetchFromGitHub {
-    owner = "target";
+    owner = "nix-community";
     repo = pname;
     rev = gitRev;
     inherit sha256;
@@ -43,11 +36,10 @@ in (rustPlatform.buildRustPackage rec {
   doCheck = false;
 
   BUILD_REV_COUNT = src.revCount or 1;
-  RUN_TIME_CLOSURE = pkgs.callPackage ./runtime.nix {};
+  RUN_TIME_CLOSURE = pkgs.callPackage ./runtime.nix { };
 
-  nativeBuildInputs = with pkgs; [ rustPackages.rustfmt ];
-  buildInputs =
-    stdenv.lib.optionals stdenv.isDarwin [ CoreServices Security ];
+  nativeBuildInputs = [ rustPackages.rustfmt ];
+  buildInputs = lib.optionals stdenv.isDarwin [ CoreServices Security ];
 
   # copy the docs to the $man and $doc outputs
   postInstall = ''
@@ -69,5 +61,12 @@ in (rustPlatform.buildRustPackage rec {
     tests = {
       nixos = nixosTests.lorri;
     };
+  };
+
+  meta = with lib; {
+    description = "Your project's nix-env";
+    homepage = "https://github.com/target/lorri";
+    license = licenses.asl20;
+    maintainers = with maintainers; [ grahamc Profpatsch ];
   };
 })

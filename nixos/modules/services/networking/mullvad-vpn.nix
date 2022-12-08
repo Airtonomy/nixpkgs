@@ -4,12 +4,24 @@ let
 in
 with lib;
 {
-  options.services.mullvad-vpn.enable = mkOption {
-    type = types.bool;
-    default = false;
-    description = ''
-      This option enables Mullvad VPN daemon.
-    '';
+  options.services.mullvad-vpn = {
+    enable = mkOption {
+      type = types.bool;
+      default = false;
+      description = lib.mdDoc ''
+        This option enables Mullvad VPN daemon.
+        This sets {option}`networking.firewall.checkReversePath` to "loose", which might be undesirable for security.
+      '';
+    };
+
+    package = mkOption {
+      type = types.package;
+      default = pkgs.mullvad;
+      defaultText = literalExpression "pkgs.mullvad";
+      description = lib.mdDoc ''
+        The Mullvad package to use. `pkgs.mullvad` only provides the CLI tool, `pkgs.mullvad-vpn` provides both the CLI and the GUI.
+      '';
+    };
   };
 
   config = mkIf cfg.enable {
@@ -17,6 +29,9 @@ with lib;
 
     # mullvad-daemon writes to /etc/iproute2/rt_tables
     networking.iproute2.enable = true;
+
+    # See https://github.com/NixOS/nixpkgs/issues/113589
+    networking.firewall.checkReversePath = "loose";
 
     systemd.services.mullvad-daemon = {
       description = "Mullvad VPN daemon";
@@ -28,19 +43,19 @@ with lib;
         "systemd-resolved.service"
       ];
       path = [
-        pkgs.iproute
+        pkgs.iproute2
         # Needed for ping
         "/run/wrappers"
       ];
       startLimitBurst = 5;
       startLimitIntervalSec = 20;
       serviceConfig = {
-        ExecStart = "${pkgs.mullvad-vpn}/bin/mullvad-daemon -v --disable-stdout-timestamps";
+        ExecStart = "${cfg.package}/bin/mullvad-daemon -v --disable-stdout-timestamps";
         Restart = "always";
         RestartSec = 1;
       };
     };
   };
 
-  meta.maintainers = [ maintainers.xfix ];
+  meta.maintainers = with maintainers; [ patricksjackson ymarkus ];
 }

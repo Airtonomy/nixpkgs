@@ -1,26 +1,26 @@
-{ stdenv, fetchFromGitHub, gettext, makeWrapper, tcl, which, writeScript
-, ncurses, perl , cyrus_sasl, gss, gpgme, kerberos, libidn, libxml2, notmuch, openssl
-, lmdb, libxslt, docbook_xsl, docbook_xml_dtd_42, w3m, mailcap, runtimeShell, sqlite, zlib
-, glibcLocales
-, fetchpatch
+{ lib, stdenv, fetchFromGitHub, gettext, makeWrapper, tcl, which
+, ncurses, perl , cyrus_sasl, gss, gpgme, libkrb5, libidn, libxml2, notmuch, openssl
+, lmdb, libxslt, docbook_xsl, docbook_xml_dtd_42, w3m, mailcap, sqlite, zlib
+, zstd, enableZstd ? true, enableMixmaster ? false
 }:
 
 stdenv.mkDerivation rec {
-  version = "20201127";
+  version = "20220429";
   pname = "neomutt";
 
   src = fetchFromGitHub {
     owner  = "neomutt";
     repo   = "neomutt";
     rev    = version;
-    sha256 = "sha256-BkDGKZmpwahDw1vD67CyWfxD93H83kcpv5JBGVL5F/o=";
+    sha256 = "sha256-LBY7WtmEMg/PcMS/Tc5XEYunIWjoI4IQfUJURKgy1YA=";
   };
 
   buildInputs = [
-    cyrus_sasl gss gpgme kerberos libidn ncurses
+    cyrus_sasl gss gpgme libkrb5 libidn ncurses
     notmuch openssl perl lmdb
     mailcap sqlite
-  ];
+  ]
+  ++ lib.optional enableZstd zstd;
 
   nativeBuildInputs = [
     docbook_xsl docbook_xml_dtd_42 gettext libxml2 libxslt.bin makeWrapper tcl which zlib w3m
@@ -29,6 +29,7 @@ stdenv.mkDerivation rec {
   enableParallelBuilding = true;
 
   postPatch = ''
+    substituteInPlace auto.def --replace /usr/sbin/sendmail sendmail
     substituteInPlace contrib/smime_keys \
       --replace /usr/bin/openssl ${openssl}/bin/openssl
 
@@ -62,10 +63,10 @@ stdenv.mkDerivation rec {
     # To make it not reference .dev outputs. See:
     # https://github.com/neomutt/neomutt/pull/2367
     "--disable-include-path-in-cflags"
-    # Look in $PATH at runtime, instead of hardcoding /usr/bin/sendmail
-    "ac_cv_path_SENDMAIL=sendmail"
     "--zlib"
-  ];
+  ]
+  ++ lib.optional enableZstd "--zstd"
+  ++ lib.optional enableMixmaster "--mixmaster";
 
   # Fix missing libidn in mutt;
   # this fix is ugly since it links all binaries in mutt against libidn
@@ -94,11 +95,11 @@ stdenv.mkDerivation rec {
   checkTarget = "test";
   postCheck = "unset NEOMUTT_TEST_DIR";
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "A small but very powerful text-based mail client";
     homepage    = "http://www.neomutt.org";
     license     = licenses.gpl2Plus;
-    maintainers = with maintainers; [ cstrahan erikryb jfrankenau vrthra ma27 ];
+    maintainers = with maintainers; [ cstrahan erikryb jfrankenau vrthra ma27 raitobezarius ];
     platforms   = platforms.unix;
   };
 }

@@ -1,7 +1,7 @@
 # TODO: Resolve the issues with the Mono bindings.
 
 { stdenv, fetchgit, lib
-, pkgconfig, autoreconfHook
+, pkg-config, autoreconfHook
 , glib, dbus-glib, gtkVersion ? "3"
 , gtk2 ? null, libindicator-gtk2 ? null, libdbusmenu-gtk2 ? null
 , gtk3 ? null, libindicator-gtk3 ? null, libdbusmenu-gtk3 ? null
@@ -13,8 +13,8 @@ with lib;
 
 
 stdenv.mkDerivation rec {
-  name = let postfix = if gtkVersion == "2" && monoSupport then "sharp" else "gtk${gtkVersion}";
-          in "libappindicator-${postfix}-${version}";
+  pname = let postfix = if gtkVersion == "2" && monoSupport then "sharp" else "gtk${gtkVersion}";
+          in "libappindicator-${postfix}";
   version = "12.10.1+20.10.20200706.1";
 
   outputs = [ "out" "dev" ];
@@ -25,7 +25,7 @@ stdenv.mkDerivation rec {
     sha256 = "0xjvbl4gn7ra2fs6gn2g9s787kzb5cg9hv79iqsz949rxh4iw32d";
   };
 
-  nativeBuildInputs = [ pkgconfig autoreconfHook vala gobject-introspection gtk-doc ];
+  nativeBuildInputs = [ pkg-config autoreconfHook vala gobject-introspection gtk-doc ];
 
   propagatedBuildInputs =
     if gtkVersion == "2"

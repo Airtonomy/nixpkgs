@@ -1,25 +1,31 @@
-{ stdenv, fetchurl, pkgconfig, dbus, nettle, fetchpatch
-, libidn, libnetfilter_conntrack }:
+{ lib, stdenv, fetchurl, pkg-config, nettle, fetchpatch
+, libidn, libnetfilter_conntrack, buildPackages
+, dbusSupport ? stdenv.isLinux
+, dbus
+, nixosTests
+}:
 
-with stdenv.lib;
+with lib;
 let
   copts = concatStringsSep " " ([
     "-DHAVE_IDN"
     "-DHAVE_DNSSEC"
-  ] ++ optionals stdenv.isLinux [
+  ] ++ optionals dbusSupport [
     "-DHAVE_DBUS"
+  ] ++ optionals stdenv.isLinux [
     "-DHAVE_CONNTRACK"
   ]);
 in
 stdenv.mkDerivation rec {
-  name = "dnsmasq-2.82";
+  pname = "dnsmasq";
+  version = "2.87";
 
   src = fetchurl {
-    url = "http://www.thekelleys.org.uk/dnsmasq/${name}.tar.xz";
-    sha256 = "0cn1xd1s6xs78jmrmwjnh9m6w3q38pk6dyqy2phvasqiyd33cll4";
+    url = "https://www.thekelleys.org.uk/dnsmasq/${pname}-${version}.tar.xz";
+    sha256 = "sha256-AijANkp/I1b9fn8VSZN8vzCZp407LrG6W7DDHiuJ3no=";
   };
 
-  postPatch = stdenv.lib.optionalString stdenv.hostPlatform.isLinux ''
+  postPatch = lib.optionalString stdenv.hostPlatform.isLinux ''
     sed '1i#include <linux/sockios.h>' -i src/dhcp.c
   '';
 
@@ -32,6 +38,7 @@ stdenv.mkDerivation rec {
     "BINDIR=$(out)/bin"
     "MANDIR=$(out)/man"
     "LOCALEDIR=$(out)/share/locale"
+    "PKG_CONFIG=${buildPackages.pkg-config}/bin/${buildPackages.pkg-config.targetPrefix}pkg-config"
   ];
 
   hardeningEnable = [ "pie" ];
@@ -50,11 +57,12 @@ stdenv.mkDerivation rec {
     substituteInPlace $out/Library/LaunchDaemons/uk.org.thekelleys.dnsmasq.plist \
       --replace "/usr/local/sbin" "$out/bin"
   '' + optionalString stdenv.isLinux ''
-    install -Dm644 dbus/dnsmasq.conf $out/share/dbus-1/system.d/dnsmasq.conf
     install -Dm755 contrib/lease-tools/dhcp_lease_time $out/bin/dhcp_lease_time
     install -Dm755 contrib/lease-tools/dhcp_release $out/bin/dhcp_release
     install -Dm755 contrib/lease-tools/dhcp_release6 $out/bin/dhcp_release6
 
+  '' + optionalString dbusSupport ''
+    install -Dm644 dbus/dnsmasq.conf $out/share/dbus-1/system.d/dnsmasq.conf
     mkdir -p $out/share/dbus-1/system-services
     cat <<END > $out/share/dbus-1/system-services/uk.org.thekelleys.dnsmasq.service
     [D-BUS Service]
@@ -65,13 +73,23 @@ stdenv.mkDerivation rec {
     END
   '';
 
-  nativeBuildInputs = [ pkgconfig ];
+  nativeBuildInputs = [ pkg-config ];
   buildInputs = [ nettle libidn ]
-    ++ optionals stdenv.isLinux [ dbus libnetfilter_conntrack ];
+    ++ optionals dbusSupport [ dbus ]
+    ++ optionals stdenv.isLinux [ libnetfilter_conntrack ];
+
+  passthru.tests = {
+    prometheus-exporter = nixosTests.prometheus-exporters.dnsmasq;
+
+    # these tests use dnsmasq incidentally
+    inherit (nixosTests) dnscrypt-proxy2;
+    kubernetes-dns-single = nixosTests.kubernetes.dns-single-node;
+    kubernetes-dns-multi = nixosTests.kubernetes.dns-multi-node;
+  };
 
   meta = {
     description = "An integrated DNS, DHCP and TFTP server for small networks";
-    homepage = "http://www.thekelleys.org.uk/dnsmasq/doc.html";
+    homepage = "https://www.thekelleys.org.uk/dnsmasq/doc.html";
     license = licenses.gpl2;
     platforms = with platforms; linux ++ darwin;
     maintainers = with maintainers; [ eelco fpletz globin ];

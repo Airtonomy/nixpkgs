@@ -1,9 +1,9 @@
-{ stdenv
+{ lib, stdenv
 , fetchzip
 , libX11
 , libXi
 , libGL
-, alsaLib
+, alsa-lib
 , SDL2
 , autoPatchelfHook
 }:
@@ -26,7 +26,7 @@ stdenv.mkDerivation rec {
     libX11
     libXi
     libGL
-    alsaLib
+    alsa-lib
     SDL2
   ];
 
@@ -46,13 +46,13 @@ stdenv.mkDerivation rec {
   startScript = if stdenv.isx86_32 then "START_LINUX_X86"
     else        if stdenv.isx86_64 then "START_LINUX_X86_64"
     #else        if stdenv.isDarwin then "START_MACOS.app" # disabled because I cannot test on Darwin
-    else abort "Unsupported platform: ${stdenv.platform.kernelArch}.";
+    else abort "Unsupported platform: ${stdenv.hostPlatform.linuxArch}.";
 
   linuxExecutable = if stdenv.isx86_32 then "pixilang_linux_x86"
     else            if stdenv.isx86_64 then "pixilang_linux_x86_64"
     else                                    "";
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Photoelectronic microtonal/spectral musical instrument";
     longDescription = ''
       Virtual ANS is a software simulator of the unique Russian synthesizer ANS
@@ -80,6 +80,7 @@ stdenv.mkDerivation rec {
       + supported sound systems: ASIO, DirectSound, MME, ALSA, OSS, JACK, Audiobus, IAA.
       '';
     homepage = "https://warmplace.ru/soft/ans/";
+    sourceProvenance = with sourceTypes; [ binaryNativeCode ];
     license = licenses.free;
     # I cannot test the Darwin version, so I'll leave it disabled
     platforms = [ "x86_64-linux" "i686-linux" ];

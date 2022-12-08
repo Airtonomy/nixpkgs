@@ -1,42 +1,63 @@
 { lib
+, stdenv
+, async-timeout
 , buildPythonPackage
-, fetchPypi
+, fetchFromGitHub
 , ifaddr
-, typing
-, isPy27
+, pytest-asyncio
 , pythonOlder
 , pytestCheckHook
 }:
 
 buildPythonPackage rec {
   pname = "zeroconf";
-  version = "0.28.6";
-  disabled = isPy27;
+  version = "0.39.4";
+  format = "setuptools";
 
-  src = fetchPypi {
-    inherit pname version;
-    sha256 = "70f10f0f16e3a8c4eb5e1a106b812b8d052253041cf1ee1195933df706f5261c";
+  disabled = pythonOlder "3.7";
+
+  src = fetchFromGitHub {
+    owner = "jstasiak";
+    repo = "python-zeroconf";
+    rev = "refs/tags/${version}";
+    hash = "sha256-CUHpTtCQBuuy8E8bjxfhGOIKr9n2Gdhg/RIyv6OWGvI=";
   };
 
-  propagatedBuildInputs = [ ifaddr ]
-    ++ lib.optionals (pythonOlder "3.5") [ typing ];
+  propagatedBuildInputs = [
+    async-timeout
+    ifaddr
+  ];
 
-  checkInputs = [ pytestCheckHook ];
-  pytestFlagsArray = [ "zeroconf/test.py" ];
+  checkInputs = [
+    pytest-asyncio
+    pytestCheckHook
+  ];
+
   disabledTests = [
-    # disable tests that expect some sort of networking in the build container
+    # tests that require network interaction
+    "test_close_multiple_times"
     "test_launch_and_close"
+    "test_launch_and_close_context_manager"
     "test_launch_and_close_v4_v6"
     "test_launch_and_close_v6_only"
     "test_integration_with_listener_ipv6"
+    # Starting with 0.39.0: AssertionError: assert [('add', '_ht..._tcp.local.')]
+    "test_service_browser_expire_callbacks"
+  ] ++ lib.optionals stdenv.isDarwin [
+    "test_lots_of_names"
   ];
 
-  pythonImportsCheck = [ "zeroconf" ];
+  __darwinAllowLocalNetworking = true;
+
+  pythonImportsCheck = [
+    "zeroconf"
+    "zeroconf.asyncio"
+  ];
 
   meta = with lib; {
-    description = "A pure python implementation of multicast DNS service discovery";
+    description = "Python implementation of multicast DNS service discovery";
     homepage = "https://github.com/jstasiak/python-zeroconf";
-    license = licenses.lgpl21;
+    license = licenses.lgpl21Only;
     maintainers = with maintainers; [ abbradar ];
   };
 }

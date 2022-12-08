@@ -1,30 +1,39 @@
-{ stdenv, lib, python3, fetchPypi, appdirs, attrs, requests,
-beautifulsoup4, click-plugins, elasticsearch, flask_login, flask_wtf,
-pypandoc, python-dotenv, python-frontmatter, tinydb, validators,
-watchdog, wtforms }:
+{ lib
+, stdenv
+, python3
+}:
 
-python3.pkgs.buildPythonApplication rec {
+let
+  py = python3.override {
+    packageOverrides = self: super: {
+      wtforms = super.wtforms.overridePythonAttrs (oldAttrs: rec {
+        version = "2.3.1";
+
+        src = oldAttrs.src.override {
+          inherit version;
+          sha256 = "sha256-hhoTs65SHWcA2sOydxlwvTVKY7pwQ+zDqCtSiFlqGXI=";
+        };
+
+        doCheck = false;
+      });
+    };
+  };
+in
+with py.pkgs;
+
+buildPythonApplication rec {
   pname = "archivy";
-  version = "0.9.3";
+  version = "1.7.3";
+  format = "setuptools";
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "b6ff08a9ecd0a929663c36c73844ac5cb4dc847e69aae639a450c64d4320a506";
+    hash = "sha256-ns1Y0DqqnTAQMEt+oBJ/P2gqKqPsX9P3/Z4561qzuns";
   };
 
-  # Relax some dependencies
-  postPatch = ''
-    substituteInPlace requirements.txt \
-      --replace 'WTForms ==' 'WTForms >=' \
-      --replace 'attrs == 20.2.0' 'attrs' \
-      --replace 'beautifulsoup4 ==' 'beautifulsoup4 >=' \
-      --replace 'elasticsearch ==' 'elasticsearch >=' \
-      --replace 'python_dotenv ==' 'python_dotenv >=' \
-      --replace 'python_frontmatter == 0.5.0' 'python_frontmatter' \
-      --replace 'requests ==' 'requests >=' \
-      --replace 'validators ==' 'validators >=' \
-      --replace 'watchdog ==' 'watchdog >='
-  '';
+  nativeBuildInputs = [ pythonRelaxDepsHook ];
+
+  pythonRelaxDeps = true;
 
   propagatedBuildInputs = [
     appdirs
@@ -32,22 +41,24 @@ python3.pkgs.buildPythonApplication rec {
     beautifulsoup4
     click-plugins
     elasticsearch
-    flask_login
-    flask_wtf
-    pypandoc
+    flask-compress
+    flask-login
+    flask-wtf
+    html2text
     python-dotenv
     python-frontmatter
-    tinydb
+    readability-lxml
     requests
+    setuptools
+    tinydb
     validators
-    watchdog
     wtforms
   ];
 
   # __init__.py attempts to mkdir in read-only file system
   doCheck = false;
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Self-hosted knowledge repository";
     homepage = "https://archivy.github.io";
     license = licenses.mit;

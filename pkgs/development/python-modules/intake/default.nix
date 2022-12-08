@@ -1,10 +1,13 @@
 { lib
-, buildPythonPackage
-, fetchPypi
 , appdirs
+, bokeh
+, buildPythonPackage
 , dask
-, holoviews
+, entrypoints
+, fetchFromGitHub
+, fsspec
 , hvplot
+, intake-parquet
 , jinja2
 , msgpack
 , msgpack-numpy
@@ -13,70 +16,109 @@
 , panel
 , pyarrow
 , pytestCheckHook
-, pythonOlder
 , python-snappy
+, pythonOlder
+, pyyaml
 , requests
-, ruamel_yaml
-, six
+, stdenv
 , tornado
 }:
 
 buildPythonPackage rec {
   pname = "intake";
-  version = "0.6.0";
+  version = "0.6.5";
+  format = "setuptools";
 
-  disabled = pythonOlder "3.6";
+  disabled = pythonOlder "3.7";
 
-  src = fetchPypi {
-    inherit pname version;
-    sha256 = "0c284abeb74927a7366dcab6cefc010c4d050365b8af61c37326a2473a490a4e";
+  src = fetchFromGitHub {
+    owner = pname;
+    repo = pname;
+    rev = version;
+    hash = "sha256-ABMXWUVptpOSPB1jQ57iXk/UG92puNCICzXo3ZMG2Pk=";
   };
 
   propagatedBuildInputs = [
     appdirs
     dask
-    holoviews
-    hvplot
-    jinja2
-    msgpack-numpy
+    entrypoints
+    fsspec
     msgpack
-    numpy
+    jinja2
     pandas
-    panel
-    python-snappy
-    requests
-    ruamel_yaml
-    six
-    tornado
+    pyyaml
   ];
 
-  checkInputs = [ pyarrow pytestCheckHook ];
+  checkInputs = [
+    intake-parquet
+    pytestCheckHook
+  ] ++ passthru.optional-dependencies.server;
+
+  passthru.optional-dependencies = {
+    server = [
+      msgpack
+      python-snappy
+      tornado
+    ];
+    dataframe = [
+      msgpack-numpy
+      pyarrow
+    ];
+    plot = [
+      hvplot
+      bokeh
+      panel
+    ];
+    remote = [
+      requests
+    ];
+  };
 
   postPatch = ''
-    # Is in setup_requires but not used in setup.py...
-    substituteInPlace setup.py --replace "'pytest-runner'" ""
+    substituteInPlace setup.py \
+      --replace "'pytest-runner'" ""
   '';
 
-  # test_discover requires driver_with_entrypoints-0.1.dist-info, which is not included in tarball
-  # test_filtered_compressed_cache requires calvert_uk_filter.tar.gz, which is not included in tarball
   preCheck = ''
-    HOME=$TMPDIR
-    PATH=$out/bin:$PATH
+    export HOME=$(mktemp -d);
+    export PATH="$PATH:$out/bin";
   '';
 
-  # disable tests which touch network
-  disabledTests = ''
+  disabledTests = [
+    # Disable tests which touch network
+    "http"
+    "test_dir"
     "test_discover"
     "test_filtered_compressed_cache"
+    "test_flatten_flag"
     "test_get_dir"
+    "test_pagination"
+    "test_read_part_compressed"
+    "test_read_partition"
+    "test_read_pattern"
+    "test_remote_arr"
     "test_remote_cat"
-    "http"
-  '';
+    # ValueError
+    "test_mlist_parameter"
+    # ImportError
+    "test_dataframe"
+    "test_ndarray"
+    "test_python"
+    # Timing-based, flaky on darwin and possibly others
+    "TestServerV1Source.test_idle_timer"
+  ] ++ lib.optionals (stdenv.isDarwin && lib.versionOlder stdenv.hostPlatform.darwinMinVersion "10.13") [
+    # Flaky with older low-res mtime on darwin < 10.13 (#143987)
+    "test_second_load_timestamp"
+  ];
+
+  pythonImportsCheck = [
+    "intake"
+  ];
 
   meta = with lib; {
     description = "Data load and catalog system";
     homepage = "https://github.com/ContinuumIO/intake";
     license = licenses.bsd2;
-    maintainers = [ maintainers.costrouc ];
+    maintainers = with maintainers; [ costrouc ];
   };
 }

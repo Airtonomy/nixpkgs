@@ -1,21 +1,22 @@
 { lib, buildPythonPackage, fetchFromGitHub, pythonOlder
 , fonttools
 , lxml, fs # for fonttools extras
-, setuptools_scm
-, pytestCheckHook, pytest_5, pytestcov, pytest_xdist
+, setuptools-scm
+, pytestCheckHook, pytest-cov, pytest-xdist
+, runAllTests ? false, psautohint # for passthru.tests
 }:
 
 buildPythonPackage rec {
   pname = "psautohint";
-  version = "2.2.0";
+  version = "2.4.0";
 
-  disabled = pythonOlder "3.6";
+  disabled = pythonOlder "3.7";
 
   src = fetchFromGitHub {
     owner = "adobe-type-tools";
     repo = pname;
     rev = "v${version}";
-    sha256 = "0gsgfr190xy2rnjf1gf7688xrh13ihgq10s19s4rv5hp6pmg9iaa";
+    sha256 = "125nx7accvbk626qlfar90va1995kp9qfrz6a978q4kv2kk37xai";
     fetchSubmodules = true; # data dir for tests
   };
 
@@ -25,19 +26,16 @@ buildPythonPackage rec {
     sed -i '/setup(/a \     version="${version}",' setup.py
   '';
 
-  nativeBuildInputs = [ setuptools_scm ];
+  nativeBuildInputs = [ setuptools-scm ];
 
   propagatedBuildInputs = [ fonttools lxml fs ];
 
   checkInputs = [
-    # Override pytestCheckHook to use pytest v5, because some tests fail on pytest >= v6
-    # https://github.com/adobe-type-tools/psautohint/issues/284#issuecomment-742800965
-    # Override might be able to be removed in future, check package dependency pins (coverage.yml)
-    (pytestCheckHook.override{ pytest = pytest_5; })
-    pytestcov
-    pytest_xdist
+    pytestCheckHook
+    pytest-cov
+    pytest-xdist
   ];
-  disabledTests = [
+  disabledTests = lib.optionals (!runAllTests) [
     # Slow tests, reduces test time from ~5 mins to ~30s
     "test_mmufo"
     "test_flex_ufo"
@@ -47,6 +45,10 @@ buildPythonPackage rec {
     "test_mmhint"
     "test_otf"
   ];
+
+  passthru.tests = {
+    fullTestsuite = psautohint.override { runAllTests = true; };
+  };
 
   meta = with lib; {
     description = "Script to normalize the XML and other data inside of a UFO";

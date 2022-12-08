@@ -1,5 +1,6 @@
 { package ? null
 , maintainer ? null
+, predicate ? null
 , path ? null
 , max-workers ? null
 , include-overlays ? false
@@ -47,7 +48,17 @@ let
         let
           result = builtins.tryEval pathContent;
 
-          dedupResults = lst: nubOn ({ package, attrPath }: package.updateScript) (lib.concatLists lst);
+          somewhatUniqueRepresentant =
+            { package, attrPath }: {
+              inherit (package) updateScript;
+              # Some updaters use the same `updateScript` value for all packages.
+              # Also compare `meta.description`.
+              position = package.meta.position or null;
+              # We cannot always use `meta.position` since it might not be available
+              # or it might be shared among multiple packages.
+            };
+
+          dedupResults = lst: nubOn somewhatUniqueRepresentant (lib.concatLists lst);
         in
           if result.success then
             let
@@ -69,6 +80,11 @@ let
    */
   packagesWith = packagesWithPath [];
 
+  /* Recursively find all packages in `pkgs` with updateScript matching given predicate.
+   */
+  packagesWithUpdateScriptMatchingPredicate = cond:
+    packagesWith (path: pkg: builtins.hasAttr "updateScript" pkg && cond path pkg);
+
   /* Recursively find all packages in `pkgs` with updateScript by given maintainer.
    */
   packagesWithUpdateScriptAndMaintainer = maintainer':
@@ -79,7 +95,7 @@ let
         else
           builtins.getAttr maintainer' lib.maintainers;
     in
-      packagesWith (path: pkg: builtins.hasAttr "updateScript" pkg &&
+      packagesWithUpdateScriptMatchingPredicate (path: pkg:
                          (if builtins.hasAttr "maintainers" pkg.meta
                            then (if builtins.isList pkg.meta.maintainers
                                    then builtins.elem maintainer pkg.meta.maintainers
@@ -97,7 +113,7 @@ let
       pathContent = lib.attrByPath prefix null pkgs;
     in
       if pathContent == null then
-        builtins.throw "Attribute path `${path}` does not exists."
+        builtins.throw "Attribute path `${path}` does not exist."
       else
         packagesWithPath prefix (path: pkg: builtins.hasAttr "updateScript" pkg)
                        pathContent;
@@ -109,7 +125,7 @@ let
         package = lib.attrByPath (lib.splitString "." path) null pkgs;
     in
       if package == null then
-        builtins.throw "Package with an attribute name `${path}` does not exists."
+        builtins.throw "Package with an attribute name `${path}` does not exist."
       else if ! builtins.hasAttr "updateScript" package then
         builtins.throw "Package with an attribute name `${path}` does not have a `passthru.updateScript` attribute defined."
       else
@@ -120,6 +136,8 @@ let
   packages =
     if package != null then
       [ (packageByName package pkgs) ]
+    else if predicate != null then
+      packagesWithUpdateScriptMatchingPredicate predicate pkgs
     else if maintainer != null then
       packagesWithUpdateScriptAndMaintainer maintainer pkgs
     else if path != null then
@@ -135,11 +153,15 @@ let
     to run all update scripts for all packages that lists \`garbas\` as a maintainer
     and have \`updateScript\` defined, or:
 
-        % nix-shell maintainers/scripts/update.nix --argstr package gnome3.nautilus
+        % nix-shell maintainers/scripts/update.nix --argstr package gnome.nautilus
 
     to run update script for specific package, or
 
-        % nix-shell maintainers/scripts/update.nix --argstr path gnome3
+        % nix-shell maintainers/scripts/update.nix --arg predicate '(path: pkg: pkg.updateScript.name or null == "gnome-update-script")'
+
+    to run update script for all packages matching given predicate, or
+
+        % nix-shell maintainers/scripts/update.nix --argstr path gnome
 
     to run update script for all package under an attribute path.
 

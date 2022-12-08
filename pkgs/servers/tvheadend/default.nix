@@ -1,5 +1,5 @@
-{ stdenv, fetchFromGitHub, cmake, makeWrapper, pkgconfig
-, avahi, dbus, gettext, git, gnutar, gzip, bzip2, ffmpeg_3, libiconv, openssl, python
+{ lib, stdenv, fetchFromGitHub, fetchpatch, cmake, makeWrapper, pkg-config
+, avahi, dbus, gettext, git, gnutar, gzip, bzip2, ffmpeg_4, libiconv, openssl, python2
 , v4l-utils, which, zlib }:
 
 let
@@ -28,14 +28,23 @@ in stdenv.mkDerivation {
     sha256 = "1xq059r2bplaa0nd0wkhw80jfwd962x0h5hgd7fz2yp6largw34m";
   };
 
+  patches = [
+    # Pull upstream fix for -fno-common toolchain
+    #   https://github.com/tvheadend/tvheadend/pull/1342
+    # TODO: can be removed with 4.3 release.
+    (fetchpatch {
+      name = "fno-common.patch";
+      url = "https://github.com/tvheadend/tvheadend/commit/bd92f1389f1aacdd08e913b0383a0ca9dc223153.patch";
+      sha256 = "17bsx6mnv4pjiayvx1d57dphva0kvlppvnmmaym06dh4524pnly1";
+    })
+  ];
+
   buildInputs = [
-    avahi dbus gettext git gnutar gzip bzip2 ffmpeg_3 libiconv openssl python
+    avahi dbus gettext git gnutar gzip bzip2 ffmpeg_4 libiconv openssl python2
     which zlib
   ];
 
-  nativeBuildInputs = [ cmake makeWrapper pkgconfig ];
-
-  enableParallelBuilding = true;
+  nativeBuildInputs = [ cmake makeWrapper pkg-config ];
 
   NIX_CFLAGS_COMPILE = [ "-Wno-error=format-truncation" "-Wno-error=stringop-truncation" ];
 
@@ -67,15 +76,15 @@ in stdenv.mkDerivation {
 
   postInstall = ''
     wrapProgram $out/bin/tvheadend \
-      --prefix PATH : ${stdenv.lib.makeBinPath [ bzip2 ]}
+      --prefix PATH : ${lib.makeBinPath [ bzip2 ]}
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "TV streaming server";
     longDescription = ''
-	Tvheadend is a TV streaming server and recorder for Linux, FreeBSD and Android
+        Tvheadend is a TV streaming server and recorder for Linux, FreeBSD and Android
         supporting DVB-S, DVB-S2, DVB-C, DVB-T, ATSC, IPTV, SAT>IP and HDHomeRun as input sources.
-	Tvheadend offers the HTTP (VLC, MPlayer), HTSP (Kodi, Movian) and SAT>IP streaming.'';
+        Tvheadend offers the HTTP (VLC, MPlayer), HTSP (Kodi, Movian) and SAT>IP streaming.'';
     homepage = "https://tvheadend.org";
     license = licenses.gpl3;
     platforms = platforms.unix;

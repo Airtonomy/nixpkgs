@@ -1,16 +1,16 @@
-{ lib, fetchFromGitHub, buildPythonPackage, isPy27, numpy, cython, zlib, six
+{ lib, fetchFromGitHub, buildPythonPackage, pythonOlder, numpy, cython, zlib, six
 , python-lzo, nose }:
 
 buildPythonPackage rec {
   pname = "bx-python";
-  version = "0.8.9";
-  disabled = isPy27;
+  version = "0.9.0";
+  disabled = pythonOlder "3.6";
 
   src = fetchFromGitHub {
     owner = "bxlab";
     repo = "bx-python";
-    rev = "v${version}";
-    sha256 = "0bsqnw8rv08586wksvx2a8dawvhyzvz5pzsh9y3217b6wxq98dnq";
+    rev = "refs/tags/v${version}";
+    sha256 = "sha256-Pi4hV3FatCXoXY3nNgqm5UfWYIrpP/v5PzzCi3gmIbE=";
   };
 
   nativeBuildInputs = [ cython ];

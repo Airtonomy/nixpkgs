@@ -1,28 +1,43 @@
-{ lib, buildPythonApplication, fetchPypi, requests, pytestCheckHook }:
+{ lib, buildPythonApplication, fetchPypi, requests, yt-dlp, pytestCheckHook }:
 
 buildPythonApplication rec {
-  pname = "gallery_dl";
-  version = "1.16.0";
+  pname = "gallery-dl";
+  version = "1.23.5";
+  format = "setuptools";
 
   src = fetchPypi {
-    inherit pname version;
-    sha256 = "35df7605a21a05c3290f4324289fd6f584029f4135a8220dec7d490c4e742a1c";
+    inherit version;
+    pname = "gallery_dl";
+    sha256 = "sha256-NhnuW7rq5Dgrnkw/nUO/pFg/Sh2D/d9gFCIb+gQy5QE=";
   };
 
-  propagatedBuildInputs = [ requests ];
+  propagatedBuildInputs = [
+    requests
+    yt-dlp
+  ];
 
-  checkInputs = [ pytestCheckHook ];
+  checkInputs = [
+    pytestCheckHook
+  ];
+
   pytestFlagsArray = [
     # requires network access
     "--ignore=test/test_results.py"
     "--ignore=test/test_downloader.py"
+
+    # incompatible with pytestCheckHook
+    "--ignore=test/test_ytdl.py"
+  ];
+
+  pythonImportsCheck = [
+    "gallery_dl"
   ];
 
   meta = with lib; {
     description = "Command-line program to download image-galleries and -collections from several image hosting sites";
     homepage = "https://github.com/mikf/gallery-dl";
-    license = licenses.gpl2;
-    maintainers = with maintainers; [ dawidsowa ];
-    platforms = platforms.unix;
+    changelog = "https://github.com/mikf/gallery-dl/raw/v${version}/CHANGELOG.md";
+    license = licenses.gpl2Only;
+    maintainers = with maintainers; [ dawidsowa marsam ];
   };
 }

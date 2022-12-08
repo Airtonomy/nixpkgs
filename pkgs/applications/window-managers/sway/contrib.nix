@@ -1,6 +1,5 @@
-{ stdenv
+{ lib, stdenv
 
-, fetchurl
 , coreutils
 , makeWrapper
 , sway-unwrapped
@@ -10,6 +9,7 @@
 , slurp
 , grim
 , jq
+, bash
 
 , python3Packages
 }:
@@ -27,14 +27,15 @@ grimshot = stdenv.mkDerivation rec {
 
   outputs = [ "out" "man" ];
 
+  strictDeps = true;
   nativeBuildInputs = [ makeWrapper installShellFiles ];
-
+  buildInputs = [ bash ];
   installPhase = ''
     installManPage contrib/grimshot.1
 
     install -Dm 0755 contrib/grimshot $out/bin/grimshot
     wrapProgram $out/bin/grimshot --set PATH \
-      "${stdenv.lib.makeBinPath [
+      "${lib.makeBinPath [
         sway-unwrapped
         wl-clipboard
         coreutils
@@ -55,15 +56,12 @@ grimshot = stdenv.mkDerivation rec {
     fi
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "A helper for screenshots within sway";
     homepage = "https://github.com/swaywm/sway/tree/master/contrib";
     license = licenses.mit;
     platforms = platforms.all;
-    maintainers = with maintainers; [
-      sway-unwrapped.meta.maintainers
-      evils
-    ];
+    maintainers = sway-unwrapped.meta.maintainers ++ (with maintainers; [ evils ]);
   };
 };
 

@@ -1,29 +1,25 @@
 { stdenv
 , lib
 , fetchFromGitHub
+, fetchpatch
 , rustPlatform
+, nixosTests
 
 , cmake
-, gzip
 , installShellFiles
 , makeWrapper
 , ncurses
-, pkgconfig
+, pkg-config
 , python3
 
 , expat
 , fontconfig
 , freetype
 , libGL
-, libX11
-, libXcursor
-, libXi
-, libXrandr
-, libXxf86vm
-, libxcb
+, xorg
 , libxkbcommon
 , wayland
-, xdg_utils
+, xdg-utils
 
   # Darwin Frameworks
 , AppKit
@@ -31,6 +27,7 @@
 , CoreServices
 , CoreText
 , Foundation
+, libiconv
 , OpenGL
 }:
 let
@@ -39,12 +36,12 @@ let
     fontconfig
     freetype
     libGL
-    libX11
-    libXcursor
-    libXi
-    libXrandr
-    libXxf86vm
-    libxcb
+    xorg.libX11
+    xorg.libXcursor
+    xorg.libXi
+    xorg.libXrandr
+    xorg.libXxf86vm
+    xorg.libxcb
   ] ++ lib.optionals stdenv.isLinux [
     libxkbcommon
     wayland
@@ -52,24 +49,23 @@ let
 in
 rustPlatform.buildRustPackage rec {
   pname = "alacritty";
-  version = "0.6.0";
+  version = "0.11.0";
 
   src = fetchFromGitHub {
     owner = "alacritty";
     repo = pname;
-    rev = "v${version}";
-    sha256 = "vQdNwNiUvoJWRT1foPRadirI2zWjnzU3sGnIxeHKlj8=";
+    rev = "refs/tags/v${version}";
+    hash = "sha256-2jNE0UdPXfOyAfPPVKhdBpuVVw4IpwWQ+RLQlJNnK0Y=";
   };
 
-  cargoSha256 = "1PQSg6EmwVMZj2ALw6qsbtPMCtALVHx5TR05FjGD/QE=";
+  cargoSha256 = "sha256-t6ckX0PYI8UHfXhGRpcX8ly3DzE9A6i9P6f3Ny3DBzw=";
 
   nativeBuildInputs = [
     cmake
-    gzip
     installShellFiles
     makeWrapper
     ncurses
-    pkgconfig
+    pkg-config
     python3
   ];
 
@@ -80,28 +76,27 @@ rustPlatform.buildRustPackage rec {
     CoreServices
     CoreText
     Foundation
+    libiconv
     OpenGL
   ];
 
   outputs = [ "out" "terminfo" ];
 
   postPatch = ''
-    substituteInPlace alacritty/src/config/mouse.rs \
-      --replace xdg-open ${xdg_utils}/bin/xdg-open
+    substituteInPlace alacritty/src/config/ui_config.rs \
+      --replace xdg-open ${xdg-utils}/bin/xdg-open
   '';
 
-  installPhase = ''
-    runHook preInstall
+  checkFlags = [ "--skip=term::test::mock_term" ]; # broken on aarch64
 
-    install -D $releaseDir/alacritty $out/bin/alacritty
-
-  '' + (
+  postInstall = (
     if stdenv.isDarwin then ''
       mkdir $out/Applications
       cp -r extra/osx/Alacritty.app $out/Applications
       ln -s $out/bin $out/Applications/Alacritty.app/Contents/MacOS
     '' else ''
       install -D extra/linux/Alacritty.desktop -t $out/share/applications/
+      install -D extra/linux/org.alacritty.Alacritty.appdata.xml -t $out/share/appdata/
       install -D extra/logo/compat/alacritty-term.svg $out/share/icons/hicolor/scalable/apps/Alacritty.svg
 
       # patchelf generates an ELF that binutils' "strip" doesn't like:
@@ -119,6 +114,7 @@ rustPlatform.buildRustPackage rec {
 
     install -dm 755 "$out/share/man/man1"
     gzip -c extra/alacritty.man > "$out/share/man/man1/alacritty.1.gz"
+    gzip -c extra/alacritty-msg.man > "$out/share/man/man1/alacritty-msg.1.gz"
 
     install -Dm 644 alacritty.yml $out/share/doc/alacritty.yml
 
@@ -126,17 +122,18 @@ rustPlatform.buildRustPackage rec {
     tic -xe alacritty,alacritty-direct -o "$terminfo/share/terminfo" extra/alacritty.info
     mkdir -p $out/nix-support
     echo "$terminfo" >> $out/nix-support/propagated-user-env-packages
-
-    runHook postInstall
   '';
 
   dontPatchELF = true;
+
+  passthru.tests.test = nixosTests.terminal-emulators.alacritty;
 
   meta = with lib; {
     description = "A cross-platform, GPU-accelerated terminal emulator";
     homepage = "https://github.com/alacritty/alacritty";
     license = licenses.asl20;
-    maintainers = with maintainers; [ Br1ght0ne mic92 cole-h ma27 ];
+    maintainers = with maintainers; [ Br1ght0ne mic92 ma27 ];
     platforms = platforms.unix;
+    changelog = "https://github.com/alacritty/alacritty/blob/v${version}/CHANGELOG.md";
   };
 }

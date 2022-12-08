@@ -1,15 +1,13 @@
-{ stdenv
+{ lib
 , buildPythonPackage
 , fetchPypi
 , pythonOlder
-, python
 , subunit
 , testrepository
 , testtools
 , six
 , pbr
 , fixtures
-, isPy36
 }:
 
 buildPythonPackage rec {
@@ -25,11 +23,11 @@ buildPythonPackage rec {
   buildInputs = [ subunit testrepository testtools six ];
   propagatedBuildInputs = [ pbr fixtures ];
 
-  # Disabling as several tests depdencies are missing:
+  # Disabling as several tests dependencies are missing:
   # https://opendev.org/openstack/mox3/src/branch/master/test-requirements.txt
   doCheck = false;
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Mock object framework for Python";
     homepage = "https://docs.openstack.org/mox3/latest/";
     license = licenses.asl20;

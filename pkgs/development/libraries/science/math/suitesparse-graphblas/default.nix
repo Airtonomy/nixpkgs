@@ -1,4 +1,4 @@
-{ stdenv
+{ lib, stdenv
 , fetchFromGitHub
 , cmake
 , gnum4
@@ -6,7 +6,7 @@
 
 stdenv.mkDerivation rec {
   pname = "suitesparse-graphblas";
-  version = "3.3.3";
+  version = "7.2.0";
 
   outputs = [ "out" "dev" ];
 
@@ -14,7 +14,7 @@ stdenv.mkDerivation rec {
     owner = "DrTimothyAldenDavis";
     repo = "GraphBLAS";
     rev = "v${version}";
-    sha256 = "1nmygb2yny0mdqp0mc6760gbxklq1jjm0c6s39qkdwzf3n9f8j7p";
+    sha256 = "sha256-N3TBuKWQRisXE5DQ0c+N2cv0darQ8mz4g2oe7pKst9E=";
   };
 
   nativeBuildInputs = [
@@ -22,7 +22,7 @@ stdenv.mkDerivation rec {
     gnum4
   ];
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Graph algorithms in the language of linear algebra";
     homepage = "http://faculty.cse.tamu.edu/davis/GraphBLAS.html";
     license = licenses.asl20;

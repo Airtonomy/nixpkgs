@@ -1,6 +1,7 @@
 { stdenv, lib, buildPackages, fetchurl, fetchFromGitLab
-, enableStatic ? false
+, enableStatic ? stdenv.hostPlatform.isStatic
 , enableMinimal ? false
+, enableAppletSymlinks ? true
 # Allow forcing musl without switching stdenv itself, e.g. for our bootstrapping:
 # nix build -f pkgs/top-level/release.nix stdenvBootstrapTools.x86_64-linux.dist
 , useMusl ? stdenv.hostPlatform.libc == "musl", musl
@@ -32,7 +33,7 @@ let
     CONFIG_FEATURE_WTMP n
   '';
 
-  # The debian version lacks behind the upstream version and also contains
+  # The debian version lags behind the upstream version and also contains
   # a debian-specific suffix. We only fetch the debian repository to get the
   # default.script
   debianVersion = "1.30.1-6";
@@ -48,17 +49,15 @@ let
 in
 
 stdenv.mkDerivation rec {
-  # TODO: When bumping this version, please validate whether the wget patch is present upstream
-  # and remove the patch if it is. The patch should be present upstream for all versions 1.32.0+.
-  # See NixOs/nixpkgs#94722 for context.
-  name = "busybox-1.31.1";
+  pname = "busybox";
+  version = "1.35.0";
 
   # Note to whoever is updating busybox: please verify that:
   # nix-build pkgs/stdenv/linux/make-bootstrap-tools.nix -A test
   # still builds after the update.
   src = fetchurl {
-    url = "https://busybox.net/downloads/${name}.tar.bz2";
-    sha256 = "1659aabzp8w4hayr4z8kcpbk2z1q2wqhw7i1yb0l72b45ykl1yfh";
+    url = "https://busybox.net/downloads/${pname}-${version}.tar.bz2";
+    sha256 = "sha256-+u6yRMNaNIozT0pZ5EYm7ocPsHtohNaMEK6LwZ+DppQ=";
   };
 
   hardeningDisable = [ "format" "pie" ]
@@ -66,9 +65,24 @@ stdenv.mkDerivation rec {
 
   patches = [
     ./busybox-in-store.patch
-    ./0001-Fix-build-with-glibc-2.31.patch
-    ./0001-wget-implement-TLS-verification-with-ENABLE_FEATURE_.patch
-  ] ++ stdenv.lib.optional (stdenv.hostPlatform != stdenv.buildPlatform) ./clang-cross.patch;
+    (fetchurl {
+      name = "CVE-2022-28391.patch";
+      url = "https://git.alpinelinux.org/aports/plain/main/busybox/0001-libbb-sockaddr2str-ensure-only-printable-characters-.patch?id=ed92963eb55bbc8d938097b9ccb3e221a94653f4";
+      sha256 = "sha256-yviw1GV+t9tbHbY7YNxEqPi7xEreiXVqbeRyf8c6Awo=";
+    })
+    (fetchurl {
+      name = "CVE-2022-28391.patch";
+      url = "https://git.alpinelinux.org/aports/plain/main/busybox/0002-nslookup-sanitize-all-printed-strings-with-printable.patch?id=ed92963eb55bbc8d938097b9ccb3e221a94653f4";
+      sha256 = "sha256-vl1wPbsHtXY9naajjnTicQ7Uj3N+EQ8pRNnrdsiow+w=";
+    })
+    (fetchurl {
+      name = "CVE-2022-30065.patch";
+      url = "https://git.alpinelinux.org/aports/plain/main/busybox/CVE-2022-30065.patch?id=4ffd996b3f8298c7dd424b912c245864c816e354";
+      sha256 = "sha256-+WSYxI6eF8S0tya/S62f9Nc6jVMnHO0q1OyM69GlNTY=";
+    })
+  ] ++ lib.optional (stdenv.hostPlatform != stdenv.buildPlatform) ./clang-cross.patch;
+
+  separateDebugInfo = true;
 
   postPatch = "patchShebangs .";
 
@@ -85,8 +99,21 @@ stdenv.mkDerivation rec {
 
     CONFIG_LFS y
 
+    # More features for modprobe.
+    ${lib.optionalString (!enableMinimal) ''
+      CONFIG_FEATURE_MODPROBE_BLACKLIST y
+      CONFIG_FEATURE_MODUTILS_ALIAS y
+      CONFIG_FEATURE_MODUTILS_SYMBOLS y
+      CONFIG_MODPROBE_SMALL n
+    ''}
+
     ${lib.optionalString enableStatic ''
       CONFIG_STATIC y
+    ''}
+
+    ${lib.optionalString (!enableAppletSymlinks) ''
+      CONFIG_INSTALL_APPLET_DONT y
+      CONFIG_INSTALL_APPLET_SYMLINKS n
     ''}
 
     # Use the external mount.cifs program.
@@ -116,14 +143,18 @@ stdenv.mkDerivation rec {
     makeFlagsArray+=("CC=${stdenv.cc.targetPrefix}cc -isystem ${musl.dev}/include -B${musl}/lib -L${musl}/lib")
   '';
 
+  makeFlags = [ "SKIP_STRIP=y" ];
+
   postInstall = ''
     sed -e '
     1 a busybox() { '$out'/bin/busybox "$@"; }\
     logger() { '$out'/bin/logger "$@"; }\
     ' ${debianDispatcherScript} > ${outDispatchPath}
     chmod 555 ${outDispatchPath}
-    PATH=$out/bin patchShebangs ${outDispatchPath}
+    HOST_PATH=$out/bin patchShebangs --host ${outDispatchPath}
   '';
+
+  strictDeps = true;
 
   depsBuildBuild = [ buildPackages.stdenv.cc ];
 
@@ -133,11 +164,11 @@ stdenv.mkDerivation rec {
 
   doCheck = false; # tries to access the net
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Tiny versions of common UNIX utilities in a single small executable";
     homepage = "https://busybox.net/";
-    license = licenses.gpl2;
-    maintainers = with maintainers; [ TethysSvensson ];
+    license = licenses.gpl2Only;
+    maintainers = with maintainers; [ TethysSvensson qyliss ];
     platforms = platforms.linux;
     priority = 10;
   };

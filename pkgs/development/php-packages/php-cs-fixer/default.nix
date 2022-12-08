@@ -1,27 +1,30 @@
-{ mkDerivation, fetchurl, pkgs, lib, php }:
+{ mkDerivation, fetchurl, makeWrapper, lib, php }:
 let
   pname = "php-cs-fixer";
-  version = "2.17.0";
+  version = "3.11.0";
 in
 mkDerivation {
   inherit pname version;
 
   src = fetchurl {
     url = "https://github.com/FriendsOfPHP/PHP-CS-Fixer/releases/download/v${version}/php-cs-fixer.phar";
-    sha256 = "163wz5y5ik7g1p7n0v3ckyawqjhg8d18cwx8a5c6fr1fkwb4mb12";
+    sha256 = "sha256-hnSHR/tDX1w/4SV6fafvUHg4JwTQJxfwKaKvEbUWJjs=";
   };
 
-  phases = [ "installPhase" ];
-  nativeBuildInputs = [ pkgs.makeWrapper ];
+  dontUnpack = true;
+
+  nativeBuildInputs = [ makeWrapper ];
 
   installPhase = ''
+    runHook preInstall
     mkdir -p $out/bin
     install -D $src $out/libexec/php-cs-fixer/php-cs-fixer.phar
     makeWrapper ${php}/bin/php $out/bin/php-cs-fixer \
       --add-flags "$out/libexec/php-cs-fixer/php-cs-fixer.phar"
+    runHook postInstall
   '';
 
-  meta = with pkgs.lib; {
+  meta = with lib; {
     description = "A tool to automatically fix PHP coding standards issues";
     license = licenses.mit;
     homepage = "http://cs.sensiolabs.org/";

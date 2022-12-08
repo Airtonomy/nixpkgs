@@ -1,6 +1,6 @@
-{ stdenv, fetchurl, fetchFromGitHub
-, mkfontscale, bdf2psf, bdftopcf
-, fonttosfnt, libfaketime
+{ lib, stdenv, fetchurl, fetchFromGitHub
+, xorg, bdf2psf, bdftopcf
+, libfaketime
 }:
 
 stdenv.mkDerivation rec {
@@ -15,8 +15,8 @@ stdenv.mkDerivation rec {
   };
 
   nativeBuildInputs =
-    [ mkfontscale bdf2psf bdftopcf
-      fonttosfnt libfaketime
+    [ xorg.mkfontscale bdf2psf bdftopcf
+      xorg.fonttosfnt libfaketime
     ];
 
   buildPhase = ''
@@ -58,12 +58,12 @@ stdenv.mkDerivation rec {
     mkfontdir "$fontDir"
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = ''
       A monospace bitmap font well suited for programming and terminal use
     '';
     homepage    = "https://font.gohu.org/";
     license     = licenses.wtfpl;
-    maintainers = with maintainers; [ epitrochoid rnhmjoj ];
+    maintainers = with maintainers; [ rnhmjoj ];
   };
 }

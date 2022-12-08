@@ -1,35 +1,62 @@
-{ stdenv
+{ lib
+, stdenv
 , fetchFromGitHub
 , nix-update-script
-, pantheon
-, pkgconfig
+, pkg-config
 , meson
 , ninja
 , vala
 , python3
-, desktop-file-utils
 , gtk3
 , granite
 , libgee
+, libhandy
 , clutter-gst
 , clutter-gtk
 , gst_all_1
-, elementary-icon-theme
 , wrapGAppsHook
 }:
 
 stdenv.mkDerivation rec {
   pname = "elementary-videos";
-  version = "2.7.2";
-
-  repoName = "videos";
+  version = "2.8.4";
 
   src = fetchFromGitHub {
     owner = "elementary";
-    repo = repoName;
+    repo = "videos";
     rev = version;
-    sha256 = "sha256-MSyhCXsziQ0MD4lGp9X/9odidjT/L+2Aihwd1qCGvB0=";
+    sha256 = "sha256-IUIY/WgGPVRYk9O+ZocopoBF7TlLnTtScNwO6gDCALw=";
   };
+
+  nativeBuildInputs = [
+    meson
+    ninja
+    pkg-config
+    python3
+    vala
+    wrapGAppsHook
+  ];
+
+  buildInputs = [
+    clutter-gst
+    clutter-gtk
+    granite
+    gtk3
+    libgee
+    libhandy
+  ] ++ (with gst_all_1; [
+    gst-libav
+    gst-plugins-bad
+    gst-plugins-base
+    gst-plugins-good
+    gst-plugins-ugly
+    gstreamer
+  ]);
+
+  postPatch = ''
+    chmod +x meson/post_install.py
+    patchShebangs meson/post_install.py
+  '';
 
   passthru = {
     updateScript = nix-update-script {
@@ -37,41 +64,12 @@ stdenv.mkDerivation rec {
     };
   };
 
-  nativeBuildInputs = [
-    desktop-file-utils
-    meson
-    ninja
-    pkgconfig
-    python3
-    vala
-    wrapGAppsHook
-  ];
-
-  buildInputs = with gst_all_1; [
-    clutter-gst
-    clutter-gtk
-    elementary-icon-theme
-    granite
-    gst-libav
-    gst-plugins-bad
-    gst-plugins-base
-    gst-plugins-good
-    gst-plugins-ugly
-    gstreamer
-    gtk3
-    libgee
-  ];
-
-  postPatch = ''
-    chmod +x meson/post_install.py
-    patchShebangs meson/post_install.py
-  '';
-
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Video player and library app designed for elementary OS";
     homepage = "https://github.com/elementary/videos";
     license = licenses.gpl3Plus;
     platforms = platforms.linux;
-    maintainers = pantheon.maintainers;
+    maintainers = teams.pantheon.members;
+    mainProgram = "io.elementary.videos";
   };
 }

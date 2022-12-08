@@ -4,30 +4,36 @@
 , msrest
 , msrestazure
 , azure-common
-, azure-mgmt-nspkg
-, isPy3k
+, azure-mgmt-core
+, pythonOlder
 }:
 
 buildPythonPackage rec {
   pname = "azure-mgmt-eventgrid";
-  version = "2.2.0";
+  version = "10.2.0";
+  format = "setuptools";
+
+  disabled = pythonOlder "3.6";
 
   src = fetchPypi {
     inherit pname version;
     extension = "zip";
-    sha256 = "1hqwcl33r98lriz3fp6h8ir36bv9danx27290idv63fj7s95h866";
+    hash = "sha256-jJ+gvJmOTz2YXQ9BDrFgXCybplgwvOYZ5Gv7FHLhxQA=";
   };
 
   propagatedBuildInputs = [
     msrest
     msrestazure
+    azure-mgmt-core
     azure-common
-  ] ++ lib.optionals (!isPy3k) [
-    azure-mgmt-nspkg
   ];
 
   # has no tests
   doCheck = false;
+
+  pythonImportsCheck = [
+    "azure.mgmt.eventgrid"
+  ];
 
   meta = with lib; {
     description = "This is the Microsoft Azure EventGrid Management Client Library";

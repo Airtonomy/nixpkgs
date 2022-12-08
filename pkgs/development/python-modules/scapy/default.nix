@@ -1,4 +1,4 @@
-{ buildPythonPackage, fetchFromGitHub, lib, isPyPy
+{ buildPythonPackage, fetchFromGitHub, stdenv, lib, isPyPy
 , pycrypto, ecdsa # TODO
 , tox, mock, coverage, can, brotli
 , withOptionalDeps ? true, tcpdump, ipython
@@ -7,13 +7,14 @@
 , withPlottingSupport ? true, matplotlib
 , withGraphicsSupport ? false, pyx, texlive, graphviz, imagemagick
 , withManufDb ? false, wireshark
+, libpcap
 # 2D/3D graphics and graphs TODO: VPython
 # TODO: nmap, numpy
 }:
 
 buildPythonPackage rec {
   pname = "scapy";
-  version = "2.4.4";
+  version = "2.4.5";
 
   disabled = isPyPy;
 
@@ -21,11 +22,23 @@ buildPythonPackage rec {
     owner = "secdev";
     repo = "scapy";
     rev = "v${version}";
-    sha256 = "1wpx7gps3g8q5ykbfcd67mxwcs416zg37b53fwfzzlc1m58vhk3p";
+    sha256 = "0nxci1v32h5517gl9ic6zjq8gc8drwr0n5pz04c91yl97xznnw94";
   };
+
+  patches = [
+    ./find-library.patch
+  ];
 
   postPatch = ''
     printf "${version}" > scapy/VERSION
+
+    libpcap_file="${lib.getLib libpcap}/lib/libpcap${stdenv.hostPlatform.extensions.sharedLibrary}"
+    if ! [ -e "$libpcap_file" ]; then
+        echo "error: $libpcap_file not found" >&2
+        exit 1
+    fi
+    substituteInPlace "scapy/libs/winpcapy.py" \
+        --replace "@libpcap_file@" "$libpcap_file"
   '' + lib.optionalString withManufDb ''
     substituteInPlace scapy/data.py --replace "/opt/wireshark" "${wireshark}"
   '';
@@ -44,6 +57,7 @@ buildPythonPackage rec {
     patchShebangs .
     .config/ci/test.sh
   '';
+  pythonImportsCheck = [ "scapy" ];
 
   meta = with lib; {
     description = "A Python-based network packet manipulation program and library";
@@ -70,7 +84,7 @@ buildPythonPackage rec {
     '';
     homepage = "https://scapy.net/";
     changelog = "https://github.com/secdev/scapy/releases/tag/v${version}";
-    license = licenses.gpl2;
+    license = licenses.gpl2Only;
     platforms = platforms.unix;
     maintainers = with maintainers; [ primeos bjornfor ];
   };

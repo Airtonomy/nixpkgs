@@ -1,4 +1,4 @@
-{ stdenv, fetchurl, makeWrapper, autoPatchelfHook }:
+{ lib, stdenv, fetchurl, makeWrapper, autoPatchelfHook }:
 
 stdenv.mkDerivation rec {
   pname = "insync";
@@ -12,9 +12,7 @@ stdenv.mkDerivation rec {
     else
       throw "${pname}-${version} is not supported on ${stdenv.hostPlatform.system}";
 
-  buildInputs = [ makeWrapper ];
-
-  nativeBuildInputs = [ autoPatchelfHook ];
+  nativeBuildInputs = [ makeWrapper autoPatchelfHook ];
 
   postPatch = ''
     patchelf --interpreter "$(cat $NIX_CC/nix-support/dynamic-linker)" client/insync-portable
@@ -28,8 +26,9 @@ stdenv.mkDerivation rec {
 
   meta = {
     platforms = ["x86_64-linux"];
-    license = stdenv.lib.licenses.unfree;
-    maintainers = [ stdenv.lib.maintainers.benley ];
+    sourceProvenance = with lib.sourceTypes; [ binaryNativeCode ];
+    license = lib.licenses.unfree;
+    maintainers = [ lib.maintainers.benley ];
     homepage = "https://www.insynchq.com";
     description = "Google Drive sync and backup with multiple account support";
     longDescription = ''
@@ -40,5 +39,7 @@ stdenv.mkDerivation rec {
 
      There is a 15-day free trial, and it is a paid application after that.
     '';
+    # download URL removed
+    broken = true;
   };
 }

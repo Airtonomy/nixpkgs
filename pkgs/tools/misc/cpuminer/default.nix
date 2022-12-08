@@ -1,4 +1,4 @@
-{ stdenv
+{ lib, stdenv
 , fetchFromGitHub
 , curl
 , jansson
@@ -19,11 +19,12 @@ stdenv.mkDerivation rec {
 
   patchPhase = if stdenv.cc.isClang then "${perl}/bin/perl ./nomacro.pl" else null;
 
-  buildInputs = [ curl jansson autoreconfHook ];
+  nativeBuildInputs = [ autoreconfHook ];
+  buildInputs = [ curl jansson ];
 
   configureFlags = [ "CFLAGS=-O3" ];
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     homepage = "https://github.com/pooler/cpuminer";
     description = "CPU miner for Litecoin and Bitcoin";
     license = licenses.gpl2;

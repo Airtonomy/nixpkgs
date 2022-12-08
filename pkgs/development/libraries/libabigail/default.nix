@@ -1,27 +1,27 @@
-{ stdenv
+{ lib, stdenv
 , fetchurl
 , autoreconfHook
 , elfutils
 , libxml2
-, pkgconfig
+, pkg-config
 , strace
 , python3
 }:
 
 stdenv.mkDerivation rec {
   pname = "libabigail";
-  version = "1.8";
+  version = "2.1";
 
   outputs = [ "bin" "out" "dev" ];
 
   src = fetchurl {
     url = "https://mirrors.kernel.org/sourceware/${pname}/${pname}-${version}.tar.gz";
-    sha256 = "0p363mkgypcklgf8iylxpbdnfgqc086a6fv7n9hzrjjci45jdgqw";
+    sha256 = "sha256-SmKX1B0V0ZNiVhFxFr1hKW5rm+4j1UoMr40/WrjdzEw=";
   };
 
   nativeBuildInputs = [
     autoreconfHook
-    pkgconfig
+    pkg-config
     strace
   ];
 
@@ -49,10 +49,10 @@ stdenv.mkDerivation rec {
     patchShebangs tests/
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "ABI Generic Analysis and Instrumentation Library";
     homepage = "https://sourceware.org/libabigail/";
-    license = licenses.lgpl3Plus;
+    license = with licenses; [ asl20 llvm-exception ];
     maintainers = with maintainers; [ jtojnar ];
     platforms = platforms.linux;
   };

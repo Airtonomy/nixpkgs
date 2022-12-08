@@ -1,4 +1,4 @@
-{ stdenv
+{ lib, stdenv
 , fetchFromGitHub
 , fetchpatch
 , cmake
@@ -8,6 +8,7 @@
 , gdal
 , hdf5-cpp
 , LASzip
+, enableE57 ? lib.meta.availableOn stdenv.hostPlatform libe57format
 , libe57format
 , libgeotiff
 , libxml2
@@ -20,13 +21,13 @@
 
 stdenv.mkDerivation rec {
   pname = "pdal";
-  version = "2.2.0";
+  version = "2.4.0";
 
   src = fetchFromGitHub {
     owner = "PDAL";
     repo = "PDAL";
     rev = version;
-    sha256 = "1i7nbfvv60jjlf3iq7a7xci4dycmg2wrd35dqvjwl6hpfynpb6wz";
+    sha256 = "sha256-w9Fu4Op6OdaxdvOUM+glpJUEZq//EwRD2lqzYrMXk8w=";
   };
 
   nativeBuildInputs = [
@@ -40,7 +41,6 @@ stdenv.mkDerivation rec {
     gdal
     hdf5-cpp
     LASzip
-    libe57format
     libgeotiff
     libxml2
     postgresql
@@ -48,10 +48,12 @@ stdenv.mkDerivation rec {
     xercesc
     zlib
     zstd
+  ] ++ lib.optionals enableE57 [
+    libe57format
   ];
 
   cmakeFlags = [
-    "-DBUILD_PLUGIN_E57=ON"
+    "-DBUILD_PLUGIN_E57=${if enableE57 then "ON" else "OFF"}"
     "-DBUILD_PLUGIN_HDF=ON"
     "-DBUILD_PLUGIN_PGPOINTCLOUD=ON"
     "-DBUILD_PLUGIN_TILEDB=ON"
@@ -71,7 +73,7 @@ stdenv.mkDerivation rec {
     "-DBUILD_PLUGIN_RIVLIB=OFF"
   ];
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "PDAL is Point Data Abstraction Library. GDAL for point cloud data";
     homepage = "https://pdal.io";
     license = licenses.bsd3;

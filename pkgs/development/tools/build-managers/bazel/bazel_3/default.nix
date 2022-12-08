@@ -25,11 +25,11 @@
 }:
 
 let
-  version = "3.3.1";
+  version = "3.7.2";
 
   src = fetchurl {
     url = "https://github.com/bazelbuild/bazel/releases/download/${version}/bazel-${version}-dist.zip";
-    sha256 = "0ir796kl8r9hpr3li26qsdy1z2lx2bv82zmk4a2s7q64clyg9wg0";
+    sha256 = "1cfrbs23lg0jnl22ddylx3clcjw7bdpbix7r5lqibab346s5n9fy";
   };
 
   # Update with `eval $(nix-build -A bazel.updater)`,
@@ -37,7 +37,7 @@ let
   srcDeps = lib.attrsets.attrValues srcDepsSet;
   srcDepsSet =
     let
-      srcs = (builtins.fromJSON (builtins.readFile ./src-deps.json));
+      srcs = lib.importJSON ./src-deps.json;
       toFetchurl = d: lib.attrsets.nameValuePair d.name (fetchurl {
         urls = d.urls;
         sha256 = d.sha256;
@@ -49,17 +49,20 @@ let
       srcs.io_bazel_rules_sass
       srcs.platforms
       # `bazel query` wants all of these to be available regardless of platform.
-      srcs."java_tools_javac11_darwin-v8.0.zip"
-      srcs."java_tools_javac11_linux-v8.0.zip"
-      srcs."java_tools_javac11_windows-v8.0.zip"
-      srcs."coverage_output_generator-v2.1.zip"
+      srcs."java_tools_javac11_darwin-v10.0.zip"
+      srcs."java_tools_javac11_linux-v10.0.zip"
+      srcs."java_tools_javac11_windows-v10.0.zip"
+      srcs."coverage_output_generator-v2.5.zip"
       srcs.build_bazel_rules_nodejs
-      srcs."android_tools_pkg-0.19.0rc1.tar.gz"
+      srcs."android_tools_pkg-0.19.0rc3.tar.gz"
       srcs."bazel-toolchains-3.1.0.tar.gz"
+      srcs."com_github_grpc_grpc"
+      srcs.upb
       srcs.rules_pkg
       srcs.rules_cc
       srcs.rules_java
       srcs.rules_proto
+      srcs.com_google_protobuf
       ]);
 
   distDir = runCommand "bazel-deps" {} ''
@@ -98,7 +101,7 @@ let
     [ bash coreutils findutils gawk gnugrep gnutar gnused gzip which unzip file zip ];
 
   # Java toolchain used for the build and tests
-  javaToolchain = "@bazel_tools//tools/jdk:toolchain_host${buildJdkName}";
+  javaToolchain = "@bazel_tools//tools/jdk:toolchain_${buildJdkName}";
 
   platforms = lib.platforms.linux ++ lib.platforms.darwin;
 
@@ -107,14 +110,17 @@ let
   # and libraries path.
   # We prefetch it, patch it, and override it in a global bazelrc.
   system = if stdenv.hostPlatform.isDarwin then "darwin" else "linux";
-  arch = stdenv.hostPlatform.parsed.cpu.name;
+
+  # on aarch64 Darwin, `uname -m` returns "arm64"
+  arch = with stdenv.hostPlatform; if isDarwin && isAarch64 then "arm64" else parsed.cpu.name;
 
   remote_java_tools = stdenv.mkDerivation {
     name = "remote_java_tools_${system}";
 
-    src = srcDepsSet."java_tools_javac11_${system}-v8.0.zip";
+    src = srcDepsSet."java_tools_javac11_${system}-v10.0.zip";
 
-    nativeBuildInputs = [ autoPatchelfHook unzip ];
+    nativeBuildInputs = [ unzip ]
+      ++ lib.optional stdenv.isLinux autoPatchelfHook;
     buildInputs = [ gcc-unwrapped ];
 
     sourceRoot = ".";
@@ -160,8 +166,12 @@ stdenv.mkDerivation rec {
   meta = with lib; {
     homepage = "https://github.com/bazelbuild/bazel/";
     description = "Build tool that builds code quickly and reliably";
+    sourceProvenance = with sourceTypes; [
+      fromSource
+      binaryBytecode  # source bundles dependencies as jars
+    ];
     license = licenses.asl20;
-    maintainers = [ maintainers.mboes ];
+    maintainers = lib.teams.bazel.members;
     inherit platforms;
   };
 
@@ -169,12 +179,20 @@ stdenv.mkDerivation rec {
   sourceRoot = ".";
 
   patches = [
-    ./python-shebang.patch
-
     # On Darwin, the last argument to gcc is coming up as an empty string. i.e: ''
     # This is breaking the build of any C target. This patch removes the last
     # argument if it's found to be an empty string.
     ../trim-last-argument-to-gcc-if-empty.patch
+
+    # On Darwin, using clang 6 to build fails because of a linker error (see #105573),
+    # but using clang 7 fails because libarclite_macosx.a cannot be found when linking
+    # the xcode_locator tool.
+    # This patch removes using the -fobjc-arc compiler option and makes the code
+    # compile without automatic reference counting. Caveat: this leaks memory, but
+    # we accept this fact because xcode_locator is only a short-lived process used during the build.
+    ./no-arc.patch
+
+    ./gcc11.patch
 
     # --experimental_strict_action_env (which may one day become the default
     # see bazelbuild/bazel#2574) hardcodes the default
@@ -193,6 +211,10 @@ stdenv.mkDerivation rec {
       src = ../bazel_rc.patch;
       bazelSystemBazelRCPath = bazelRC;
     })
+
+    # disable suspend detection during a build inside Nix as this is
+    # not available inside the darwin sandbox
+    ../bazel_darwin_sandbox.patch
   ] ++ lib.optional enableNixHacks ../nix-hacks.patch;
 
 
@@ -291,12 +313,7 @@ stdenv.mkDerivation rec {
       # fixed-output hashes of the fetch phase need to be spot-checked manually
       downstream = recurseIntoAttrs ({
         inherit bazel-watcher;
-      }
-          # dm-sonnet is only packaged for linux
-      // (lib.optionalAttrs stdenv.isLinux {
-          # TODO(timokau) dm-sonnet is broken currently
-          # dm-sonnet-linux = python3.pkgs.dm-sonnet;
-      }));
+      });
     };
 
   # update the list of workspace dependencies
@@ -362,7 +379,7 @@ stdenv.mkDerivation rec {
 
       # libcxx includes aren't added by libcxx hook
       # https://github.com/NixOS/nixpkgs/pull/41589
-      export NIX_CFLAGS_COMPILE="$NIX_CFLAGS_COMPILE -isystem ${libcxx}/include/c++/v1"
+      export NIX_CFLAGS_COMPILE="$NIX_CFLAGS_COMPILE -isystem ${lib.getDev libcxx}/include/c++/v1"
 
       # don't use system installed Xcode to run clang, use Nix clang instead
       sed -i -E "s;/usr/bin/xcrun (--sdk macosx )?clang;${stdenv.cc}/bin/clang $NIX_CFLAGS_COMPILE $(bazelLinkFlags) -framework CoreFoundation;g" \
@@ -370,6 +387,8 @@ stdenv.mkDerivation rec {
         src/tools/xcode/realpath/BUILD \
         src/tools/xcode/stdredirect/BUILD \
         tools/osx/BUILD
+
+      substituteInPlace scripts/bootstrap/compile.sh --replace ' -mmacosx-version-min=10.9' ""
 
       # nixpkgs's libSystem cannot use pthread headers directly, must import GCD headers instead
       sed -i -e "/#include <pthread\/spawn.h>/i #include <dispatch/dispatch.h>" src/main/cpp/blaze_util_darwin.cc
@@ -394,8 +413,8 @@ stdenv.mkDerivation rec {
       substituteInPlace tools/objc/j2objc_dead_code_pruner.py --replace "$!/usr/bin/python2.7" "#!${python27}/bin/python"
 
       # md5sum is part of coreutils
-      sed -i 's|/sbin/md5|md5sum|' \
-        src/BUILD
+      sed -i 's|/sbin/md5|md5sum|g' \
+        src/BUILD third_party/ijar/test/testenv.sh tools/objc/libtool.sh
 
       # replace initial value of pythonShebang variable in BazelPythonSemantics.java
       substituteInPlace src/main/java/com/google/devtools/build/lib/bazel/rules/python/BazelPythonSemantics.java \
@@ -517,6 +536,13 @@ stdenv.mkDerivation rec {
         --output=./bazel_src/output/bazel-complete.bash \
         --prepend=./bazel_src/scripts/bazel-complete-header.bash \
         --prepend=./bazel_src/scripts/bazel-complete-template.bash
+
+    # need to change directory for bazel to find the workspace
+    cd ./bazel_src
+    # build execlog tooling
+    export HOME=$(mktemp -d)
+    ./output/bazel build  src/tools/execlog:parser_deploy.jar
+    cd -
   '';
 
   installPhase = ''
@@ -527,7 +553,15 @@ stdenv.mkDerivation rec {
     # The binary _must_ exist with this naming if your project contains a .bazelversion
     # file.
     cp ./bazel_src/scripts/packages/bazel.sh $out/bin/bazel
+
+    mkdir $out/share
+    cp ./bazel_src/bazel-bin/src/tools/execlog/parser_deploy.jar $out/share/parser_deploy.jar
     mv ./bazel_src/output/bazel $out/bin/bazel-${version}-${system}-${arch}
+    cat <<EOF > $out/bin/bazel-execlog
+    #!${runtimeShell} -e
+    ${runJdk}/bin/java -jar $out/share/parser_deploy.jar \$@
+    EOF
+    chmod +x $out/bin/bazel-execlog
 
     # shell completion files
     installShellCompletion --bash \
@@ -587,6 +621,10 @@ stdenv.mkDerivation rec {
     # runtime dependencies.
     echo "${python27}" >> $out/nix-support/depends
     echo "${python3}" >> $out/nix-support/depends
+    # The string literal specifying the path to the bazel-rc file is sometimes
+    # stored non-contiguously in the binary due to gcc optimisations, which leads
+    # Nix to miss the hash when scanning for dependencies
+    echo "${bazelRC}" >> $out/nix-support/depends
   '' + lib.optionalString stdenv.isDarwin ''
     echo "${cctools}" >> $out/nix-support/depends
   '';

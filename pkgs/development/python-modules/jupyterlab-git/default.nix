@@ -1,40 +1,76 @@
-{ stdenv
+{ lib
+, stdenv
 , buildPythonPackage
 , fetchPypi
-, pythonOlder
-, notebook
-, nbdime
 , git
-, pytest
+, jupyter_server
+, jupyter-packaging
+, jupyterlab
+, nbdime
+, nbformat
+, pexpect
+, pytest-asyncio
+, pytest-tornasync
+, pytestCheckHook
+, pythonOlder
 }:
 
 buildPythonPackage rec {
-  pname = "jupyterlab_git";
-  version = "0.23.2";
-  disabled = pythonOlder "3.5";
+  pname = "jupyterlab-git";
+  version = "0.39.2";
+
+  disabled = pythonOlder "3.6";
 
   src = fetchPypi {
-    inherit pname version;
-    sha256 = "2c4c55c5bc651a670b13e89064f7aba7422b72ad6b3f2b3890ac72cc9a2d4089";
+    pname = "jupyterlab_git";
+    inherit version;
+    sha256 = "sha256-+wzKAK5jdrlPjtVDgp7QqOyXaBDzzkRJI+6hcbOcnpo=";
   };
 
-  propagatedBuildInputs = [ notebook nbdime git ];
+  nativeBuildInputs = [
+    jupyter-packaging
+  ];
 
-  # all Tests on darwin fail or are skipped due to sandbox
+  propagatedBuildInputs = [
+    jupyter_server
+    nbdime
+    git
+    nbformat
+    pexpect
+  ];
+
+  checkInputs = [
+    jupyterlab
+    pytest-asyncio
+    pytest-tornasync
+    pytestCheckHook
+  ];
+
+  # All Tests on darwin fail or are skipped due to sandbox
   doCheck = !stdenv.isDarwin;
 
-  checkInputs = [ pytest ];
+  disabledTestPaths = [
+    "jupyterlab_git/tests/test_handlers.py"
+    # PyPI doesn't ship all required files for the tests
+    "jupyterlab_git/tests/test_config.py"
+    "jupyterlab_git/tests/test_integrations.py"
+    "jupyterlab_git/tests/test_remote.py"
+    "jupyterlab_git/tests/test_settings.py"
+  ];
 
-  checkPhase = ''
-    pytest jupyterlab_git/ --ignore=jupyterlab_git/tests/test_handlers.py
-  '';
+  disabledTests = [
+    "test_Git_get_nbdiff_file"
+    "test_Git_get_nbdiff_dict"
+  ];
 
-  pythonImportsCheck = [ "jupyterlab_git" ];
+  pythonImportsCheck = [
+    "jupyterlab_git"
+  ];
 
-  meta = with stdenv.lib; {
-    description = "Jupyter lab extension for version control with Git.";
-    license = with licenses; [ bsd3 ];
+  meta = with lib; {
+    description = "Jupyter lab extension for version control with Git";
     homepage = "https://github.com/jupyterlab/jupyterlab-git";
+    license = with licenses; [ bsd3 ];
     maintainers = with maintainers; [ chiroptical ];
   };
 }

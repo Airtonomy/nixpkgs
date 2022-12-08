@@ -1,4 +1,4 @@
-{ stdenv, buildPythonPackage, fetchPypi
+{ stdenv, lib, buildPythonPackage, fetchPypi
 , nose, psutil, mock }:
 
 buildPythonPackage rec {
@@ -9,6 +9,10 @@ buildPythonPackage rec {
     inherit pname version;
     sha256 = "1f1bbaac203a23fbc851dc1b5a6e92c50698cc8cefa5873eb5b89eef53d1d82b";
   };
+
+  patches = [
+    ./mapping-import.patch
+  ];
 
   checkInputs = [ nose psutil mock ];
 
@@ -21,7 +25,8 @@ buildPythonPackage rec {
       --exclude=test_above_fd_setsize
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
+    broken = (stdenv.isLinux && stdenv.isAarch64) || stdenv.isDarwin;
     homepage = "https://www.github.com/SethMichaelLarson/selectors2";
     description = "Back-ported, durable, and portable selectors";
     license = licenses.mit;

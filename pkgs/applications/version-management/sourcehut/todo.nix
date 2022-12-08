@@ -1,19 +1,39 @@
-{ stdenv, fetchgit, buildPythonPackage
+{ lib
+, fetchFromSourcehut
+, buildGoModule
+, buildPythonPackage
+, srht
+, redis
+, alembic
+, pystache
+, pytest
+, factory_boy
 , python
-, srht, redis, alembic, pystache
-, pytest, factory_boy, writeText }:
+, unzip
+}:
 
 buildPythonPackage rec {
   pname = "todosrht";
-  version = "0.62.1";
+  version = "0.72.2";
 
-  src = fetchgit {
-    url = "https://git.sr.ht/~sircmpwn/todo.sr.ht";
+  src = fetchFromSourcehut {
+    owner = "~sircmpwn";
+    repo = "todo.sr.ht";
     rev = version;
-    sha256 = "17fsv2z37sjzqzpvx39nc36xln1ayivzjg309d2vmb94aaym4nz2";
+    sha256 = "sha256-FLjVO8Y/9s2gFfMXwcY7Rj3WNzPEBYs1AEjiVZFWsT8=";
   };
 
-  nativeBuildInputs = srht.nativeBuildInputs;
+  postPatch = ''
+    substituteInPlace Makefile \
+      --replace "all: api" ""
+  '';
+
+  todosrht-api = buildGoModule ({
+    inherit src version;
+    pname = "todosrht-api";
+    modRoot = "api";
+    vendorSha256 = "sha256-LB1H4jwnvoEyaaYJ09NI/M6IkgZwRet/fkso6b9EPV0=";
+  } // import ./fix-gqlgen-trimpath.nix { inherit unzip; });
 
   propagatedBuildInputs = [
     srht
@@ -24,6 +44,11 @@ buildPythonPackage rec {
 
   preBuild = ''
     export PKGVER=${version}
+    export SRHT_PATH=${srht}/${python.sitePackages}/srht
+  '';
+
+  postInstall = ''
+    ln -s ${todosrht-api}/bin/api $out/bin/todosrht-api
   '';
 
   # pytest tests fail
@@ -33,11 +58,12 @@ buildPythonPackage rec {
   ];
 
   dontUseSetuptoolsCheck = true;
+  pythonImportsCheck = [ "todosrht" ];
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     homepage = "https://todo.sr.ht/~sircmpwn/todo.sr.ht";
     description = "Ticket tracking service for the sr.ht network";
-    license = licenses.agpl3;
+    license = licenses.agpl3Only;
     maintainers = with maintainers; [ eadwu ];
   };
 }

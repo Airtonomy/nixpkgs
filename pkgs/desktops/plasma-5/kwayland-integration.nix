@@ -1,12 +1,18 @@
-{
-  mkDerivation, lib,
-  extra-cmake-modules,
-  kguiaddons, kidletime, kwayland, kwindowsystem, qtbase,
+{ mkDerivation
+, lib
+, extra-cmake-modules
+, kguiaddons
+, kidletime
+, kwayland
+, kwindowsystem
+, qtbase
+, wayland-protocols
+, wayland-scanner
+, wayland
 }:
 
 mkDerivation {
-  name = "kwayland-integration";
-  nativeBuildInputs = [ extra-cmake-modules ];
-  buildInputs = [ kguiaddons kidletime kwindowsystem kwayland qtbase ];
-  meta.broken = lib.versionOlder qtbase.version "5.15.0";
+  pname = "kwayland-integration";
+  nativeBuildInputs = [ extra-cmake-modules wayland-scanner ];
+  buildInputs = [ kguiaddons kidletime kwindowsystem kwayland qtbase wayland-protocols wayland ];
 }

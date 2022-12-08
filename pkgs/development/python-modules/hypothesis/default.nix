@@ -1,45 +1,64 @@
-{ lib, buildPythonPackage, fetchFromGitHub
-, isPy3k, attrs, coverage, enum34, pexpect
-, doCheck ? true, pytest, pytest_xdist, flaky, mock
+{ lib
+, buildPythonPackage
+, fetchFromGitHub
+, attrs
+, exceptiongroup
+, pexpect
+, doCheck ? true
+, pytestCheckHook
+, pytest-xdist
 , sortedcontainers
+, pythonOlder
 }:
+
 buildPythonPackage rec {
-  # https://hypothesis.readthedocs.org/en/latest/packaging.html
-
-  # Hypothesis has optional dependencies on the following libraries
-  # pytz fake_factory django numpy pytest
-  # If you need these, you can just add them to your environment.
-
-  version = "5.30.0";
   pname = "hypothesis";
+  version = "6.54.5";
+  format = "setuptools";
 
-  # Use github tarballs that includes tests
+  disabled = pythonOlder "3.7";
+
   src = fetchFromGitHub {
     owner = "HypothesisWorks";
-    repo = "hypothesis-python";
+    repo = "hypothesis";
     rev = "hypothesis-python-${version}";
-    sha256 = "0fmc4jfaksr285fjhp18ibj2rr8cxmbd0pwx370r5wf8jnhm6jb3";
+    hash = "sha256-mr8ctmAzRgWNVpW+PZlOhaQ0l28P0U8PxvjoVjfHX78=";
   };
 
   postUnpack = "sourceRoot=$sourceRoot/hypothesis-python";
 
   propagatedBuildInputs = [
     attrs
-    coverage
     sortedcontainers
-  ] ++ lib.optional (!isPy3k) enum34;
+  ] ++ lib.optionals (pythonOlder "3.11") [
+    exceptiongroup
+  ];
 
-  checkInputs = [ pytest pytest_xdist flaky mock pexpect ];
+  checkInputs = [
+    pexpect
+    pytest-xdist
+    pytestCheckHook
+  ];
+
   inherit doCheck;
 
-  checkPhase = ''
-    rm tox.ini # This file changes how py.test runs and breaks it
-    py.test tests/cover
+  # This file changes how pytest runs and breaks it
+  preCheck = ''
+    rm tox.ini
   '';
 
+  pytestFlagsArray = [
+    "tests/cover"
+  ];
+
+  pythonImportsCheck = [
+    "hypothesis"
+  ];
+
   meta = with lib; {
-    description = "A Python library for property based testing";
+    description = "Library for property based testing";
     homepage = "https://github.com/HypothesisWorks/hypothesis";
     license = licenses.mpl20;
+    maintainers = with maintainers; [ SuperSandro2000 ];
   };
 }

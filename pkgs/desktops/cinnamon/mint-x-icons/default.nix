@@ -1,6 +1,7 @@
 { fetchFromGitHub
+, lib
 , stdenv
-, gnome3
+, gnome
 , gnome-icon-theme
 , hicolor-icon-theme
 , gtk3
@@ -10,18 +11,18 @@
 
 stdenv.mkDerivation rec {
   pname = "mint-x-icons";
-  version = "1.5.5";
+  version = "1.6.4";
 
   src = fetchFromGitHub {
     owner = "linuxmint";
     repo = pname;
-    # commit is named 1.5.5, tags=404
-    rev = "ecfbeb62bba41e85a61099df467c4700ac63c1e0";
-    sha256 = "1yxm7h7giag5hmymgxsg16vc0rhxb2vn3piaksc463mic4vwfa3i";
+    # they don't exactly do tags, it's just a named commit
+    rev = "4ab3c314db1b3751d87d5769629b28ac0ca3c671";
+    hash = "sha256-cPRae3EjzVtAL1Ei2LB4UNUU/m87mFT94xY/NnNR6JM=";
   };
 
   propagatedBuildInputs = [
-    gnome3.adwaita-icon-theme
+    gnome.adwaita-icon-theme
     gnome-icon-theme
     hicolor-icon-theme
     humanity-icon-theme
@@ -47,7 +48,7 @@ stdenv.mkDerivation rec {
     runHook postInstall
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     homepage = "https://github.com/linuxmint/mint-x-icons";
     description = "Mint/metal theme based on mintified versions of Clearlooks Revamp, Elementary and Faenza";
     license = licenses.gpl3Plus; # from debian/copyright

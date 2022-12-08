@@ -2,6 +2,7 @@
 # PKG_CONFIG_PATH_FOR_BUILD work properly.
 
 { stdenvNoCC
+, lib
 , buildPackages
 , pkg-config
 , baseBinName ? "pkg-config"
@@ -9,7 +10,7 @@
 , extraPackages ? [], extraBuildCommands ? ""
 }:
 
-with stdenvNoCC.lib;
+with lib;
 
 let
   stdenv = stdenvNoCC;
@@ -19,7 +20,7 @@ let
   #
   # TODO(@Ericson2314) Make unconditional, or optional but always true by
   # default.
-  targetPrefix = stdenv.lib.optionalString (targetPlatform != hostPlatform)
+  targetPrefix = lib.optionalString (targetPlatform != hostPlatform)
                                         (targetPlatform.config + "-");
 
   # See description in cc-wrapper.
@@ -30,6 +31,8 @@ in
 stdenv.mkDerivation {
   pname = targetPrefix + pkg-config.pname + "-wrapper";
   inherit (pkg-config) version;
+
+  enableParallelBuilding = true;
 
   preferLocalBuild = true;
 
@@ -43,8 +46,12 @@ stdenv.mkDerivation {
     inherit pkg-config;
   };
 
+  strictDeps = true;
   dontBuild = true;
   dontConfigure = true;
+
+  # Additional flags passed to pkg-config.
+  addFlags = lib.optional stdenv.targetPlatform.isStatic "--static";
 
   unpackPhase = ''
     src=$PWD
@@ -75,8 +82,6 @@ stdenv.mkDerivation {
     + ''
       ln -s ${pkg-config}/share $out/share
     '';
-
-  strictDeps = true;
 
   wrapperName = "PKG_CONFIG_WRAPPER";
 
@@ -119,7 +124,7 @@ stdenv.mkDerivation {
     let pkg-config_ = if pkg-config != null then pkg-config else {}; in
     (if pkg-config_ ? meta then removeAttrs pkg-config.meta ["priority"] else {}) //
     { description =
-        stdenv.lib.attrByPath ["meta" "description"] "pkg-config" pkg-config_
+        lib.attrByPath ["meta" "description"] "pkg-config" pkg-config_
         + " (wrapper script)";
       priority = 10;
   };

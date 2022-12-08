@@ -1,24 +1,39 @@
-{ stdenv, rustPlatform, fetchFromGitHub, libiconv, xorg, python3, Security, AppKit }:
+{ lib
+, stdenv
+, rustPlatform
+, fetchFromGitHub
+, libiconv
+, openssl
+, pkg-config
+, xclip
+, AppKit
+, Security
+}:
+
 rustPlatform.buildRustPackage rec {
   pname = "gitui";
-  version = "0.10.1";
+  version = "0.21.0";
 
   src = fetchFromGitHub {
     owner = "extrawurst";
     repo = pname;
     rev = "v${version}";
-    sha256 = "1ifwbi6nydh66z6cprjmz2qvy9z52rj9jg2xf054i249gy955hah";
+    sha256 = "sha256-B/RKPYq1U40NV3AM/cQi2eQaK5vxynP3JA0DReSBuCo=";
   };
 
-  cargoSha256 = "1454dn7k1fc4yxhbcmx0z3hj9d9srnlc2k1qp707h1vq46ib1rsf";
+  cargoSha256 = "sha256-r4kritS3v8GgFZfWeeyrsy6v3IlH3DByTU8Ir4FDngs=";
 
-  nativeBuildInputs = [ python3 ];
-  buildInputs = [ ]
-    ++ stdenv.lib.optional stdenv.isLinux xorg.libxcb
-    ++ stdenv.lib.optionals stdenv.isDarwin [ libiconv Security AppKit ];
+  nativeBuildInputs = [ pkg-config ];
 
-  meta = with stdenv.lib; {
-    description = "Blazing fast terminal-ui for git written in rust";
+  buildInputs = [ openssl ]
+    ++ lib.optional stdenv.isLinux xclip
+    ++ lib.optionals stdenv.isDarwin [ libiconv Security AppKit ];
+
+  # Needed to get openssl-sys to use pkg-config.
+  OPENSSL_NO_VENDOR = 1;
+
+  meta = with lib; {
+    description = "Blazing fast terminal-ui for Git written in Rust";
     homepage = "https://github.com/extrawurst/gitui";
     license = licenses.mit;
     maintainers = with maintainers; [ Br1ght0ne yanganto ];

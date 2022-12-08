@@ -1,20 +1,22 @@
-{ stdenv, buildGoPackage, fetchFromGitHub }:
+{ lib, buildGoModule, fetchFromGitHub }:
 
-# Upstream has a `./vendor` directory with all deps which we rely upon.
-buildGoPackage rec {
+buildGoModule rec {
   pname = "tty-share";
-  version = "2.0.0";
+  version = "2.2.1";
 
   src = fetchFromGitHub {
     owner = "elisescu";
     repo = "tty-share";
     rev = "v${version}";
-    sha256 = "1d2vd3d1lb4n0jq4s0p5mii1vz4r3z36hykr5mnx53srsni1wsj5";
+    sha256 = "sha256-aAqKfi0ZX0UB07yGY6x0HcMspvq4rcJXKHSONxAwMlc=";
   };
 
-  goPackagePath = "github.com/elisescu/tty-share";
+  # Upstream has a `./vendor` directory with all deps which we rely upon.
+  vendorSha256 = null;
 
-  meta = with stdenv.lib; {
+  ldflags = [ "-s" "-w" "-X main.version=${version}" ];
+
+  meta = with lib; {
     homepage = "https://tty-share.com";
     description = "Share terminal via browser for remote work or shared sessions";
     platforms = platforms.linux;

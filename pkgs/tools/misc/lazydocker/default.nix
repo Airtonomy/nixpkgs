@@ -1,21 +1,27 @@
-{ stdenv, buildGoPackage, fetchFromGitHub }:
+{ lib, buildGoModule, fetchFromGitHub }:
 
-buildGoPackage rec {
+buildGoModule rec {
   pname = "lazydocker";
-  version = "0.10";
+  version = "0.19.0";
 
   src = fetchFromGitHub {
     owner = "jesseduffield";
     repo = "lazydocker";
     rev = "v${version}";
-    sha256 = "04j5bcsxm2yf74zkphnjrg8j3w0v6bsny8sg2k4gbisgshl1i3p8";
+    sha256 = "sha256-Ns758mqz4O8hKpu3LHFFm1U1vxF1TJZ4GKstWADXOl0=";
   };
 
-  goPackagePath = "github.com/jesseduffield/lazydocker";
+  vendorSha256 = null;
 
-  subPackages = [ "." ];
+  postPatch = ''
+    rm -f pkg/config/app_config_test.go
+  '';
 
-  meta = with stdenv.lib; {
+  excludedPackages = [ "scripts" "test/printrandom" ];
+
+  ldflags = [ "-s" "-w" "-X main.version=${version}" ];
+
+  meta = with lib; {
     description = "A simple terminal UI for both docker and docker-compose";
     homepage = "https://github.com/jesseduffield/lazydocker";
     license = licenses.mit;

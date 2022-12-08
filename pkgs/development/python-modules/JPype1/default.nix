@@ -9,12 +9,12 @@
 
 buildPythonPackage rec {
   pname = "JPype1";
-  version = "1.1.2";
+  version = "1.4.0";
   disabled = isPy27;
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "c6e36de9f7ef826ff27f6d5260acc710ebc585a534c12cbac905db088ab1d992";
+    sha256 = "sha256-DF9mXuPm4xwn6dLUjdEr9OtP5oWII+ahEgGgNSdMz+E=";
   };
 
   propagatedBuildInputs = lib.optionals (pythonOlder "3.8") [
@@ -31,6 +31,10 @@ buildPythonPackage rec {
 
   meta = with lib; {
     homepage = "https://github.com/originell/jpype/";
+    sourceProvenance = with sourceTypes; [
+      fromSource
+      binaryBytecode
+    ];
     license = licenses.asl20;
     description = "A Python to Java bridge";
   };

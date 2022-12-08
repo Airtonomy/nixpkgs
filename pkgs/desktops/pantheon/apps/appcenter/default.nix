@@ -1,59 +1,44 @@
-{ stdenv
+{ lib
+, stdenv
 , nix-update-script
 , appstream
-, appstream-glib
 , dbus
-, desktop-file-utils
-, elementary-gtk-theme
-, elementary-icon-theme
 , fetchFromGitHub
-, fetchpatch
 , flatpak
-, gettext
 , glib
 , granite
 , gtk3
 , json-glib
 , libgee
+, libhandy
 , libsoup
 , libxml2
 , meson
 , ninja
 , packagekit
-, pantheon
-, pkgconfig
+, pkg-config
 , python3
 , vala
 , polkit
-, libhandy_0
 , wrapGAppsHook
 }:
 
 stdenv.mkDerivation rec {
   pname = "appcenter";
-  version = "3.5.1";
+  version = "4.0.0";
 
   src = fetchFromGitHub {
     owner = "elementary";
     repo = pname;
     rev = version;
-    sha256 = "sha256-8r0DlmG8xlCQ1uFHZQjXG2ls4VBrsRzrVY8Ey3/OYAU=";
-  };
-
-  passthru = {
-    updateScript = nix-update-script {
-      attrPath = "pantheon.${pname}";
-    };
+    sha256 = "sha256-6QWvDBhOxoK8HjmygV92WPDgq2Jbk4igWDbXrXc7/FQ=";
   };
 
   nativeBuildInputs = [
-    appstream-glib
-    dbus # for pkgconfig
-    desktop-file-utils
-    gettext
+    dbus # for pkg-config
     meson
     ninja
-    pkgconfig
+    pkg-config
     python3
     vala
     wrapGAppsHook
@@ -61,15 +46,13 @@ stdenv.mkDerivation rec {
 
   buildInputs = [
     appstream
-    elementary-gtk-theme
-    elementary-icon-theme
     flatpak
     glib
     granite
     gtk3
     json-glib
     libgee
-    libhandy_0 # doesn't support libhandy-1 yet
+    libhandy
     libsoup
     libxml2
     packagekit
@@ -77,7 +60,6 @@ stdenv.mkDerivation rec {
   ];
 
   mesonFlags = [
-    "-Dhomepage=false"
     "-Dpayments=false"
     "-Dcurated=false"
   ];
@@ -87,11 +69,18 @@ stdenv.mkDerivation rec {
     patchShebangs meson/post_install.py
   '';
 
-  meta = with stdenv.lib; {
+  passthru = {
+    updateScript = nix-update-script {
+      attrPath = "pantheon.${pname}";
+    };
+  };
+
+  meta = with lib; {
     homepage = "https://github.com/elementary/appcenter";
     description = "An open, pay-what-you-want app store for indie developers, designed for elementary OS";
     license = licenses.gpl3Plus;
     platforms = platforms.linux;
-    maintainers = pantheon.maintainers;
+    maintainers = teams.pantheon.members;
+    mainProgram = "io.elementary.appcenter";
   };
 }

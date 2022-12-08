@@ -2,7 +2,6 @@
 , fetchFromGitHub
 , rustPlatform
 , cmake
-, llvmPackages
 , openssl
 , pkg-config
 , stdenv
@@ -12,39 +11,40 @@
 
 rustPlatform.buildRustPackage rec {
   pname = "openethereum";
-  version = "3.1.0";
+  version = "3.3.5";
 
   src = fetchFromGitHub {
     owner = "openethereum";
     repo = "openethereum";
     rev = "v${version}";
-    sha256 = "cs84Zz0nhagGDu5sDFTaFZF3SPEgJU8F4vGX7KLihOM=";
+    sha256 = "sha256-PpRRoufuZ9fXbLonMAo6qaA/jtJZXW98uM0BEXdJ2oU=";
   };
 
-  cargoSha256 = "6suNkHw1BbISb0MkYkUaD+mpUal+kn3y1SFVqzJFqJc=";
+  cargoSha256 = "sha256-xXUNXQvVq6XqW/hmCfJ2/mHKkZu0amRZ77vX+Jib0iM=";
 
-  LIBCLANG_PATH = "${llvmPackages.libclang}/lib";
-  nativeBuildInputs = [
-    cmake
-    llvmPackages.clang
-    llvmPackages.libclang
-    pkg-config
-  ];
+  nativeBuildInputs = [ cmake pkg-config ];
 
   buildInputs = [ openssl ]
-    ++ stdenv.lib.optionals stdenv.isLinux [ systemd ]
-    ++ stdenv.lib.optionals stdenv.isDarwin [ darwin.Security ];
+    ++ lib.optionals stdenv.isLinux [ systemd ]
+    ++ lib.optionals stdenv.isDarwin [ darwin.Security ];
 
-  cargoBuildFlags = [ "--features final" ];
+  buildFeatures = [ "final" ];
 
-  # test result: FAILED. 88 passed; 13 failed; 0 ignored; 0 measured; 0 filtered out
-  doCheck = false;
+  # Fix tests by preventing them from writing to /homeless-shelter.
+  preCheck = ''
+    export HOME=$(mktemp -d)
+  '';
+
+  # Exclude some tests that don't work in the sandbox
+  # - Nat test requires network access
+  checkFlags = [ "--skip" "configuration::tests::should_resolve_external_nat_hosts" ];
 
   meta = with lib; {
+    broken = stdenv.isDarwin;
     description = "Fast, light, robust Ethereum implementation";
     homepage = "http://parity.io/ethereum";
     license = licenses.gpl3;
-    maintainers = with maintainers; [ akru xrelkd ];
-    platforms = stdenv.lib.platforms.unix;
+    maintainers = with maintainers; [ akru ];
+    platforms = lib.platforms.unix;
   };
 }

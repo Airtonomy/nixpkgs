@@ -13,7 +13,7 @@
 , libpqxx
 , clang-tools
 , catch2
-, python
+, python3
 , gtest
 , doxygen
 , fixDarwinDylibNames
@@ -21,13 +21,13 @@
 
 stdenv.mkDerivation rec {
   pname = "tiledb";
-  version = "2.1.3";
+  version = "2.3.3";
 
   src = fetchFromGitHub {
     owner = "TileDB-Inc";
     repo = "TileDB";
     rev = version;
-    sha256 = "1ia00bk6dc1176arf84lx08x4c7c74q7ycn7dqjnmyxkg3kmr21g";
+    sha256 = "sha256-3Z5+QUzo2f24q11j6s8KX2vHLFkipFvGk2VFComWW/o=";
   };
 
   # (bundled) blosc headers have a warning on some archs that it will be using
@@ -39,15 +39,13 @@ stdenv.mkDerivation rec {
   nativeBuildInputs = [
     clang-tools
     cmake
-    python
+    python3
     doxygen
   ] ++ lib.optional stdenv.hostPlatform.isDarwin fixDarwinDylibNames;
 
   checkInputs = [
     gtest
   ];
-
-  enableParallelBuilding = true;
 
   buildInputs = [
     catch2

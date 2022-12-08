@@ -1,6 +1,6 @@
 { boost, cmake, fetchFromGitHub, freeglut, freetype, glew, libjpeg, libmypaint
-, libpng, libtiff, libusb1, lz4, lzma, lzo, openblas, pkgconfig, qtbase
-, qtmultimedia, qtscript, stdenv, superlu, wrapQtAppsHook, }:
+, libpng, libtiff, libusb1, lz4, xz, lzo, openblas, opencv, pkg-config, qtbase
+, qtmultimedia, qtscript, qtserialport, lib, stdenv, superlu, wrapQtAppsHook, }:
 let source = import ./source.nix { inherit fetchFromGitHub; };
 in stdenv.mkDerivation rec {
   inherit (source) src;
@@ -8,7 +8,7 @@ in stdenv.mkDerivation rec {
   pname = "opentoonz";
   version = source.versions.opentoonz;
 
-  nativeBuildInputs = [ cmake pkgconfig wrapQtAppsHook ];
+  nativeBuildInputs = [ cmake pkg-config wrapQtAppsHook ];
 
   buildInputs = [
     boost
@@ -21,12 +21,14 @@ in stdenv.mkDerivation rec {
     libtiff
     libusb1
     lz4
-    lzma
+    xz
     lzo
     openblas
+    opencv
     qtbase
     qtmultimedia
     qtscript
+    qtserialport
     superlu
   ];
 
@@ -45,7 +47,7 @@ in stdenv.mkDerivation rec {
   meta = {
     description = "Full-featured 2D animation creation software";
     homepage = "https://opentoonz.github.io/";
-    license = stdenv.lib.licenses.bsd3;
-    maintainers = with stdenv.lib.maintainers; [ chkno ];
+    license = lib.licenses.bsd3;
+    maintainers = with lib.maintainers; [ chkno ];
   };
 }

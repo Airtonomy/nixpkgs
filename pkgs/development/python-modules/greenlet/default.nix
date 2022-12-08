@@ -1,31 +1,31 @@
 { lib
 , buildPythonPackage
 , fetchPypi
-, six
 , isPyPy
+, unittestCheckHook
 }:
 
 
 buildPythonPackage rec {
   pname = "greenlet";
-  version = "0.4.17";
-  disabled = isPyPy;  # builtin for pypy
+  version = "1.1.3";
+  disabled = isPyPy; # builtin for pypy
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "0swdhrcq13bdszv3yz5645gi4ijbzmmhxpb6whcfg3d7d5f87n21";
+    sha256 = "sha256-vLbG3R1r5tONbbKDdH0H/aCJ/4xVmoNSNlYKRBA0BFU=";
   };
 
-  propagatedBuildInputs = [ six ];
+  checkInputs = [ unittestCheckHook ];
 
-  # see https://github.com/python-greenlet/greenlet/issues/85
-  preCheck = ''
-    rm tests/test_leaks.py
-  '';
+  unittestFlagsArray = [ "-v" "greenlet.tests" ];
 
-  meta = {
-    homepage = "https://pypi.python.org/pypi/greenlet";
+  meta = with lib; {
+    homepage = "https://github.com/python-greenlet/greenlet";
     description = "Module for lightweight in-process concurrent programming";
-    license = lib.licenses.lgpl2;
+    license = with licenses; [
+      psfl # src/greenlet/slp_platformselect.h & files in src/greenlet/platform/ directory
+      mit
+    ];
   };
 }

@@ -18,7 +18,7 @@
 # Normal gem packages can be used outside of bundler; a binstub is created in
 # $out/bin.
 
-{ lib, fetchurl, fetchgit, makeWrapper, git, darwin
+{ lib, fetchurl, fetchgit, makeWrapper, gitMinimal, libobjc
 , ruby, bundler
 } @ defs:
 
@@ -35,6 +35,7 @@ lib.makeOverridable (
 , namePrefix ? (let
     rubyName = builtins.parseDrvName ruby.name;
   in "${rubyName.name}${rubyName.version}-")
+, nativeBuildInputs ? []
 , buildInputs ? []
 , meta ? {}
 , patches ? []
@@ -87,11 +88,15 @@ stdenv.mkDerivation ((builtins.removeAttrs attrs ["source"]) // {
   inherit dontStrip;
   inherit type;
 
-  buildInputs = [
+  nativeBuildInputs = [
     ruby makeWrapper
-  ] ++ lib.optionals (type == "git") [ git ]
+  ] ++ lib.optionals (type == "git") [ gitMinimal ]
     ++ lib.optionals (type != "gem") [ bundler ]
-    ++ lib.optional stdenv.isDarwin darwin.libobjc
+    ++ nativeBuildInputs;
+
+  buildInputs = [
+    ruby
+  ] ++ lib.optionals stdenv.isDarwin [ libobjc ]
     ++ buildInputs;
 
   #name = builtins.trace (attrs.name or "no attr.name" ) "${namePrefix}${gemName}-${version}";
@@ -128,6 +133,12 @@ stdenv.mkDerivation ((builtins.removeAttrs attrs ["source"]) // {
 
     runHook postUnpack
   '';
+
+  # As of ruby 3.0, ruby headers require -fdeclspec when building with clang
+  # Introduced in https://github.com/ruby/ruby/commit/0958e19ffb047781fe1506760c7cbd8d7fe74e57
+  NIX_CFLAGS_COMPILE = lib.optionals (stdenv.cc.isClang && lib.versionAtLeast ruby.version.major "3") [
+    "-fdeclspec"
+  ];
 
   buildPhase = attrs.buildPhase or ''
     runHook preBuild
@@ -211,8 +222,8 @@ stdenv.mkDerivation ((builtins.removeAttrs attrs ["source"]) // {
 
     # looks like useless files which break build repeatability and consume space
     pushd $out/${ruby.gemPath}
-    rm -fv doc/*/*/created.rid || true
-    rm -fv {gems/*/ext/*,extensions/*/*/*}/{Makefile,mkmf.log,gem_make.out} || true
+    find doc/ -iname created.rid -delete -print
+    find gems/*/ext/ extensions/ \( -iname Makefile -o -iname mkmf.log -o -iname gem_make.out \) -delete -print
     ${if keepGemCache then "" else "rm -fvr cache"}
     popd
 
@@ -236,7 +247,11 @@ stdenv.mkDerivation ((builtins.removeAttrs attrs ["source"]) // {
   propagatedUserEnvPkgs = gemPath ++ propagatedUserEnvPkgs;
 
   passthru = passthru // { isRubyGem = true; };
-  inherit meta;
+  meta = {
+    # default to Ruby's platforms
+    platforms = ruby.meta.platforms;
+    mainProgram = gemName;
+  } // meta;
 })
 
 )

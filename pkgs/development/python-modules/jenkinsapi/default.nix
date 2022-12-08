@@ -1,5 +1,6 @@
-{ stdenv
+{ lib, stdenv
 , buildPythonPackage
+, pythonAtLeast
 , fetchPypi
 , mock
 , pytest
@@ -13,6 +14,9 @@
 buildPythonPackage rec {
   pname = "jenkinsapi";
   version = "0.3.11";
+  format = "setuptools";
+
+  disabled = pythonAtLeast "3.6";
 
   src = fetchPypi {
     inherit pname version;
@@ -30,7 +34,7 @@ buildPythonPackage rec {
       -k "not systests and not test_plugins and not test_view"
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "A Python API for accessing resources on a Jenkins continuous-integration server";
     homepage = "https://github.com/salimfadhley/jenkinsapi";
     maintainers = with maintainers; [ drets ];

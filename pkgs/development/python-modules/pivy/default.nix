@@ -1,15 +1,17 @@
-{ stdenv, buildPythonPackage, fetchFromGitHub, pkgs, qtbase, qmake, soqt }:
+{ lib, buildPythonPackage, fetchFromGitHub, pkgs, qtbase, qmake, soqt }:
 
 buildPythonPackage rec {
   pname = "pivy";
-  version = "0.6.5";
+  version = "0.6.8";
 
   src = fetchFromGitHub {
     owner = "coin3d";
     repo = "pivy";
-    rev = version;
-    sha256 = "0vids7sxk8w5vr73xdnf8xdci71a7syl6cd35aiisppbqyyfmykx";
+    rev = "refs/tags/${version}";
+    hash = "sha256-y72nzZAelyRDR2JS73/0jo2x/XiDZpsERPZV3gzIhAI=";
   };
+
+  dontUseCmakeConfigure = true;
 
   nativeBuildInputs = with pkgs; [
     swig qmake cmake
@@ -29,16 +31,15 @@ buildPythonPackage rec {
   ];
 
   dontUseQmakeConfigure = true;
-  dontUseCmakeConfigure = true;
-
+  dontWrapQtApps =true;
   doCheck = false;
 
   postPatch = ''
-    substituteInPlace CMakeLists.txt --replace \$'{SoQt_INCLUDE_DIRS}' \
+    substituteInPlace distutils_cmake/CMakeLists.txt --replace \$'{SoQt_INCLUDE_DIRS}' \
       \$'{Coin_INCLUDE_DIR}'\;\$'{SoQt_INCLUDE_DIRS}'
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     homepage = "https://github.com/coin3d/pivy/";
     description = "A Python binding for Coin";
     license = licenses.bsd0;

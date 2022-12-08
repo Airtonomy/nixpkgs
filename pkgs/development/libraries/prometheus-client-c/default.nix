@@ -1,4 +1,4 @@
-{ stdenv
+{ lib, stdenv
 , fetchFromGitHub
 , fetchpatch
 , cmake
@@ -43,6 +43,13 @@ let
         )
       ];
 
+      # Workaround build failure on -fno-common toolchains like upstream
+      # gcc-10. Otherwise build fails as:
+      #   ld: CMakeFiles/prom.dir/src/prom_process_stat.c.o:(.bss+0x0): multiple definition of
+      #     `prom_process_start_time_seconds'; CMakeFiles/prom.dir/src/prom_collector.c.o:(.bss+0x0): first defined here
+      # Should be fixed in 1.2.0 and later: https://github.com/digitalocean/prometheus-client-c/pull/25
+      NIX_CFLAGS_COMPILE = "-fcommon";
+
       preConfigure = ''
         cd ${subdir}
       '';
@@ -50,9 +57,9 @@ let
       meta = {
         homepage = "https://github.com/digitalocean/prometheus-client-c/";
         inherit description;
-        platforms = stdenv.lib.platforms.unix;
-        license = stdenv.lib.licenses.asl20;
-        maintainers = [ stdenv.lib.maintainers.cfsmp3 ];
+        platforms = lib.platforms.unix;
+        license = lib.licenses.asl20;
+        maintainers = [ lib.maintainers.cfsmp3 ];
       };
     };
 in

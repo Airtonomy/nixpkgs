@@ -1,4 +1,7 @@
-{ stdenv, fetchurl, pkgconfig
+{ lib
+, stdenv
+, fetchurl
+, pkg-config
 , buildsystem
 }:
 
@@ -9,10 +12,11 @@ stdenv.mkDerivation rec {
 
   src = fetchurl {
     url = "http://download.netsurf-browser.org/libs/releases/${libname}-${version}-src.tar.gz";
-    sha256 = "sha256-AasdaYnBx3VQkNskw/ZOSflcVgrknCa+xRQrrGgCxHI=";
+    hash = "sha256-AasdaYnBx3VQkNskw/ZOSflcVgrknCa+xRQrrGgCxHI=";
   };
 
-  nativeBuildInputs = [ pkgconfig ];
+  nativeBuildInputs = [ pkg-config ];
+
   buildInputs = [ buildsystem ];
 
   makeFlags = [
@@ -20,8 +24,8 @@ stdenv.mkDerivation rec {
     "NSSHARED=${buildsystem}/share/netsurf-buildsystem"
   ];
 
-  meta = with stdenv.lib; {
-    homepage = "https://www.netsurf-browser.org/projects/${libname}/";
+  meta = with lib; {
+    homepage = "https://www.netsurf-browser.org/";
     description = "UTF8 Processing library for netsurf browser";
     license = licenses.mit;
     maintainers = [ maintainers.vrthra maintainers.AndersonTorres ];

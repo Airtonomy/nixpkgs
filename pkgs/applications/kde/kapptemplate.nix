@@ -1,6 +1,5 @@
 { lib
 , mkDerivation
-, fetchurl
 , cmake
 , extra-cmake-modules
 , qtbase
@@ -8,7 +7,7 @@
 }:
 mkDerivation {
 
-  name = "kapptemplate";
+  pname = "kapptemplate";
 
   nativeBuildInputs = [ extra-cmake-modules cmake  ];
 

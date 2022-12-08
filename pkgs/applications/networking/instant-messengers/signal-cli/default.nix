@@ -1,13 +1,13 @@
-{ stdenv, lib, fetchurl, makeWrapper, jre_headless, libmatthew_java, dbus, dbus_java }:
+{ stdenv, lib, fetchurl, makeWrapper, openjdk17_headless, libmatthew_java, dbus, dbus_java }:
 
 stdenv.mkDerivation rec {
   pname = "signal-cli";
-  version = "0.6.12";
+  version = "0.11.4";
 
   # Building from source would be preferred, but is much more involved.
   src = fetchurl {
-    url = "https://github.com/AsamK/signal-cli/releases/download/v${version}/signal-cli-${version}.tar.gz";
-    sha256 = "0i1y2p5qi2bwhkm8sv0wkb0lfi2vm26qalnpg6kn0ikcxkqkq5bc";
+    url = "https://github.com/AsamK/signal-cli/releases/download/v${version}/signal-cli-${version}-Linux.tar.gz";
+    sha256 = "sha256-1NwaR8EMH2EQKskkPSrfWbUu8Ib7DwI6UNL3nOtc/tM=";
   };
 
   buildInputs = lib.optionals stdenv.isLinux [ libmatthew_java dbus dbus_java ];
@@ -18,15 +18,15 @@ stdenv.mkDerivation rec {
     cp -r lib $out/lib
     cp bin/signal-cli $out/bin/signal-cli
   '' + (if stdenv.isLinux then ''
-    makeWrapper ${jre_headless}/bin/java $out/bin/signal-cli \
-      --set JAVA_HOME "${jre_headless}" \
+    makeWrapper ${openjdk17_headless}/bin/java $out/bin/signal-cli \
+      --set JAVA_HOME "${openjdk17_headless}" \
       --add-flags "-classpath '$out/lib/*:${libmatthew_java}/lib/jni'" \
       --add-flags "-Djava.library.path=${libmatthew_java}/lib/jni:${dbus_java}/share/java/dbus:$out/lib" \
       --add-flags "org.asamk.signal.Main"
   '' else ''
     wrapProgram $out/bin/signal-cli \
-      --prefix PATH : ${lib.makeBinPath [ jre_headless ]} \
-      --set JAVA_HOME ${jre_headless}
+      --prefix PATH : ${lib.makeBinPath [ openjdk17_headless ]} \
+      --set JAVA_HOME ${openjdk17_headless}
   '');
 
   # Execution in the macOS (10.13) sandbox fails with

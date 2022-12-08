@@ -1,4 +1,4 @@
-{ stdenv
+{ lib, stdenv
 , fetchFromGitHub
 , fetchpatch
 , ninja
@@ -11,7 +11,7 @@
 , glib
 , gtk3
 , graphene
-, epoxy
+, libepoxy
 , json-glib
 }:
 
@@ -47,7 +47,7 @@ stdenv.mkDerivation rec {
   ];
 
   buildInputs = [
-    epoxy
+    libepoxy
     json-glib
   ];
 
@@ -63,11 +63,12 @@ stdenv.mkDerivation rec {
     "-Dexamples=false"
   ];
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "GObject/GTK port of three.js";
     homepage = "https://github.com/alexlarsson/gthree";
     license = licenses.mit;
     maintainers = with maintainers; [ jtojnar ];
     platforms = platforms.unix;
+    broken = stdenv.isDarwin; # never built on Hydra https://hydra.nixos.org/job/nixpkgs/trunk/gthree.x86_64-darwin
   };
 }

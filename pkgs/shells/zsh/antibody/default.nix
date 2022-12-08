@@ -1,4 +1,4 @@
-{ lib, buildGoModule, fetchFromGitHub }:
+{ lib, stdenv, buildGoModule, fetchFromGitHub }:
 
 buildGoModule rec {
   pname = "antibody";
@@ -15,12 +15,20 @@ buildGoModule rec {
 
   doCheck = false;
 
-  buildFlagsArray = [ "-ldflags=-s -w -X main.version=${version}" ];
+  ldflags = [ "-s" "-w" "-X main.version=${version}" ];
 
   meta = with lib; {
     description = "The fastest shell plugin manager";
     homepage = "https://github.com/getantibody/antibody";
     license = licenses.mit;
-    maintainers = with maintainers; [ Br1ght0ne worldofpeace ];
+    maintainers = with maintainers; [ Br1ght0ne ];
+
+    # golang.org/x/sys needs to be updated due to:
+    #
+    #   https://github.com/golang/go/issues/49219
+    #
+    # but this package is no longer maintained.
+    #
+    broken = stdenv.isDarwin;
   };
 }

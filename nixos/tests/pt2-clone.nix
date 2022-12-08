@@ -1,10 +1,10 @@
 import ./make-test-python.nix ({ pkgs, ... }: {
   name = "pt2-clone";
-  meta = with pkgs.stdenv.lib.maintainers; {
+  meta = with pkgs.lib.maintainers; {
     maintainers = [ fgaz ];
   };
 
-  machine = { config, pkgs, ... }: {
+  nodes.machine = { config, pkgs, ... }: {
     imports = [
       ./common/x11.nix
     ];
@@ -22,7 +22,7 @@ import ./make-test-python.nix ({ pkgs, ... }: {
       # Add a dummy sound card, or the program won't start
       machine.execute("modprobe snd-dummy")
 
-      machine.execute("pt2-clone &")
+      machine.execute("pt2-clone >&2 &")
 
       machine.wait_for_window(r"ProTracker")
       machine.sleep(5)

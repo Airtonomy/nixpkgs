@@ -1,8 +1,8 @@
-{ stdenv, fetchurl, meson, ninja
+{ lib, stdenv, fetchurl, meson, ninja
 , gtk-doc ? null, file, docbook_xsl
 , buildDevDoc ? gtk-doc != null
 }: let
-  inherit (stdenv.lib) optional optionals;
+  inherit (lib) optional optionals;
 in stdenv.mkDerivation rec {
   pname = "orc";
   version = "0.4.32";
@@ -12,13 +12,21 @@ in stdenv.mkDerivation rec {
     sha256 = "1w0qmyj3v9sb2g7ff39pp38b9850y9hyy0bag26ifrby5f7ksvm6";
   };
 
+  postPatch = lib.optionalString stdenv.isAarch32 ''
+    # https://gitlab.freedesktop.org/gstreamer/orc/-/issues/20
+    sed -i '/exec_opcodes_sys/d' testsuite/meson.build
+  '' + lib.optionalString (stdenv.isDarwin && stdenv.isx86_64) ''
+    # This benchmark times out on Hydra.nixos.org
+    sed -i '/memcpy_speed/d' testsuite/meson.build
+  '';
+
   outputs = [ "out" "dev" ]
      ++ optional buildDevDoc "devdoc"
   ;
   outputBin = "dev"; # compilation tools
 
   mesonFlags =
-    optional (!buildDevDoc) [ "-Dgtk_doc=disabled" ]
+    optionals (!buildDevDoc) [ "-Dgtk_doc=disabled" ]
   ;
 
   nativeBuildInputs = [ meson ninja ]
@@ -27,7 +35,7 @@ in stdenv.mkDerivation rec {
 
   doCheck = true;
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "The Oil Runtime Compiler";
     homepage = "https://gstreamer.freedesktop.org/projects/orc.html";
     # The source code implementing the Marsenne Twister algorithm is licensed

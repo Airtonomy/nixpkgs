@@ -1,4 +1,4 @@
-{ stdenv, pkgs, fetchurl, zlib, gmp, ncurses5, lib }:
+{ stdenv, pkgs, fetchurl, zlib, gmp, lib }:
 
 # from justinwoo/easy-purescript-nix
 # https://github.com/justinwoo/easy-purescript-nix/blob/d383972c82620a712ead4033db14110497bc2c9c/purs.nix
@@ -18,25 +18,24 @@ let
 
 in stdenv.mkDerivation rec {
   pname = "purescript";
-  version = "0.13.8";
+  version = "0.15.6";
 
+  # These hashes can be updated automatically by running the ./update.sh script.
   src =
     if stdenv.isDarwin
     then
     fetchurl {
       url = "https://github.com/${pname}/${pname}/releases/download/v${version}/macos.tar.gz";
-      sha256 = "058w8w24g7xbdkn5l97jfj9dcg81vkfh3w8112anj982lynk6391";
+      sha256 = "14l4m9xgp9slg4hfaqkwvzdvmg26qj2livldni3lmivvcagjgb2x";
     }
     else
     fetchurl {
       url = "https://github.com/${pname}/${pname}/releases/download/v${version}/linux64.tar.gz";
-      sha256 = "01xb9sl6rmg02ypdrv4n0mkzmdr5y9rajcdmg9c3j46q7z6q9mxy";
+      sha256 = "1vw3igxv4zr5gf1ml5ls17w9cc9shdn8fvbk6dkfnxrs93cwrq0k";
     };
 
 
-  buildInputs = [ zlib
-                  gmp
-                  ncurses5 ];
+  buildInputs = [ zlib gmp ];
   libPath = lib.makeLibraryPath buildInputs;
   dontStrip = true;
 
@@ -51,15 +50,21 @@ in stdenv.mkDerivation rec {
     $PURS --bash-completion-script $PURS > $out/share/bash-completion/completions/purs-completion.bash
   '';
 
-  passthru.tests = {
-    minimal-module = pkgs.callPackage ./test-minimal-module {};
+  passthru = {
+    updateScript = ./update.sh;
+    tests = {
+      minimal-module = pkgs.callPackage ./test-minimal-module {};
+    };
   };
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "A strongly-typed functional programming language that compiles to JavaScript";
     homepage = "https://www.purescript.org/";
     license = licenses.bsd3;
+    sourceProvenance = with lib.sourceTypes; [ binaryNativeCode ];
     maintainers = with maintainers; [ justinwoo mbbx6spp cdepillabout ];
     platforms = [ "x86_64-linux" "x86_64-darwin" ];
+    mainProgram = "purs";
+    changelog = "https://github.com/purescript/purescript/releases/tag/v${version}";
   };
 }

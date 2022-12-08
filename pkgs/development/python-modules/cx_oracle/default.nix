@@ -1,14 +1,14 @@
-{ stdenv, buildPythonPackage, fetchPypi, odpic }:
+{ lib, buildPythonPackage, fetchPypi, odpic }:
 
 buildPythonPackage rec {
   pname = "cx_Oracle";
-  version = "8.0.1";
+  version = "8.3.0";
 
   buildInputs = [ odpic ];
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "f10ada7f821a325c6befdd6fef1cac44ebc830736d0b75dda7b8ac9f851087b2";
+    sha256 = "3b2d215af4441463c97ea469b9cc307460739f89fdfa8ea222ea3518f1a424d9";
   };
 
   preConfigure = ''
@@ -19,7 +19,7 @@ buildPythonPackage rec {
   # Check need an Oracle database to run
   doCheck = false;
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Python interface to Oracle";
     homepage = "https://oracle.github.io/python-cx_Oracle";
     license = licenses.bsd3;

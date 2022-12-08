@@ -4,21 +4,22 @@ with python3Packages;
 
 buildPythonApplication rec {
   pname = "linkchecker";
-  version = "unstable-2020-08-15";
+  version = "10.0.1";
 
   src = fetchFromGitHub {
     owner = pname;
     repo = pname;
-    rev = "0086c28b3a419faa60562f2713346996062c03c2";
-    sha256 = "0am5id8vqlqn1gb9jri0vjgiq5ffgrjq8yzdk1zc98gn2n0397wl";
+    rev = "v" + version;
+    sha256 = "sha256-OOssHbX9nTCURpMKIy+95ZTvahuUAabLUhPnRp3xpN4=";
   };
 
   nativeBuildInputs = [ gettext ];
 
   propagatedBuildInputs = [
-    ConfigArgParse
+    configargparse
     argcomplete
     beautifulsoup4
+    pyopenssl
     dnspython
     pyxdg
     requests

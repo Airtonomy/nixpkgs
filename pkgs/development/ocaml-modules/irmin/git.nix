@@ -1,16 +1,35 @@
-{ lib, buildDunePackage, git, irmin, irmin-mem, irmin-test, git-unix }:
+{ lib, buildDunePackage
+, git, irmin, ppx_irmin, git-unix, irmin-watcher
+, digestif, cstruct, fmt, astring, fpath, logs, lwt, uri
+, cohttp-lwt-unix, mimic
+, irmin-test, mtime, alcotest, cacert
+}:
 
-buildDunePackage rec {
+buildDunePackage {
 
   pname = "irmin-git";
 
-  inherit (irmin) version src;
+  inherit (irmin) version src strictDeps;
 
-  useDune2 = true;
+  propagatedBuildInputs = [
+    git
+    irmin
+    ppx_irmin
+    digestif
+    cstruct
+    fmt
+    astring
+    fpath
+    logs
+    lwt
+    uri
+    irmin-watcher
+    git-unix
+    mimic
+    cohttp-lwt-unix
+  ];
 
-  propagatedBuildInputs = [ git irmin ];
-
-  checkInputs = lib.optionals doCheck [ git-unix irmin-mem irmin-test ];
+  checkInputs = [ mtime alcotest irmin-test cacert ];
 
   doCheck = true;
 

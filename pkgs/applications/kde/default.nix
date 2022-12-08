@@ -4,8 +4,8 @@
 
 READ THIS FIRST
 
-This module is for official packages in the KDE Applications Bundle. All
-available packages are listed in `./srcs.nix`, although some are not yet
+This module is for official packages in the KDE Gear. All available
+packages are listed in `./srcs.nix`, although some are not yet
 packaged in Nixpkgs (see below).
 
 IF YOUR PACKAGE IS NOT LISTED IN `./srcs.nix`, IT DOES NOT GO HERE.
@@ -30,27 +30,31 @@ still shows most of the available features is in `./gwenview.nix`.
 }:
 
 let
+  minQtVersion = "5.15";
+  broken = lib.versionOlder libsForQt5.qtbase.version minQtVersion;
+
   mirror = "mirror://kde";
   srcs = import ./srcs.nix { inherit fetchurl mirror; };
 
   mkDerivation = args:
     let
-      inherit (args) name;
-      sname = args.sname or name;
-      inherit (srcs.${sname}) src version;
+      inherit (args) pname;
+      inherit (srcs.${pname}) src version;
       mkDerivation =
         libsForQt5.callPackage ({ mkDerivation }: mkDerivation) {};
     in
       mkDerivation (args // {
-        pname = name;
-        inherit src version;
+        inherit pname version src;
 
         outputs = args.outputs or [ "out" ];
 
-        meta = {
-          platforms = lib.platforms.linux;
-          homepage = "http://www.kde.org";
-        } // (args.meta or {});
+        meta =
+          let meta = args.meta or {}; in
+          meta // {
+            homepage = meta.homepage or "http://www.kde.org";
+            platforms = meta.platforms or lib.platforms.linux;
+            broken = meta.broken or broken;
+          };
       });
 
   packages = self: with self;
@@ -64,6 +68,7 @@ let
     in {
       akonadi = callPackage ./akonadi {};
       akonadi-calendar = callPackage ./akonadi-calendar.nix {};
+      akonadi-calendar-tools = callPackage ./akonadi-calendar-tools.nix {};
       akonadi-contacts = callPackage ./akonadi-contacts.nix {};
       akonadi-import-wizard = callPackage ./akonadi-import-wizard.nix {};
       akonadi-mime = callPackage ./akonadi-mime.nix {};
@@ -73,14 +78,15 @@ let
       akregator = callPackage ./akregator.nix {};
       ark = callPackage ./ark {};
       baloo-widgets = callPackage ./baloo-widgets.nix {};
-      bovo = callPackage ./bovo.nix {};
       bomber = callPackage ./bomber.nix {};
+      bovo = callPackage ./bovo.nix {};
       calendarsupport = callPackage ./calendarsupport.nix {};
       dolphin = callPackage ./dolphin.nix {};
       dolphin-plugins = callPackage ./dolphin-plugins.nix {};
       dragon = callPackage ./dragon.nix {};
       elisa = callPackage ./elisa.nix {};
       eventviews = callPackage ./eventviews.nix {};
+      falkon = callPackage ./falkon.nix {};
       ffmpegthumbs = callPackage ./ffmpegthumbs.nix { };
       filelight = callPackage ./filelight.nix {};
       granatier = callPackage ./granatier.nix {};
@@ -88,10 +94,13 @@ let
       gwenview = callPackage ./gwenview.nix {};
       incidenceeditor = callPackage ./incidenceeditor.nix {};
       k3b = callPackage ./k3b.nix {};
+      kaccounts-integration = callPackage ./kaccounts-integration.nix {};
+      kaccounts-providers = callPackage ./kaccounts-providers.nix {};
       kaddressbook = callPackage ./kaddressbook.nix {};
       kalarm = callPackage ./kalarm.nix {};
-      kalarmcal = callPackage ./kalarmcal.nix {};
+      kalendar = callPackage ./kalendar.nix {};
       kalzium = callPackage ./kalzium.nix {};
+      kamoso = callPackage ./kamoso.nix {};
       kapman = callPackage ./kapman.nix {};
       kapptemplate = callPackage ./kapptemplate.nix { };
       kate = callPackage ./kate.nix {};
@@ -110,10 +119,14 @@ let
       kdegraphics-mobipocket = callPackage ./kdegraphics-mobipocket.nix {};
       kdegraphics-thumbnailers = callPackage ./kdegraphics-thumbnailers.nix {};
       kdenetwork-filesharing = callPackage ./kdenetwork-filesharing.nix {};
-      kdenlive = callPackage ./kdenlive.nix {};
-      kdepim-runtime = callPackage ./kdepim-runtime {};
+      kdenlive = callPackage ./kdenlive {};
       kdepim-addons = callPackage ./kdepim-addons.nix {};
-      kdepim-apps-libs = callPackage ./kdepim-apps-libs {};
+      kdepim-runtime = callPackage ./kdepim-runtime {};
+      kdev-php = callPackage ./kdevelop/kdev-php.nix {};
+      kdev-python = callPackage ./kdevelop/kdev-python.nix {};
+      kdevelop = callPackage ./kdevelop/wrapper.nix {};
+      kdevelop-pg-qt = callPackage ./kdevelop/kdevelop-pg-qt.nix {};
+      kdevelop-unwrapped = callPackage ./kdevelop/kdevelop.nix {};
       kdf = callPackage ./kdf.nix {};
       kdialog = callPackage ./kdialog.nix {};
       kdiamond = callPackage ./kdiamond.nix {};
@@ -129,9 +142,11 @@ let
       kigo = callPackage ./kigo.nix {};
       killbots = callPackage ./killbots.nix {};
       kimap = callPackage ./kimap.nix {};
-      kipi-plugins = callPackage ./kipi-plugins.nix {};
-      kitinerary = callPackage ./kitinerary.nix {};
       kio-extras = callPackage ./kio-extras.nix {};
+      kio-gdrive = callPackage ./kio-gdrive.nix {};
+      kipi-plugins = callPackage ./kipi-plugins.nix {};
+      kirigami-gallery = callPackage ./kirigami-gallery.nix {};
+      kitinerary = callPackage ./kitinerary.nix {};
       kldap = callPackage ./kldap.nix {};
       kleopatra = callPackage ./kleopatra.nix {};
       klettres = callPackage ./klettres.nix {};
@@ -145,6 +160,7 @@ let
       kmime = callPackage ./kmime.nix {};
       kmines = callPackage ./kmines.nix {};
       kmix = callPackage ./kmix.nix {};
+      kmousetool = callPackage ./kmousetool.nix {};
       kmplot = callPackage ./kmplot.nix {};
       knavalbattle = callPackage ./knavalbattle.nix {};
       knetwalk = callPackage ./knetwalk.nix {};
@@ -154,29 +170,33 @@ let
       kollision = callPackage ./kollision.nix {};
       kolourpaint = callPackage ./kolourpaint.nix {};
       kompare = callPackage ./kompare.nix {};
+      konqueror = callPackage ./konqueror.nix {};
+      konquest = callPackage ./konquest.nix {};
       konsole = callPackage ./konsole.nix {};
       kontact = callPackage ./kontact.nix {};
+      konversation = callPackage ./konversation.nix {};
       kontactinterface = callPackage ./kontactinterface.nix {};
-      konquest = callPackage ./konquest.nix {};
-      konqueror = callPackage ./konqueror.nix {};
       korganizer = callPackage ./korganizer.nix {};
       kpat = callPackage ./kpat.nix {};
       kpimtextedit = callPackage ./kpimtextedit.nix {};
-      ksmtp = callPackage ./ksmtp {};
-      ksquares = callPackage ./ksquares.nix {};
-      kqtquickcharts = callPackage ./kqtquickcharts.nix {};
       kpkpass = callPackage ./kpkpass.nix {};
-      kreversi = callPackage ./kreversi.nix {};
+      kpublictransport = callPackage ./kpublictransport.nix {};
+      kqtquickcharts = callPackage ./kqtquickcharts.nix {};
       krdc = callPackage ./krdc.nix {};
+      kreversi = callPackage ./kreversi.nix {};
       krfb = callPackage ./krfb.nix {};
       kruler = callPackage ./kruler.nix {};
+      ksanecore = callPackage ./ksanecore.nix {};
       kshisen = callPackage ./kshisen.nix {};
+      ksmtp = callPackage ./ksmtp {};
       kspaceduel = callPackage ./kspaceduel.nix {};
+      ksquares = callPackage ./ksquares.nix {};
       ksudoku = callPackage ./ksudoku.nix {};
       ksystemlog = callPackage ./ksystemlog.nix {};
       kteatime = callPackage ./kteatime.nix {};
       ktimer = callPackage ./ktimer.nix {};
       ktnef = callPackage ./ktnef.nix {};
+      ktorrent = callPackage ./ktorrent.nix {};
       ktouch = callPackage ./ktouch.nix {};
       kturtle = callPackage ./kturtle.nix {};
       kwalletmanager = callPackage ./kwalletmanager.nix {};
@@ -194,6 +214,7 @@ let
       libkomparediff2 = callPackage ./libkomparediff2.nix {};
       libksane = callPackage ./libksane.nix {};
       libksieve = callPackage ./libksieve.nix {};
+      libktorrent = callPackage ./libktorrent.nix {};
       mailcommon = callPackage ./mailcommon.nix {};
       mailimporter = callPackage ./mailimporter.nix {};
       marble = callPackage ./marble.nix {};
@@ -202,13 +223,17 @@ let
       minuet = callPackage ./minuet.nix {};
       okular = callPackage ./okular.nix {};
       picmi = callPackage ./picmi.nix {};
-      pimcommon = callPackage ./pimcommon.nix {};
       pim-data-exporter = callPackage ./pim-data-exporter.nix {};
       pim-sieve-editor = callPackage ./pim-sieve-editor.nix {};
+      pimcommon = callPackage ./pimcommon.nix {};
       print-manager = callPackage ./print-manager.nix {};
       rocs = callPackage ./rocs.nix {};
+      skanlite = callPackage ./skanlite.nix {};
+      skanpage = callPackage ./skanpage.nix {};
       spectacle = callPackage ./spectacle.nix {};
+      umbrello = callPackage ./umbrello.nix {};
       yakuake = callPackage ./yakuake.nix {};
+      zanshin = callPackage ./zanshin.nix {};
     };
 
 in lib.makeScope libsForQt5.newScope packages

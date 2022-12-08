@@ -46,6 +46,7 @@ stdenv.mkDerivation rec {
     unzip
   ];
   sourceRoot = ".";
+  unpackCmd = "unzip -o $curSrc";
   buildPhase = ''
     echo "selected fonts are ${toString selectedFonts}"
     ls *.otf *.ttf
@@ -59,7 +60,7 @@ stdenv.mkDerivation rec {
     ''}
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Iconic font aggregator, collection, & patcher. 3,600+ icons, 50+ patched fonts";
     longDescription = ''
       Nerd Fonts is a project that attempts to patch as many developer targeted

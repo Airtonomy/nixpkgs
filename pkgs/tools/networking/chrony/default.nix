@@ -1,15 +1,13 @@
-{ stdenv, fetchurl, pkgconfig, libcap, readline, texinfo, nss, nspr
+{ lib, stdenv, fetchurl, pkg-config, libcap, readline, texinfo, nss, nspr
 , libseccomp, pps-tools, gnutls }:
-
-assert stdenv.isLinux -> libcap != null;
 
 stdenv.mkDerivation rec {
   pname = "chrony";
-  version = "4.0";
+  version = "4.3";
 
   src = fetchurl {
     url = "https://download.tuxfamily.org/chrony/${pname}-${version}.tar.gz";
-    sha256 = "09f6w2x5h5kamb4rhcbaz911q1f730qdalgsn8s48yjyqlafl9xy";
+    sha256 = "sha256-nQ2oiahl8ImlohYQ/7ZxPjyUOM4wOmO0nC+26v9biAQ=";
   };
 
   postPatch = ''
@@ -17,18 +15,17 @@ stdenv.mkDerivation rec {
   '';
 
   buildInputs = [ readline texinfo nss nspr gnutls ]
-    ++ stdenv.lib.optionals stdenv.isLinux [ libcap libseccomp pps-tools ];
-  nativeBuildInputs = [ pkgconfig ];
+    ++ lib.optionals stdenv.isLinux [ libcap libseccomp pps-tools ];
+  nativeBuildInputs = [ pkg-config ];
 
   hardeningEnable = [ "pie" ];
 
-  configureFlags = [ "--chronyvardir=$(out)/var/lib/chrony" ]
-    ++ stdenv.lib.optional stdenv.isLinux "--enable-scfilter";
+  configureFlags = [ "--chronyvardir=$(out)/var/lib/chrony" "--enable-ntp-signd" ]
+    ++ lib.optional stdenv.isLinux "--enable-scfilter";
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Sets your computer's clock from time servers on the Net";
     homepage = "https://chrony.tuxfamily.org/";
-    repositories.git = "git://git.tuxfamily.org/gitroot/chrony/chrony.git";
     license = licenses.gpl2;
     platforms = with platforms; linux ++ freebsd ++ openbsd;
     maintainers = with maintainers; [ fpletz thoughtpolice ];

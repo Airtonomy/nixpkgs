@@ -1,49 +1,62 @@
 { lib
-, buildPythonPackage
-, fetchPypi
-, fetchpatch
-, numpy
 , astropy
+, astropy-extension-helpers
 , astropy-healpix
-, astropy-helpers
-, extension-helpers
-, scipy
-, pytest
-, pytest-astropy
-, setuptools_scm
+, buildPythonPackage
 , cython
+, fetchPypi
+, numpy
+, pytest-astropy
+, pytestCheckHook
+, pythonOlder
+, scipy
+, setuptools-scm
 }:
 
 buildPythonPackage rec {
   pname = "reproject";
-  version = "0.7.1";
+  version = "0.9";
+  format = "setuptools";
+
+  disabled = pythonOlder "3.7";
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "1jsc3ad518vyys5987fr1achq8qvnz8rm80zp5an9qxlwr4zmh4m";
+    hash = "sha256-zhjI4MjlCV9zR0nNcss+C36CZXY/imGsalfKMGacfi0=";
   };
 
-  propagatedBuildInputs = [ numpy astropy astropy-healpix astropy-helpers scipy ];
+  nativeBuildInputs = [
+    astropy-extension-helpers
+    cython
+    setuptools-scm
+  ];
 
-  nativeBuildInputs = [ astropy-helpers cython extension-helpers setuptools_scm ];
+  propagatedBuildInputs = [
+    astropy
+    astropy-healpix
+    numpy
+    scipy
+  ];
 
-  # Disable automatic update of the astropy-helper module
-  postPatch = ''
-    substituteInPlace setup.cfg --replace "auto_use = True" "auto_use = False"
-  '';
+  checkInputs = [
+    pytest-astropy
+    pytestCheckHook
+  ];
 
-  checkInputs = [ pytest pytest-astropy ];
+  pytestFlagsArray = [
+    "build/lib*"
+    # Avoid failure due to user warning: Distutils was imported before Setuptools
+    "-p no:warnings"
+  ];
 
-  # Tests must be run in the build directory
-  checkPhase = ''
-    cd build/lib*
-    pytest
-  '';
+  pythonImportsCheck = [
+    "reproject"
+  ];
 
   meta = with lib; {
     description = "Reproject astronomical images";
     homepage = "https://reproject.readthedocs.io";
     license = licenses.bsd3;
-    maintainers = [ maintainers.smaret ];
+    maintainers = with maintainers; [ smaret ];
   };
 }

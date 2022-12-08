@@ -1,46 +1,44 @@
-{ stdenv, buildGoModule, fetchFromGitHub, rnnoise-plugin }:
+{ lib, buildGoModule, fetchFromGitHub }:
 
 buildGoModule rec {
   pname = "NoiseTorch";
-  version = "0.9.0";
+  version = "0.12.0";
 
   src = fetchFromGitHub {
-    owner = "lawl";
+    owner = "noisetorch";
     repo = "NoiseTorch";
-    rev = version;
-    sha256 = "1a4g112h83m55pga8kq2a1wzxpycj59v4bygyjfyi1s09q1y97qg";
+    rev = "v${version}";
+    sha256 = "sha256-A6cX1ck47/ZIn9cnV/Ow4CxVFfOX5J0K0Q+B70jCFdQ=";
+    fetchSubmodules = true;
   };
 
-  patches = [ ./version.patch ];
-
-  vendorSha256 = null;
+  vendorHash = null;
 
   doCheck = false;
 
+  ldflags = [ "-s" "-w" "-X main.version=${version}" "-X main.distribution=nix" ];
+
   subPackages = [ "." ];
 
-  buildInputs = [ rnnoise-plugin ];
-
-  postPatch = "substituteInPlace main.go --replace 'librnnoise_ladspa/bin/ladspa/librnnoise_ladspa.so' '$RNNOISE_LADSPA_PLUGIN'";
-
   preBuild = ''
-    export RNNOISE_LADSPA_PLUGIN="${rnnoise-plugin}/lib/ladspa/librnnoise_ladspa.so";
-    go generate;
+    make -C c/ladspa/
+    go generate
     rm  ./scripts/*
   '';
 
   postInstall = ''
-    mkdir -p $out/share/icons/hicolor/256x256/apps/
-    cp assets/icon/noisetorch.png $out/share/icons/hicolor/256x256/apps/
-    mkdir -p $out/share/applications/
-    cp assets/noisetorch.desktop $out/share/applications/
+    install -D ./assets/icon/noisetorch.png $out/share/icons/hicolor/256x256/apps/noisetorch.png
+    install -Dm444 ./assets/noisetorch.desktop $out/share/applications/noisetorch.desktop
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
+    insecure = true;
+    knownVulnerabilities =
+      lib.optional (lib.versionOlder version "0.12") "https://github.com/noisetorch/NoiseTorch/releases/tag/v0.12.0";
     description = "Virtual microphone device with noise supression for PulseAudio";
-    homepage = "https://github.com/lawl/NoiseTorch";
+    homepage = "https://github.com/noisetorch/NoiseTorch";
     license = licenses.gpl3Plus;
     platforms = platforms.linux;
-    maintainers = with maintainers; [ panaeon ];
+    maintainers = with maintainers; [ panaeon lom ];
   };
 }

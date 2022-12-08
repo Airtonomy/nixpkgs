@@ -1,24 +1,37 @@
-{ stdenv, buildPythonPackage, fetchPypi, six}:
+{ lib
+, buildPythonPackage
+, fetchPypi
+, pythonOlder
+, six
+}:
 
 buildPythonPackage rec {
   pname = "bumps";
-  version = "0.7.18";
+  version = "0.9.0";
+  format = "setuptools";
 
-  propagatedBuildInputs = [six];
-
-  # Bumps does not provide its own tests.py, so the test
-  # always fails
-  doCheck = false;
+  disabled = pythonOlder "3.7";
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "3217d4fd3ec767448d742f3b6ff527cc3817f2421b9a9a8456e1d8ee4a9b1087";
+    hash = "sha256-BY9kg0ksKfrpQgsl1aDDJJ+zKJmURqwTtKxlITxse+o=";
   };
 
-  meta = with stdenv.lib; {
-    homepage = "https://www.reflectometry.org/danse/software.html";
+  propagatedBuildInputs = [
+    six
+  ];
+
+  # Module has no tests
+  doCheck = false;
+
+  pythonImportsCheck = [
+    "bumps"
+  ];
+
+  meta = with lib; {
     description = "Data fitting with bayesian uncertainty analysis";
-    maintainers = with maintainers; [ rprospero ];
+    homepage = "https://bumps.readthedocs.io/";
     license = licenses.publicDomain;
+    maintainers = with maintainers; [ rprospero ];
   };
 }

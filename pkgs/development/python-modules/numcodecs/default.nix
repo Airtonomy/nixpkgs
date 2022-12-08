@@ -2,8 +2,9 @@
 , buildPythonPackage
 , fetchPypi
 , isPy27
-, setuptools_scm
+, setuptools-scm
 , cython
+, entrypoints
 , numpy
 , msgpack
 , pytestCheckHook
@@ -13,21 +14,22 @@
 
 buildPythonPackage rec {
   pname = "numcodecs";
-  version = "0.7.2";
+  version = "0.10.2";
   disabled = isPy27;
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "4a038064d5604e6181a64db668d7b700d9ae87e4041984c04cbf0042469664b0";
+    sha256 = "sha256-IoOMaz/Zhr2cckA5uIhwBX95DiKyDm4cu6oN4ULdWcQ=";
   };
 
   nativeBuildInputs = [
-    setuptools_scm
+    setuptools-scm
     cython
     gcc8
   ];
 
   propagatedBuildInputs = [
+    entrypoints
     numpy
     msgpack
   ];
@@ -49,7 +51,7 @@ buildPythonPackage rec {
   ];
 
   meta = with lib;{
-    homepage = "https://github.com/alimanfoo/numcodecs";
+    homepage = "https://github.com/zarr-developers/numcodecs";
     license = licenses.mit;
     description = "Buffer compression and transformation codecs for use in data storage and communication applications";
     maintainers = [ maintainers.costrouc ];

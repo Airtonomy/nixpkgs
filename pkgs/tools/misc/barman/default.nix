@@ -1,29 +1,48 @@
-{ buildPythonApplication, fetchurl, lib
-, dateutil, argcomplete, argh, psycopg2, boto3
+{ fetchFromGitHub
+, lib
+, python3Packages
 }:
-
-buildPythonApplication rec {
+python3Packages.buildPythonApplication rec {
   pname = "barman";
-  version = "2.11";
+  version = "3.1.0";
 
-  outputs = [ "out" "man" ];
-  src = fetchurl {
-    url = "mirror://sourceforge/pgbarman/${version}/barman-${version}.tar.gz";
-    sha256 = "0w5lh4aavab9ynfy2mq09ga6j4vss4k0vlc3g6f5a9i4175g9pmr";
+  src = fetchFromGitHub {
+    owner = "EnterpriseDB";
+    repo = pname;
+    rev = "refs/tags/release/${version}";
+    sha256 = "sha256-xRyKCpO2eBe5lI0pQW8wUee/5ZMDEo7/FLORrp3Sduk=";
   };
 
-  propagatedBuildInputs = [ dateutil argh psycopg2 boto3 argcomplete ];
+  patches = [
+    ./unwrap-subprocess.patch
+  ];
 
-  # Tests are not present in tarball
-  checkPhase = ''
-    $out/bin/barman --help > /dev/null
-  '';
+  checkInputs = with python3Packages; [
+    mock
+    python-snappy
+    google-cloud-storage
+    pytestCheckHook
+  ];
+
+  propagatedBuildInputs = with python3Packages; [
+    argcomplete
+    azure-identity
+    azure-storage-blob
+    boto3
+    psycopg2
+    python-dateutil
+  ];
+
+  disabledTests = [
+    # Assertion error
+    "test_help_output"
+  ];
 
   meta = with lib; {
-    homepage = "https://www.2ndquadrant.com/en/resources/barman/";
-    description = "Backup and Disaster Recovery Manager for PostgreSQL";
+    homepage = "https://www.pgbarman.org/";
+    description = "Backup and Recovery Manager for PostgreSQL";
     maintainers = with maintainers; [ freezeboy ];
-    license = licenses.gpl2;
+    license = licenses.gpl3Plus;
     platforms = platforms.unix;
   };
 }

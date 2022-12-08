@@ -1,30 +1,33 @@
-{ mkDerivation, fetchurl, pkgs, lib, php }:
+{ mkDerivation, fetchurl, makeWrapper, lib, php }:
 let
   pname = "box";
-  version = "2.7.5";
+  version = "4.1.0";
 in
 mkDerivation {
   inherit pname version;
 
   src = fetchurl {
-    url = "https://github.com/box-project/box2/releases/download/${version}/box-${version}.phar";
-    sha256 = "1zmxdadrv0i2l8cz7xb38gnfmfyljpsaz2nnkjzqzksdmncbgd18";
+    url = "https://github.com/box-project/box/releases/download/${version}/box.phar";
+    sha256 = "sha256-DtrTsCocCpLngiEPrKBrFeU+OnND8AoI83g+Y7+zHzs=";
   };
 
-  phases = [ "installPhase" ];
-  nativeBuildInputs = [ pkgs.makeWrapper ];
+  dontUnpack = true;
+
+  nativeBuildInputs = [ makeWrapper ];
 
   installPhase = ''
+    runHook preInstall
     mkdir -p $out/bin
     install -D $src $out/libexec/box/box.phar
     makeWrapper ${php}/bin/php $out/bin/box \
       --add-flags "-d phar.readonly=0 $out/libexec/box/box.phar"
+    runHook postInstall
   '';
 
   meta = with lib; {
     description = "An application for building and managing Phars";
     license = licenses.mit;
-    homepage = "https://box-project.github.io/box2/";
+    homepage = "https://github.com/box-project/box";
     maintainers = with maintainers; [ jtojnar ] ++ teams.php.members;
   };
 }

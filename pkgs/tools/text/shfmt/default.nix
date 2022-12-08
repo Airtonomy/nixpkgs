@@ -2,20 +2,20 @@
 
 buildGoModule rec {
   pname = "shfmt";
-  version = "3.2.1";
+  version = "3.5.1";
 
   src = fetchFromGitHub {
     owner = "mvdan";
     repo = "sh";
     rev = "v${version}";
-    sha256 = "1kp4ib0a64cc9qylny48ff5q9ciklzx93yhv7fgqhl1v2c7fm1jp";
+    sha256 = "sha256-/fNKgUh0AnyW1MOuTwk/deT5MnQMy8zMUA1KEdaM8SY=";
   };
 
-  vendorSha256 = "1ma7nvyn6ylbi8bd7x900i94pzs877kfy9xh0nf1bbify1vcpd29";
+  vendorSha256 = "sha256-3eao9bORPTsyCFpafp89mcL2Y7HNBlDfUsTull7qnYs=";
 
   subPackages = [ "cmd/shfmt" ];
 
-  buildFlagsArray = [ "-ldflags=-s -w -X main.version=${version}" ];
+  ldflags = [ "-s" "-w" "-X main.version=${version}" ];
 
   nativeBuildInputs = [ installShellFiles scdoc ];
 
@@ -32,6 +32,6 @@ buildGoModule rec {
       You can feed it standard input, any number of files or any number of directories to recurse into.
     '';
     license = licenses.bsd3;
-    maintainers = with maintainers; [ zowoq ];
+    maintainers = with maintainers; [ zowoq SuperSandro2000 ];
   };
 }

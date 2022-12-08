@@ -1,26 +1,68 @@
-{ stdenv, buildPythonPackage, fetchPypi, isPy27, colorama, pytestCheckHook }:
+{ lib
+, stdenv
+, aiocontextvars
+, buildPythonPackage
+, colorama
+, fetchpatch
+, fetchPypi
+, pytestCheckHook
+, pythonOlder
+}:
 
 buildPythonPackage rec {
   pname = "loguru";
-  version = "0.5.3";
+  version = "0.6.0";
+  format = "setuptools";
 
-  disabled = isPy27;
+  disabled = pythonOlder "3.5";
+
   src = fetchPypi {
     inherit pname version;
-    sha256 = "b28e72ac7a98be3d28ad28570299a393dfcd32e5e3f6a353dec94675767b6319";
+    sha256 = "sha256-BmvQZ1jQpRPpg2/ZxrWnW/s/02hB9LmWvGC1R6MJ1Bw=";
   };
 
-  checkInputs = [ pytestCheckHook colorama ];
+  patches = [
+    (fetchpatch {
+      name = "fix-test-repr-infinite-recursion.patch";
+      url = "https://github.com/Delgan/loguru/commit/4fe21f66991abeb1905e24c3bc3c634543d959a2.patch";
+      hash = "sha256-NUOkgUS28TOazO0txMinFtaKwsi/J1Y7kqjjvMRCnR8=";
+    })
+  ];
 
-  pytestFlagsArray = stdenv.lib.optionals stdenv.isDarwin [ "--ignore=tests/test_multiprocessing.py" ];
+  propagatedBuildInputs = lib.optionals (pythonOlder "3.7") [
+    aiocontextvars
+  ];
 
-  disabledTests = [ "test_time_rotation_reopening" "test_file_buffering" ]
-    ++ stdenv.lib.optionals stdenv.isDarwin [ "test_rotation_and_retention" "test_rotation_and_retention_timed_file" "test_renaming" "test_await_complete_inheritance" ];
+  checkInputs = [
+    pytestCheckHook
+    colorama
+  ];
 
-  meta = with stdenv.lib; {
+  disabledTestPaths = lib.optionals stdenv.isDarwin [
+    "tests/test_multiprocessing.py"
+  ];
+
+  disabledTests = [
+    "test_time_rotation_reopening"
+    "test_file_buffering"
+    # Tests are failing with Python 3.10
+    "test_exception_others"
+    ""
+  ] ++ lib.optionals stdenv.isDarwin [
+    "test_rotation_and_retention"
+    "test_rotation_and_retention_timed_file"
+    "test_renaming"
+    "test_await_complete_inheritance"
+  ];
+
+  pythonImportsCheck = [
+    "loguru"
+  ];
+
+  meta = with lib; {
     homepage = "https://github.com/Delgan/loguru";
     description = "Python logging made (stupidly) simple";
     license = licenses.mit;
-    maintainers = with maintainers; [ jakewaksbaum ];
+    maintainers = with maintainers; [ jakewaksbaum rmcgibbo ];
   };
 }

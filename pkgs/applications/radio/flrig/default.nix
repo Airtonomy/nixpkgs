@@ -1,33 +1,36 @@
-{ stdenv
+{ lib
+, stdenv
 , fetchurl
 , fltk13
 , libjpeg
-, pkgconfig
+, eudev
+, pkg-config
 }:
 
 stdenv.mkDerivation rec {
-  version = "1.3.53";
+  version = "1.4.7";
   pname = "flrig";
 
   src = fetchurl {
     url = "mirror://sourceforge/fldigi/${pname}-${version}.tar.gz";
-    sha256 = "1m0fa891scpaf719002w9gpg1famx84kpzav1mw1fafmbzyvjw1i";
+    sha256 = "sha256-RzyeJf3T1vKTlyU/EMXFY+ObkqKq7wJyBB8ZeKMOO1M=";
   };
 
   buildInputs = [
     fltk13
     libjpeg
+    eudev
   ];
 
   nativeBuildInputs = [
-    pkgconfig
+    pkg-config
   ];
 
   meta = {
     description = "Digital modem rig control program";
     homepage = "https://sourceforge.net/projects/fldigi/";
-    license = stdenv.lib.licenses.gpl3Plus;
-    maintainers = with stdenv.lib.maintainers; [ dysinger ];
-    platforms = stdenv.lib.platforms.linux;
+    license = lib.licenses.gpl3Plus;
+    maintainers = with lib.maintainers; [ dysinger ];
+    platforms = lib.platforms.linux;
   };
 }

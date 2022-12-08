@@ -1,9 +1,8 @@
-{ stdenv
+{ lib
+, stdenv
 , fetchFromGitHub
 , nix-update-script
-, fetchpatch
-, pantheon
-, pkgconfig
+, pkg-config
 , meson
 , ninja
 , vala
@@ -12,29 +11,24 @@
 , wingpanel
 , accountsservice
 , libgee
+, libhandy
 }:
 
 stdenv.mkDerivation rec {
   pname = "wingpanel-indicator-session";
-  version = "unstable-2020-09-13";
+  version = "2.3.1";
 
   src = fetchFromGitHub {
     owner = "elementary";
     repo = pname;
-    rev = "e65c95f46adbfd598ad61933394d7bc3c5998278";
-    sha256 = "sha256-QKOfgAc6pDQYpETrFunZB6+rF1P8XIf0pjft/t9aWW0=";
-  };
-
-  passthru = {
-    updateScript = nix-update-script {
-      attrPath = "pantheon.${pname}";
-    };
+    rev = version;
+    sha256 = "sha256-2AEMe5dctTicW1MiGRV1SMjN/uFxQGbOYzCNFS1/KNk=";
   };
 
   nativeBuildInputs = [
     meson
     ninja
-    pkgconfig
+    pkg-config
     vala
   ];
 
@@ -43,14 +37,21 @@ stdenv.mkDerivation rec {
     granite
     gtk3
     libgee
+    libhandy
     wingpanel
   ];
 
-  meta = with stdenv.lib; {
+  passthru = {
+    updateScript = nix-update-script {
+      attrPath = "pantheon.${pname}";
+    };
+  };
+
+  meta = with lib; {
     description = "Session Indicator for Wingpanel";
     homepage = "https://github.com/elementary/wingpanel-indicator-session";
     license = licenses.gpl2Plus;
     platforms = platforms.linux;
-    maintainers = pantheon.maintainers;
+    maintainers = teams.pantheon.members;
   };
 }

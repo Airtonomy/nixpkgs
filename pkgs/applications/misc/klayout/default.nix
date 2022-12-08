@@ -1,17 +1,17 @@
-{ lib, mkDerivation, fetchFromGitHub, fetchpatch
-, python, ruby, qtbase, qtmultimedia, qttools, qtxmlpatterns
-, which, perl, makeWrapper
+{ lib, mkDerivation, fetchFromGitHub
+, python3, ruby, qtbase, qtmultimedia, qttools, qtxmlpatterns
+, which, perl
 }:
 
 mkDerivation rec {
   pname = "klayout";
-  version = "0.26.8";
+  version = "0.27.11";
 
   src = fetchFromGitHub {
     owner = "KLayout";
     repo = "klayout";
     rev = "v${version}";
-    sha256 = "0pkhvxcfk70dnmgczyyq585mxrfwqai44ikshs4c1imh92z25llq";
+    hash = "sha256-w3ag+TPUrjPbPIy6N4HPsfraOyoHqBbvjwB1M6+qh60=";
   };
 
   postPatch = ''
@@ -21,11 +21,12 @@ mkDerivation rec {
 
   nativeBuildInputs = [
     which
+    perl
+    python3
+    ruby
   ];
 
   buildInputs = [
-    python
-    ruby
     qtbase
     qtmultimedia
     qttools
@@ -35,7 +36,7 @@ mkDerivation rec {
   buildPhase = ''
     runHook preBuild
     mkdir -p $out/lib
-    ./build.sh -qt5 -prefix $out/lib -j$NIX_BUILD_CORES
+    ./build.sh -qt5 -prefix $out/lib -option -j$NIX_BUILD_CORES
     runHook postBuild
   '';
 
@@ -54,8 +55,9 @@ mkDerivation rec {
 
   meta = with lib; {
     description = "High performance layout viewer and editor with support for GDS and OASIS";
-    license = with licenses; [ gpl3 ];
+    license = with licenses; [ gpl2Plus ];
     homepage = "https://www.klayout.de/";
+    changelog = "https://www.klayout.de/development.html#${version}";
     platforms = platforms.linux;
     maintainers = with maintainers; [ knedlsepp ];
   };

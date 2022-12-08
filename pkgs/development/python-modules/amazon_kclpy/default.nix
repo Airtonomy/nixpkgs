@@ -1,14 +1,14 @@
-{ stdenv, buildPythonPackage, fetchFromGitHub, python, mock, boto, pytest }:
+{ lib, buildPythonPackage, fetchFromGitHub, python, mock, boto, pytest }:
 
 buildPythonPackage rec {
   pname = "amazon_kclpy";
-  version = "2.0.1";
+  version = "2.0.6";
 
   src = fetchFromGitHub {
     owner = "awslabs";
     repo = "amazon-kinesis-client-python";
     rev = "v${version}";
-    sha256 = "13iq217fg0bxafp2rl684pg1rz4jbwid8cc8ip4rim07kzn65lbg";
+    sha256 = "0gbpwhpd9i13vi0cch48qqrma90p230psqrkbfcjvdah69w434l4";
   };
 
   # argparse is just required for python2.6
@@ -25,7 +25,7 @@ buildPythonPackage rec {
     ${python.interpreter} -m pytest
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Amazon Kinesis Client Library for Python";
     homepage = "https://github.com/awslabs/amazon-kinesis-client-python";
     license = licenses.amazonsl;

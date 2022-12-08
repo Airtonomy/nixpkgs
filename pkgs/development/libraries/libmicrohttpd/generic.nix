@@ -1,11 +1,15 @@
-{ stdenv, libgcrypt, curl, gnutls, pkgconfig, libiconv, libintl, version, src }:
+{ lib, stdenv, libgcrypt, curl, gnutls, pkg-config, libiconv, libintl, version, src, meta ? {} }:
+
+let
+  meta_ = meta;
+in
 
 stdenv.mkDerivation rec {
   pname = "libmicrohttpd";
   inherit version src;
 
   outputs = [ "out" "dev" "devdoc" "info" ];
-  nativeBuildInputs = [ pkgconfig ];
+  nativeBuildInputs = [ pkg-config ];
   buildInputs = [ libgcrypt curl gnutls libiconv libintl ];
 
   preCheck = ''
@@ -16,7 +20,7 @@ stdenv.mkDerivation rec {
   # Disabled because the tests can time-out.
   doCheck = false;
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Embeddable HTTP server library";
 
     longDescription = ''
@@ -30,5 +34,5 @@ stdenv.mkDerivation rec {
 
     maintainers = with maintainers; [ eelco vrthra fpletz ];
     platforms = platforms.unix;
-  };
+  } // meta_;
 }

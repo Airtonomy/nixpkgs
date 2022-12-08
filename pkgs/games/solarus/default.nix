@@ -22,8 +22,6 @@ mkDerivation rec {
     openal libmodplug libvorbis
     qtbase glm ];
 
-  enableParallelBuilding = true;
-
   preFixup = ''
     mkdir $lib/
     mv $out/lib $lib
@@ -37,7 +35,7 @@ mkDerivation rec {
     '';
     homepage = "http://www.solarus-games.org";
     license = licenses.gpl3;
-    maintainers = [ maintainers.Nate-Devv ];
+    maintainers = [ ];
     platforms = platforms.linux;
   };
 

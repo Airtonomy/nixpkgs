@@ -1,26 +1,27 @@
-{ stdenv, buildGoModule, fetchFromGitHub, installShellFiles }:
+{ lib, buildGoModule, fetchFromGitHub, installShellFiles }:
 
 buildGoModule rec {
   pname = "hcloud";
-  version = "1.20.0";
+  version = "1.30.3";
 
   src = fetchFromGitHub {
     owner = "hetznercloud";
     repo = "cli";
     rev = "v${version}";
-    sha256 = "0sjshcppcfdfz29nsrzvrciypcb4r7fbl2sqhlkcq948b7k3jk8b";
+    sha256 = "sha256-iF30gh14v2OHwT2W7gb4DaZu1h9RYJjw6rkHaPZp9NU=";
   };
+
+  vendorSha256 = "sha256-DoCiyaEPh+QyKgC3PJ5oivJTlcKzscaphXET9et8T1g=";
+
+  ldflags = [
+    "-s" "-w"
+    "-X github.com/hetznercloud/cli/internal/version.Version=${version}"
+  ];
 
   nativeBuildInputs = [ installShellFiles ];
 
-  vendorSha256 = "0q6jm2ghwrbjxn76i8wz72xjdmwfvl5dn8n4zilyjjx9vvllwdjw";
-
-  doCheck = false;
-
-  buildFlagsArray = [ "-ldflags=-s -w -X github.com/hetznercloud/cli/cli.Version=${version}" ];
-
   postInstall = ''
-    for shell in bash zsh; do
+    for shell in bash fish zsh; do
       $out/bin/hcloud completion $shell > hcloud.$shell
       installShellCompletion hcloud.$shell
     done
@@ -29,7 +30,7 @@ buildGoModule rec {
   meta = {
     description = "A command-line interface for Hetzner Cloud, a provider for cloud virtual private servers";
     homepage = "https://github.com/hetznercloud/cli";
-    license = stdenv.lib.licenses.mit;
-    maintainers = [ stdenv.lib.maintainers.zauberpony ];
+    license = lib.licenses.mit;
+    maintainers = [ lib.maintainers.zauberpony ];
   };
 }

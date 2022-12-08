@@ -1,4 +1,4 @@
-{ stdenv, buildPythonPackage, fetchPypi, pythonOlder
+{ lib, buildPythonPackage, fetchPypi, pythonOlder
 , pytest
 , pyflakes
 }:
@@ -7,16 +7,17 @@ buildPythonPackage rec {
   # upstream has abandoned project in favor of pytest-flake8
   # retaining package to not break other packages
   pname = "pytest-flakes";
-  version = "4.0.3";
+  version = "4.0.5";
   disabled = pythonOlder "3.5";
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "bf070c5485dad82d5b5f5d0eb08d269737e378492d9a68f5223b0a90924c7754";
+    sha256 = "953134e97215ae31f6879fbd7368c18d43f709dc2fab5b7777db2bb2bac3a924";
   };
 
+  buildInputs = [ pytest ];
+  propagatedBuildInputs = [ pyflakes ];
   checkInputs = [ pytest ];
-  propagatedBuildInputs = [ pytest pyflakes ];
 
   # no longer passes
   doCheck = false;
@@ -26,7 +27,7 @@ buildPythonPackage rec {
     py.test test_flakes.py -k 'not test_syntax_error'
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     license = licenses.mit;
     homepage = "https://pypi.python.org/pypi/pytest-flakes";
     description = "pytest plugin to check source code with pyflakes";

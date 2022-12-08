@@ -1,4 +1,4 @@
-{ stdenv
+{ lib
 , buildPythonPackage
 , fetchPypi
 , pythonOlder
@@ -15,12 +15,12 @@
 
 buildPythonPackage rec {
   pname = "eliot";
-  version = "1.12.0";
+  version = "1.14.0";
   disabled = pythonOlder "3.6";
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "0wabv7hk63l12881f4zw02mmj06583qsx2im0yywdjlj8f56vqdn";
+    sha256 = "c2f099a3e8d5ecfc22745766e7cc664a48db64b6b89d986dff270491d8683149";
   };
 
   checkInputs = [
@@ -47,7 +47,7 @@ buildPythonPackage rec {
     pytest -k 'not test_parse_stream'
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     homepage = "https://eliot.readthedocs.io";
     description = "Logging library that tells you why it happened";
     license = licenses.asl20;

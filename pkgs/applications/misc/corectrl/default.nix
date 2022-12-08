@@ -1,11 +1,13 @@
-{ stdenv
+{ lib, stdenv
 , fetchFromGitLab
 , extra-cmake-modules
 , botan2
 , karchive
 , kauth
 , libdrm
-, mesa-demos
+, hwdata
+, glxinfo
+, polkit
 , procps
 , util-linux
 , vulkan-tools
@@ -15,19 +17,23 @@
 , qtsvg
 , qttools
 , qtxmlpatterns
+, quazip
 , wrapQtAppsHook
 } :
 
 stdenv.mkDerivation rec{
   pname = "corectrl";
-  version = "1.1.1";
+  version = "1.3.1";
 
   src = fetchFromGitLab {
     owner = "corectrl";
     repo = "corectrl";
     rev = "v${version}";
-    sha256 = "sha256-YQDrxPqCa3OzNKd3UiAffqqvOrgbXmDFJGjYPetolyY=";
+    sha256 = "sha256-mVMyXpNhwljxsAvrKeHPxUSfdF/mfxG157T13Kb8PnE=";
   };
+  patches = [
+    ./polkit-dir.patch
+  ];
 
   nativeBuildInputs = [
     extra-cmake-modules
@@ -38,7 +44,8 @@ stdenv.mkDerivation rec{
     karchive
     kauth
     libdrm
-    mesa-demos
+    glxinfo
+    polkit
     procps
     util-linux
     vulkan-tools
@@ -48,10 +55,17 @@ stdenv.mkDerivation rec{
     qtsvg
     qttools
     qtxmlpatterns
+    quazip
   ];
 
-  runtimeDeps = [ mesa-demos vulkan-tools ];
-  binPath = stdenv.lib.makeBinPath runtimeDeps;
+  cmakeFlags = [
+    "-DWITH_PCI_IDS_PATH=${hwdata}/share/hwdata/pci.ids"
+    "-DINSTALL_DBUS_FILES_IN_PREFIX=true"
+    "-DPOLKIT_POLICY_INSTALL_DIR=${placeholder "out"}/share/polkit-1/actions"
+  ];
+
+  runtimeDeps = [ hwdata glxinfo vulkan-tools util-linux procps ];
+  binPath = lib.makeBinPath runtimeDeps;
 
   dontWrapQtApps = true;
 
@@ -59,7 +73,7 @@ stdenv.mkDerivation rec{
     wrapQtApp $out/bin/corectrl --prefix PATH ":" ${binPath}
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     homepage = "https://gitlab.com/corectrl/corectrl/";
     description = "Control your computer hardware via application profiles";
     longDescription = ''

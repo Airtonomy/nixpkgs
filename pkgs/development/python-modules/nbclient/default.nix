@@ -1,26 +1,61 @@
-{ stdenv, buildPythonPackage, fetchPypi, pythonOlder,
-  async_generator, traitlets, nbformat, nest-asyncio, jupyter_client,
-  pytest, xmltodict, nbconvert, ipywidgets
-, doCheck ? true
+{ async_generator
+, buildPythonPackage
+, fetchFromGitHub
+, ipykernel
+, ipywidgets
+, jupyter-client
+, lib
+, nbconvert
+, nbformat
+, nest-asyncio
+, pytest-asyncio
+, pytestCheckHook
+, pythonOlder
+, traitlets
+, xmltodict
 }:
 
-buildPythonPackage rec {
+let nbclient = buildPythonPackage rec {
   pname = "nbclient";
-  version = "0.5.1";
-  disabled = pythonOlder "3.6";
+  version = "0.6.8";
+  format = "setuptools";
 
-  src = fetchPypi {
-    inherit pname version;
-    sha256 = "01e2d726d16eaf2cde6db74a87e2451453547e8832d142f73f72fddcd4fe0250";
+  disabled = pythonOlder "3.7";
+
+  src = fetchFromGitHub {
+    owner = "jupyter";
+    repo = pname;
+    rev = "refs/tags/v${version}";
+    hash = "sha256-+GQkEGWReo9y8bgcysslQdzJUcvQiZkQTQiwmWJ1mx8=";
   };
 
-  inherit doCheck;
-  checkInputs = [ pytest xmltodict nbconvert ipywidgets ];
-  propagatedBuildInputs = [ async_generator traitlets nbformat nest-asyncio jupyter_client ];
+  propagatedBuildInputs = [ async_generator traitlets nbformat nest-asyncio jupyter-client ];
 
-  meta = with stdenv.lib; {
+  # circular dependencies if enabled by default
+  doCheck = false;
+
+  checkInputs = [
+    ipykernel
+    ipywidgets
+    nbconvert
+    pytest-asyncio
+    pytestCheckHook
+    xmltodict
+  ];
+
+  preCheck = ''
+    export HOME=$(mktemp -d)
+  '';
+
+  passthru.tests = {
+    check = nbclient.overridePythonAttrs (_: { doCheck = true; });
+  };
+
+  meta = with lib; {
     homepage = "https://github.com/jupyter/nbclient";
     description = "A client library for executing notebooks";
     license = licenses.bsd3;
+    maintainers = [ maintainers.erictapen ];
   };
-}
+};
+in nbclient

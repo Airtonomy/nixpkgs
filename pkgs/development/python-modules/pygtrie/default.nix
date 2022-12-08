@@ -1,10 +1,10 @@
 { lib, fetchPypi, buildPythonPackage, ... }:
 buildPythonPackage rec {
   pname = "pygtrie";
-  version = "2.4.1";
+  version = "2.5.0";
   src = fetchPypi {
     inherit pname version;
-    sha256 = "4367b87d92eaf475107421dce0295a9d4d72156702908c96c430a426b654aee7";
+    sha256 = "sha256-IDUUrYJutAPasdLi3dA04NFTS75NvgITuwWT9mvrpOI=";
   };
   meta = {
     homepage = "https://github.com/mina86/pygtrie";

@@ -10,7 +10,6 @@
 , mock
 , netaddr
 , pytestCheckHook
-, python3Packages
 , radish-bdd
 , semver
 }:
@@ -54,7 +53,7 @@ buildPythonApplication rec {
 
   meta = with lib; {
     description = "BDD test framework for terraform";
-    homepage = https://github.com/eerkunt/terraform-compliance;
+    homepage = "https://github.com/eerkunt/terraform-compliance";
     license = licenses.mit;
     maintainers = with maintainers; [ kalbasit ];
   };

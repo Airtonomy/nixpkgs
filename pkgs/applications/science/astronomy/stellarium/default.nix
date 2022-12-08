@@ -1,42 +1,64 @@
-{ stdenv, lib, mkDerivation, fetchFromGitHub
-, cmake, freetype, libpng, libGLU, libGL, openssl, perl, libiconv
-, qtscript, qtserialport, qttools
-, qtmultimedia, qtlocation, qtbase, wrapQtAppsHook
+{ lib
+, stdenv
+, fetchFromGitHub
+, cmake
+, perl
+, wrapQtAppsHook
+, qtbase
+, qtcharts
+, qtlocation
+, qtmultimedia
+, qtscript
+, qtserialport
+, qtwebengine
+, calcmysky
+, qxlsx
+, indilib
+, libnova
 }:
 
-mkDerivation rec {
+stdenv.mkDerivation rec {
   pname = "stellarium";
-  version = "0.20.3";
+  version = "1.0";
 
   src = fetchFromGitHub {
     owner = "Stellarium";
     repo = "stellarium";
     rev = "v${version}";
-    sha256 = "08abrshrzhdfcg3b2vzfmnq8fhzrasadg1ajs81kcw96yjc59vak";
+    sha256 = "sha256-6EAykJ0yWeU1EBR5+7JjWGUVBE1DKW+W8yJOt0smkaE=";
   };
 
-  nativeBuildInputs = [ cmake perl wrapQtAppsHook ];
+  nativeBuildInputs = [
+    cmake
+    perl
+    wrapQtAppsHook
+  ];
 
   buildInputs = [
-    freetype libpng libGLU libGL openssl libiconv qtscript qtserialport qttools
-    qtmultimedia qtlocation qtbase
+    qtbase
+    qtcharts
+    qtlocation
+    qtmultimedia
+    qtscript
+    qtserialport
+    qtwebengine
+    calcmysky
+    qxlsx
+    indilib
+    libnova
   ];
 
   preConfigure = lib.optionalString stdenv.isDarwin ''
     substituteInPlace CMakeLists.txt \
       --replace 'SET(CMAKE_INSTALL_PREFIX "''${PROJECT_BINARY_DIR}/Stellarium.app/Contents")' \
-                'SET(CMAKE_INSTALL_PREFIX "${placeholder "out"}/Stellarium.app/Contents")'
-  '';
-
-  postFixup = lib.optionalString stdenv.isDarwin ''
-    wrapQtApp "$out"/Stellarium.app/Contents/MacOS/stellarium
+                'SET(CMAKE_INSTALL_PREFIX "${placeholder "out"}/Applications/Stellarium.app/Contents")'
   '';
 
   meta = with lib; {
     description = "Free open-source planetarium";
-    homepage = "http://stellarium.org/";
-    license = licenses.gpl2;
+    homepage = "https://stellarium.org/";
+    license = licenses.gpl2Plus;
     platforms = platforms.unix;
-    maintainers = with maintainers; [ peti ma27 ];
+    maintainers = with maintainers; [ ma27 ];
   };
 }

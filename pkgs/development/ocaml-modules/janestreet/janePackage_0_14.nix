@@ -5,11 +5,13 @@
 , hash
 , minimumOCamlVersion ? "4.08"
 , doCheck ? true
+, buildInputs ? []
+, strictDeps ? true
 , ...}@args:
 
 buildDunePackage (args // {
   useDune2 = true;
-  inherit version;
+  inherit version buildInputs strictDeps;
 
   inherit minimumOCamlVersion;
 
@@ -22,6 +24,8 @@ buildDunePackage (args // {
 
   inherit doCheck;
 
-  meta.license = lib.licenses.mit;
-  meta.homepage = "https://github.com/janestreet/${pname}";
+  meta = {
+    license = lib.licenses.mit;
+    homepage = "https://github.com/janestreet/${pname}";
+  } // args.meta;
 })

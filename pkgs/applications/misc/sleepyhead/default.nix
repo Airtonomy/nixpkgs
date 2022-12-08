@@ -1,10 +1,8 @@
 { lib, stdenv, mkDerivation, fetchgit, zlib, libGLU, libX11, qtbase, qtwebkit, qtserialport, wrapQtAppsHook }:
 
-let
-  name = "sleepyhead-${version}";
+mkDerivation {
+  pname = "sleepyhead";
   version = "1.0.0-beta-git";
-in mkDerivation {
-  inherit name;
 
   src = fetchgit {
     url = "https://gitlab.com/sleepyhead/sleepyhead-code.git";
@@ -24,7 +22,7 @@ in mkDerivation {
   patchPhase = ''
     patchShebangs configure
   '';
-  
+
   installPhase = if stdenv.isDarwin then ''
     mkdir -p $out/Applications
     cp -r sleepyhead/SleepyHead.app $out/Applications
@@ -33,11 +31,7 @@ in mkDerivation {
     cp sleepyhead/SleepyHead $out/bin
   '';
 
-  postFixup = stdenv.lib.optionalString stdenv.isDarwin ''
-    wrapQtApp "$out/Applications/SleepyHead.app/Contents/MacOS/SleepyHead"
-  '';
-
-  meta = with stdenv.lib; {
+  meta = with lib; {
     homepage = "https://sleepyhead.jedimark.net/";
     description = "Review and explore data produced by CPAP and related machines";
     longDescription = ''

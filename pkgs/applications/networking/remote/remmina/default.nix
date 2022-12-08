@@ -1,43 +1,50 @@
-{ stdenv, fetchFromGitLab, cmake, ninja, pkgconfig, wrapGAppsHook
-, glib, gtk3, gettext, libxkbfile, libX11
-, freerdp, libssh, libgcrypt, gnutls
-, pcre, libdbusmenu-gtk3, libappindicator-gtk3
+{ lib, stdenv, fetchFromGitLab, cmake, ninja, pkg-config, wrapGAppsHook
+, glib, gtk3, gettext, libxkbfile, libX11, python3
+, freerdp, libssh, libgcrypt, gnutls, vte
+, pcre2, libdbusmenu-gtk3, libappindicator-gtk3
 , libvncserver, libpthreadstubs, libXdmcp, libxkbcommon
-, libsecret, libsoup, spice-protocol, spice-gtk, epoxy, at-spi2-core
+, libsecret, libsoup, spice-protocol, spice-gtk_libsoup2, libepoxy, at-spi2-core
 , openssl, gsettings-desktop-schemas, json-glib, libsodium, webkitgtk, harfbuzz
 # The themes here are soft dependencies; only icons are missing without them.
-, gnome3
+, gnome
+, withLibsecret ? true
+, withVte ? true
 }:
 
-with stdenv.lib;
+with lib;
 
 stdenv.mkDerivation rec {
   pname = "remmina";
-  version = "1.4.7";
+  version = "1.4.27";
 
   src = fetchFromGitLab {
     owner  = "Remmina";
     repo   = "Remmina";
     rev    = "v${version}";
-    sha256 = "0h09f2amj7ab78fzil2w7cr22d21ad5mp1r2fa70w26g7ra3jzk9";
+    sha256 = "sha256-WIppHK4ucvKqgXB8VPy9ldbw22ZuDaEn1gNaLpyb4jA=";
   };
 
-  nativeBuildInputs = [ cmake ninja pkgconfig wrapGAppsHook ];
+  nativeBuildInputs = [ cmake ninja pkg-config wrapGAppsHook ];
   buildInputs = [
     gsettings-desktop-schemas
     glib gtk3 gettext libxkbfile libX11
     freerdp libssh libgcrypt gnutls
-    pcre libdbusmenu-gtk3 libappindicator-gtk3
+    pcre2 libdbusmenu-gtk3 libappindicator-gtk3
     libvncserver libpthreadstubs libXdmcp libxkbcommon
-    libsecret libsoup spice-protocol spice-gtk epoxy at-spi2-core
-    openssl gnome3.adwaita-icon-theme json-glib libsodium webkitgtk
-    harfbuzz
-  ];
+    libsoup spice-protocol
+    # https://gitlab.com/Remmina/Remmina/-/issues/2754
+    spice-gtk_libsoup2
+    libepoxy at-spi2-core
+    openssl gnome.adwaita-icon-theme json-glib libsodium webkitgtk
+    harfbuzz python3
+  ] ++ optionals withLibsecret [ libsecret ]
+    ++ optionals withVte [ vte ];
 
   cmakeFlags = [
-    "-DWITH_VTE=OFF"
+    "-DWITH_VTE=${if withVte then "ON" else "OFF"}"
     "-DWITH_TELEPATHY=OFF"
     "-DWITH_AVAHI=OFF"
+    "-DWITH_LIBSECRET=${if withLibsecret then "ON" else "OFF"}"
     "-DFREERDP_LIBRARY=${freerdp}/lib/libfreerdp2.so"
     "-DFREERDP_CLIENT_LIBRARY=${freerdp}/lib/libfreerdp-client2.so"
     "-DFREERDP_WINPR_LIBRARY=${freerdp}/lib/libwinpr2.so"
@@ -51,7 +58,7 @@ stdenv.mkDerivation rec {
   '';
 
   meta = {
-    license = licenses.gpl2;
+    license = licenses.gpl2Plus;
     homepage = "https://gitlab.com/Remmina/Remmina";
     description = "Remote desktop client written in GTK";
     maintainers = with maintainers; [ melsigl ryantm ];

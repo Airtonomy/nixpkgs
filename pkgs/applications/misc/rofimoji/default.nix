@@ -1,12 +1,12 @@
 { buildPythonApplication
 , fetchFromGitHub
 , lib
+, python3
 
 , waylandSupport ? true
 , x11Support ? true
 
-, ConfigArgParse
-, pyxdg
+, configargparse
 , rofi
 , wl-clipboard
 , wtype
@@ -16,18 +16,23 @@
 
 buildPythonApplication rec {
   pname = "rofimoji";
-  version = "4.3.0";
+  version = "5.6.0";
+  format = "pyproject";
 
   src = fetchFromGitHub {
     owner = "fdw";
     repo = "rofimoji";
-    rev = version;
-    sha256 = "08ayndpifr04njpijc5n5ii5nvibfpab39p6ngyyj0pb43792a8j";
+    rev = "refs/tags/${version}";
+    sha256 = "sha256-6W/59DjxrgejHSkNxpruDAws812Vjyf+GePDPbXzVbc=";
   };
+
+  nativeBuildInputs = [
+    python3.pkgs.setuptools
+  ];
 
   # `rofi` and the `waylandSupport` and `x11Support` dependencies
   # contain binaries needed at runtime.
-  propagatedBuildInputs = with lib; [ ConfigArgParse pyxdg rofi ]
+  propagatedBuildInputs = with lib; [ configargparse rofi ]
     ++ optionals waylandSupport [ wl-clipboard wtype ]
     ++ optionals x11Support [ xdotool xsel ];
 
@@ -35,8 +40,10 @@ buildPythonApplication rec {
   # and has additional dependencies.
   postPatch = ''
     rm -rf extractors
-    substituteInPlace setup.py --replace 'pyxdg==0.26' 'pyxdg'
   '';
+
+  # no tests executed
+  doCheck = false;
 
   meta = with lib; {
     description = "A simple emoji and character picker for rofi";

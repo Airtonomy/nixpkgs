@@ -1,15 +1,18 @@
-{ stdenv, fetchFromGitHub, cmake, gettext, msgpack, libtermkey, libiconv
-, libuv, lua, ncurses, pkgconfig
-, unibilium, xsel, gperf
+{ lib, stdenv, fetchFromGitHub, cmake, gettext, msgpack, libtermkey, libiconv
+, libuv, lua, ncurses, pkg-config
+, unibilium, gperf
 , libvterm-neovim
+, tree-sitter
+, CoreServices
 , glibcLocales ? null, procps ? null
 
-# now defaults to false because some tests can be flaky (clipboard etc)
+# now defaults to false because some tests can be flaky (clipboard etc), see
+# also: https://github.com/neovim/neovim/issues/16233
 , doCheck ? false
-, nodejs ? null, fish ? null, python ? null
+, nodejs ? null, fish ? null, python3 ? null
 }:
 
-with stdenv.lib;
+with lib;
 
 let
   neovimLuaEnv = lua.withPackages(ps:
@@ -19,25 +22,17 @@ let
       ]
     ));
 
-  pyEnv = python.withPackages(ps: [ ps.pynvim ps.msgpack ]);
-
-  # FIXME: this is verry messy and strange.
-  # see https://github.com/NixOS/nixpkgs/pull/80528
-  luv = lua.pkgs.luv;
-  luvpath = with builtins ; if stdenv.isDarwin
-    then "${luv.libluv}/lib/lua/${lua.luaversion}/libluv.${head (match "([0-9.]+).*" luv.version)}.dylib"
-    else "${luv}/lib/lua/${lua.luaversion}/luv.so";
-
+  pyEnv = python3.withPackages(ps: with ps; [ pynvim msgpack ]);
 in
   stdenv.mkDerivation rec {
     pname = "neovim-unwrapped";
-    version = "0.4.4";
+    version = "0.8.0";
 
     src = fetchFromGitHub {
       owner = "neovim";
       repo = "neovim";
       rev = "v${version}";
-      sha256 = "11zyj6jvkwas3n6w1ckj3pk6jf81z1g7ngg4smmwm7c27y2a6f2m";
+      sha256 = "sha256-mVeVjkP8JpTi2aW59ZuzQPi5YvEySVAtxko7xxAx/es=";
     };
 
     patches = [
@@ -48,19 +43,25 @@ in
     ];
 
     dontFixCmake = true;
-    enableParallelBuilding = true;
+
+    inherit lua;
 
     buildInputs = [
       gperf
       libtermkey
       libuv
       libvterm-neovim
-      luv.libluv
+      # This is actually a c library, hence it's not included in neovimLuaEnv,
+      # see:
+      # https://github.com/luarocks/luarocks/issues/1402#issuecomment-1080616570
+      # and it's definition at: pkgs/development/lua-modules/overrides.nix
+      lua.pkgs.libluv
       msgpack
       ncurses
       neovimLuaEnv
+      tree-sitter
       unibilium
-    ] ++ optional stdenv.isDarwin libiconv
+    ] ++ optionals stdenv.isDarwin [ libiconv CoreServices ]
       ++ optionals doCheck [ glibcLocales procps ]
     ;
 
@@ -75,7 +76,7 @@ in
     nativeBuildInputs = [
       cmake
       gettext
-      pkgconfig
+      pkg-config
     ];
 
     # extra programs test via `make functionaltest`
@@ -94,26 +95,19 @@ in
     disallowedReferences = [ stdenv.cc ];
 
     cmakeFlags = [
-      "-DGPERF_PRG=${gperf}/bin/gperf"
-      "-DLUA_PRG=${neovimLuaEnv.interpreter}"
-      "-DLIBLUV_LIBRARY=${luvpath}"
+      # Don't use downloaded dependencies. At the end of the configurePhase one
+      # can spot that cmake says this option was "not used by the project".
+      # That's because all dependencies were found and
+      # third-party/CMakeLists.txt is not read at all.
+      "-DUSE_BUNDLED=OFF"
     ]
-    ++ optional doCheck "-DBUSTED_PRG=${neovimLuaEnv}/bin/busted"
     ++ optional (!lua.pkgs.isLuaJIT) "-DPREFER_LUA=ON"
     ;
 
-    # triggers on buffer overflow bug while running tests
-    hardeningDisable = [ "fortify" ];
-
-    preConfigure = stdenv.lib.optionalString stdenv.isDarwin ''
+    preConfigure = lib.optionalString stdenv.isDarwin ''
       substituteInPlace src/nvim/CMakeLists.txt --replace "    util" ""
     '';
 
-    postInstall = stdenv.lib.optionalString stdenv.isLinux ''
-      sed -i -e "s|'xsel|'${xsel}/bin/xsel|g" $out/share/nvim/runtime/autoload/provider/clipboard.vim
-    '';
-
-    # export PATH=$PWD/build/bin:${PATH}
     shellHook=''
       export VIMRUNTIME=$PWD/runtime
     '';
@@ -129,13 +123,14 @@ in
         - Improve extensibility with a new plugin architecture
       '';
       homepage    = "https://www.neovim.io";
+      mainProgram = "nvim";
       # "Contributions committed before b17d96 by authors who did not sign the
       # Contributor License Agreement (CLA) remain under the Vim license.
       # Contributions committed after b17d96 are licensed under Apache 2.0 unless
       # those contributions were copied from Vim (identified in the commit logs
       # by the vim-patch token). See LICENSE for details."
       license = with licenses; [ asl20 vim ];
-      maintainers = with maintainers; [ manveru rvolosatovs ma27 ];
+      maintainers = with maintainers; [ manveru rvolosatovs ];
       platforms   = platforms.unix;
     };
   }

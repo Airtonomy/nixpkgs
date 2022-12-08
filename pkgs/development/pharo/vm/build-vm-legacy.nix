@@ -1,4 +1,4 @@
-{ stdenv
+{ lib, stdenv
 , fetchurl
 , cmake
 , bash
@@ -10,9 +10,10 @@
 , libGL
 , freetype
 , xorg
-, alsaLib
+, alsa-lib
 , cairo
 , libuuid
+, libnsl
 , makeWrapper
 , ... }:
 
@@ -22,22 +23,28 @@ stdenv.mkDerivation rec {
 
   inherit name src;
 
-  pharo-share = import ./share.nix { inherit stdenv fetchurl unzip; };
+  pharo-share = import ./share.nix { inherit lib stdenv fetchurl unzip; };
 
   hardeningDisable = [ "format" "pic" ];
 
   nativeBuildInputs = [ unzip cmake gcc makeWrapper ];
 
   buildInputs = [ bash glibc openssl libGLU libGL freetype
-                  xorg.libX11 xorg.libICE xorg.libSM alsaLib cairo pharo-share ];
+                  xorg.libX11 xorg.libICE xorg.libSM alsa-lib cairo pharo-share libnsl ];
 
-  LD_LIBRARY_PATH = stdenv.lib.makeLibraryPath
-    [ cairo libGLU libGL freetype openssl libuuid alsaLib
+  LD_LIBRARY_PATH = lib.makeLibraryPath
+    [ cairo libGLU libGL freetype openssl libuuid alsa-lib
       xorg.libICE xorg.libSM ];
 
   preConfigure = ''
     cd build/
   '';
+
+  # -fcommon is a workaround build failure on -fno-common toolchains like upstream
+  # gcc-10. Otherwise build fails as:
+  #   ld: CMakeFiles/pharo.dir/build/pharo-vm-2016.02.18/src/vm/gcc3x-cointerp.c.o:(.bss+0x88): multiple definition of
+  #     `sendTrace'; CMakeFiles/pharo.dir/build/pharo-vm-2016.02.18/src/vm/cogit.c.o:(.bss+0x84): first defined here
+  NIX_CFLAGS_COMPILE = "-fcommon";
 
   installPhase = ''
     mkdir -p "$prefix/lib/$name"
@@ -70,7 +77,7 @@ stdenv.mkDerivation rec {
     ln -s "${pharo-share}/lib/"*.sources $prefix/lib/$name
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Clean and innovative Smalltalk-inspired environment";
     homepage = "https://pharo.org";
     longDescription = ''
@@ -89,9 +96,9 @@ stdenv.mkDerivation rec {
     license = licenses.mit;
     maintainers = [ maintainers.lukego ];
     # Pharo VM sources are packaged separately for darwin (OS X)
-    platforms = stdenv.lib.filter
-      (system: with stdenv.lib.systems.elaborate { inherit system; };
+    platforms = lib.filter
+      (system: with lib.systems.elaborate { inherit system; };
          isUnix && !isDarwin)
-      stdenv.lib.platforms.mesaPlatforms;
+      lib.platforms.mesaPlatforms;
   };
 }

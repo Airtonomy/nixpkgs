@@ -1,11 +1,12 @@
-{ stdenv, fetchurl, fetchpatch, pkgconfig, gtk2, gettext, libxml2, intltool, libart_lgpl
+{ lib, stdenv, fetchurl, fetchpatch, pkg-config, gtk2, gettext, libxml2, intltool, libart_lgpl
 , libgnomecups, bison, flex }:
 
 stdenv.mkDerivation rec {
-  name = "libgnomeprint-2.18.8";
+  pname = "libgnomeprint";
+  version = "2.18.8";
 
   src = fetchurl {
-    url = "mirror://gnome/sources/libgnomeprint/2.18/${name}.tar.bz2";
+    url = "mirror://gnome/sources/libgnomeprint/${lib.versions.majorMinor version}/libgnomeprint-${version}.tar.bz2";
     sha256 = "1034ec8651051f84d2424e7a1da61c530422cc20ce5b2d9e107e1e46778d9691";
   };
 
@@ -18,12 +19,12 @@ stdenv.mkDerivation rec {
     })
   ];
 
-  nativeBuildInputs = [ pkgconfig ];
-  buildInputs = [ gtk2 gettext intltool libart_lgpl libgnomecups bison flex ];
+  nativeBuildInputs = [ pkg-config intltool ];
+  buildInputs = [ gtk2 gettext libart_lgpl libgnomecups bison flex ];
 
   propagatedBuildInputs = [ libxml2 ];
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     platforms = platforms.linux;
   };
 }

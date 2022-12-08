@@ -1,21 +1,34 @@
-{ stdenv, fetchurl, python, makeWrapper, gawk, bash, getopt, procps
-, which, jre, coreutils, nixosTests
-# generation is the attribute version suffix such as 3_11 in pkgs.cassandra_3_11
+{ lib
+, stdenv
+, fetchurl
+, python2
+, makeWrapper
+, gawk
+, bash
+, getopt
+, procps
+, which
+, jre
+, nixosTests
+  # generation is the attribute version suffix such as 3_11 in pkgs.cassandra_3_11
 , generation
-, version, sha256
+, version
+, sha256
+, extraMeta ? { }
+, callPackage
 , ...
 }:
 
 let
-  libPath = stdenv.lib.makeLibraryPath [ stdenv.cc.cc ];
-  binPath = with stdenv.lib; makeBinPath ([
+  libPath = lib.makeLibraryPath [ stdenv.cc.cc ];
+  binPath = lib.makeBinPath [
     bash
     getopt
     gawk
     which
     jre
     procps
-  ]);
+  ];
 in
 
 stdenv.mkDerivation rec {
@@ -24,12 +37,14 @@ stdenv.mkDerivation rec {
 
   src = fetchurl {
     inherit sha256;
-    url = "mirror://apache/cassandra/${version}/apache-${pname}-${version}-bin.tar.gz";
+    url = "mirror://apache/cassandra/${version}/apache-cassandra-${version}-bin.tar.gz";
   };
 
-  nativeBuildInputs = [ makeWrapper coreutils ];
+  nativeBuildInputs = [ makeWrapper ];
 
   installPhase = ''
+    runHook preInstall
+
     mkdir $out
     mv * $out
 
@@ -39,7 +54,6 @@ stdenv.mkDerivation rec {
        $out/LICENSE.txt \
        $out/NEWS.txt \
        $out/NOTICE.txt \
-       $out/javadoc \
        $out/share/doc/${pname}-${version}
 
     if [[ -d $out/doc ]]; then
@@ -84,25 +98,30 @@ stdenv.mkDerivation rec {
       fi
     done
 
-    wrapProgram $out/bin/cqlsh --prefix PATH : ${python}/bin
-    '';
+    wrapProgram $out/bin/cqlsh --prefix PATH : ${python2}/bin
+
+    runHook postInstall
+  '';
 
   passthru = {
     tests =
       let
         test = nixosTests."cassandra_${generation}";
-      in {
+      in
+      {
         nixos =
           assert test.testPackage.version == version;
           test;
       };
+
+    updateScript = callPackage ./update-script.nix { inherit generation; };
   };
 
-  meta = with stdenv.lib; {
-    homepage = "http://cassandra.apache.org/";
+  meta = with lib; {
+    homepage = "https://cassandra.apache.org/";
     description = "A massively scalable open source NoSQL database";
     platforms = platforms.unix;
     license = licenses.asl20;
     maintainers = [ maintainers.roberth ];
-  };
+  } // extraMeta;
 }

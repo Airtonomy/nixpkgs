@@ -1,11 +1,11 @@
-{ stdenv
+{ lib, stdenv
 , fetchFromGitLab
 , fetchpatch
 , meson
 , ninja
 , pkg-config
 , gobject-introspection
-, wrapGAppsHook
+, wrapGAppsNoGuiHook
 , glib
 , coreutils
 , accountsservice
@@ -19,7 +19,7 @@
 
 stdenv.mkDerivation rec {
   pname = "malcontent";
-  version = "0.10.0";
+  version = "0.11.0";
 
   outputs = [ "bin" "out" "lib" "pam" "dev" "man" "installedTests" ];
 
@@ -28,7 +28,7 @@ stdenv.mkDerivation rec {
     owner = "pwithnall";
     repo = pname;
     rev = version;
-    sha256 = "1b6rgf7h9gj2kw1b7ba0mvhsb89riwf9p4pviqjfzd1i5nmbmnyx";
+    sha256 = "sha256-92F30DfdSJvO5C9EmNtiC/H6Fa6qQHecYSx59JKp8vA=";
   };
 
   patches = [
@@ -44,7 +44,7 @@ stdenv.mkDerivation rec {
     ninja
     pkg-config
     gobject-introspection
-    wrapGAppsHook
+    wrapGAppsNoGuiHook
   ];
 
   buildInputs = [
@@ -90,7 +90,7 @@ stdenv.mkDerivation rec {
     };
   };
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     # We need to install Polkit & AccountsService data files in `out`
     # but `buildEnv` only uses `bin` when both `bin` and `out` are present.
     outputsToInstall = [ "bin" "out" "man" ];

@@ -1,36 +1,43 @@
 { lib
 , buildPythonPackage
-, isPy3k
+, pythonOlder
 , fetchFromGitHub
 , requests
 , matrix-client
 , distro
+, click
+, typing-extensions
+, pytestCheckHook
 }:
 
 buildPythonPackage rec {
   pname = "zulip";
-  version = "0.7.0";
+  version = "0.8.2";
 
-  disabled = !isPy3k;
+  disabled = pythonOlder "3.6";
 
   # no sdist on PyPI
   src = fetchFromGitHub {
     owner = "zulip";
     repo = "python-zulip-api";
     rev = version;
-    sha256 = "0waldgpzq3ms1r1z14lxdj56lf082fnmi83l3fn8i8gqr8nvnch1";
+    hash = "sha256-Z5WrV/RDQwdKUBF86M5/xWhXn3fGNqJtqO5PTd7s5ME=";
   };
-  sourceRoot = "source/zulip";
+  sourceRoot = "${src.name}/zulip";
 
   propagatedBuildInputs = [
     requests
     matrix-client
     distro
+    click
+    typing-extensions
   ];
 
-  preCheck = ''
-    export COLUMNS=80
-  '';
+  checkInputs = [
+    pytestCheckHook
+  ];
+
+  pythonImportsCheck = [ "zulip" ];
 
   meta = with lib; {
     description = "Bindings for the Zulip message API";

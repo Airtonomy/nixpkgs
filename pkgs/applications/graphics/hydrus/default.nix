@@ -1,52 +1,61 @@
-{ stdenv
+{ lib
 , fetchFromGitHub
-, lzma
-, qt5
 , wrapQtAppsHook
-, miniupnpc_2
+, miniupnpc
+, ffmpeg
+, enableSwftools ? false
 , swftools
-, pythonPackages
+, python3Packages
 }:
 
-pythonPackages.buildPythonPackage {
+python3Packages.buildPythonPackage rec {
   pname = "hydrus";
-  version = "420";
+  version = "503";
   format = "other";
 
   src = fetchFromGitHub {
     owner = "hydrusnetwork";
     repo = "hydrus";
-    rev = "067c4862a0ed8dd9264b464c69975b520139809f";
-    sha256 = "12x0rv2yxsczdaxvpb5ggf4jwzjd1vd7ml0r61s4342zwvjrhji9";
+    rev = "refs/tags/v${version}";
+    hash = "sha256-nJn5EphbmVYAAOisV3fym/nHlJl/aPZ2Iyp+Z2/N3Jc=";
   };
 
   nativeBuildInputs = [
     wrapQtAppsHook
+    python3Packages.mkdocs-material
   ];
 
-  propagatedBuildInputs = with pythonPackages; [
+  propagatedBuildInputs = with python3Packages; [
     beautifulsoup4
+    cbor2
+    chardet
+    cloudscraper
     html5lib
     lxml
+    lz4
     numpy
     opencv4
     pillow
     psutil
     pyopenssl
+    pyside2
+    pysocks
+    python-dateutil
+    python3Packages.mpv
     pyyaml
+    qtpy
     requests
     send2trash
     service-identity
+    six
     twisted
-    lz4
-    lzma
-    pysocks
-    matplotlib
-    qtpy
-    pyside2
   ];
 
-  checkInputs = with pythonPackages; [ nose httmock ];
+  checkInputs = with python3Packages; [
+    nose
+    mock
+    httmock
+  ];
 
   # most tests are failing, presumably because we are not using test.py
   checkPhase = ''
@@ -67,6 +76,7 @@ pythonPackages.buildPythonPackage {
     -e TestClientThreading \
     -e TestDialogs \
     -e TestFunctions \
+    -e TestHydrusNetwork \
     -e TestHydrusNATPunch \
     -e TestHydrusSerialisable \
     -e TestHydrusServer \
@@ -74,39 +84,37 @@ pythonPackages.buildPythonPackage {
     -e TestServer \
   '';
 
-  extraOutputsToLink = [ "doc" ];
-
-  postPatch = ''
-    sed 's;os\.path\.join(\sHC\.BIN_DIR,.*;"${miniupnpc_2}/bin/upnpc";' \
-      -i ./hydrus/core/HydrusNATPunch.py
-
-    sed 's;os\.path\.join(\sHC\.BIN_DIR,.*;"${swftools}/bin/swfrender";' \
-      -i ./hydrus/core/HydrusFlashHandling.py
-  '';
-
-  #doCheck = true;
+  outputs = [ "out" "doc" ];
 
   installPhase = ''
     # Move the hydrus module and related directories
-    mkdir -p $out/${pythonPackages.python.sitePackages}
-    mv {hydrus,static} $out/${pythonPackages.python.sitePackages}
+    mkdir -p $out/${python3Packages.python.sitePackages}
+    mv {hydrus,static} $out/${python3Packages.python.sitePackages}
+    mkdocs build -d help
     mv help $out/doc/
 
     # install the hydrus binaries
     mkdir -p $out/bin
     install -m0755 server.py $out/bin/hydrus-server
     install -m0755 client.py $out/bin/hydrus-client
+  '' + lib.optionalString enableSwftools ''
+    mkdir -p $out/${python3Packages.python.sitePackages}/bin
+    # swfrender seems to have to be called sfwrender_linux
+    # not sure if it can be loaded through PATH, but this is simpler
+    # $out/python3Packages.python.sitePackages/bin is correct NOT .../hydrus/bin
+    ln -s ${swftools}/bin/swfrender $out/${python3Packages.python.sitePackages}/bin/swfrender_linux
   '';
 
   dontWrapQtApps = true;
   preFixup = ''
     makeWrapperArgs+=("''${qtWrapperArgs[@]}")
+    makeWrapperArgs+=(--prefix PATH : ${lib.makeBinPath [ ffmpeg miniupnpc ]})
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Danbooru-like image tagging and searching system for the desktop";
     license = licenses.wtfpl;
     homepage = "https://hydrusnetwork.github.io/hydrus/";
-    maintainers = [ maintainers.evanjs ];
+    maintainers = with maintainers; [ dandellion evanjs ];
   };
 }

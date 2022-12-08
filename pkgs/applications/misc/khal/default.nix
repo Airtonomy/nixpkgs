@@ -1,71 +1,102 @@
-{ stdenv, pkgs, python3, fetchpatch, glibcLocales }:
+{ lib
+, stdenv
+, fetchFromGitHub
+, fetchpatch
+, glibcLocales
+, installShellFiles
+, python3
+}:
 
-with python3.pkgs; buildPythonApplication rec {
+python3.pkgs.buildPythonApplication rec {
   pname = "khal";
-  version = "0.10.2";
+  version = "0.10.5";
 
-  src = fetchPypi {
-    inherit pname version;
-    sha256 = "11qhrga44knlnp88py9p547d4nr5kn041d2nszwa3dqw7mf22ks9";
+  src = fetchFromGitHub {
+    owner = "pimutils";
+    repo = pname;
+    rev = "v${version}";
+    hash = "sha256-FneJmoAOb7WjSgluCwlspf27IU3MsQZFKryL9OSSsUw=";
   };
 
-  patches = [
-    ./skip-broken-test.patch
-  ];
+  SETUPTOOLS_SCM_PRETEND_VERSION = version;
 
-  propagatedBuildInputs = [
+  nativeBuildInputs = [
+    glibcLocales
+    installShellFiles
+  ] ++ (with python3.pkgs; [
+    setuptools-scm
+    sphinx
+    sphinxcontrib_newsfeed
+  ]);
+
+  propagatedBuildInputs = with python3.pkgs;[
     atomicwrites
     click
     click-log
     configobj
-    dateutil
+    freezegun
     icalendar
     lxml
+    pkginfo
     pkgs.vdirsyncer
+    python-dateutil
     pytz
     pyxdg
-    requests_toolbelt
+    requests-toolbelt
     tzlocal
     urwid
-    pkginfo
-    freezegun
   ];
-  nativeBuildInputs = [ setuptools_scm sphinx sphinxcontrib_newsfeed ];
-  checkInputs = [ pytest glibcLocales ];
-  LC_ALL = "en_US.UTF-8";
 
-  postPatch = ''
-    sed -i \
-      -e "s/Invalid value for \"ics\"/Invalid value for \\\'ics\\\'/" \
-      -e "s/Invalid value for \"\[ICS\]\"/Invalid value for \\\'\[ICS\]\\\'/" \
-      tests/cli_test.py
-  '';
+  checkInputs = with python3.pkgs;[
+    freezegun
+    hypothesis
+    packaging
+    pytestCheckHook
+    vdirsyncer
+  ];
+
+  patches = [
+    # Tests working with latest pytz version, https://github.com/pimutils/khal/pull/1183
+    (fetchpatch {
+      name = "support-later-pytz.patch";
+      url = "https://github.com/pimutils/khal/commit/53eb8a7426d5c09478c78d809c4df4391438e246.patch";
+      sha256 = "sha256-drGtvJlQ3qFUdeukRWCFycPSZGWG/FSRqnbwJzFKITc=";
+      excludes = [
+        "CHANGELOG.rst"
+      ];
+    })
+  ];
 
   postInstall = ''
-    # zsh completion
-    install -D misc/__khal $out/share/zsh/site-functions/__khal
+    # shell completions
+    installShellCompletion --cmd khal \
+      --bash <(_KHAL_COMPLETE=bash_source $out/bin/khal) \
+      --zsh <(_KHAL_COMPLETE=zsh_source $out/bin/khal) \
+      --fish <(_KHAL_COMPLETE=fish_source $out/bin/khal)
 
     # man page
     PATH="${python3.withPackages (ps: with ps; [ sphinx sphinxcontrib_newsfeed ])}/bin:$PATH" \
     make -C doc man
-    install -Dm755 doc/build/man/khal.1 -t $out/share/man/man1
+    installManPage doc/build/man/khal.1
 
-    # desktop
+    # .desktop file
     install -Dm755 misc/khal.desktop -t $out/share/applications
   '';
 
   doCheck = !stdenv.isAarch64;
 
-  checkPhase = ''
-    py.test -k "not test_vertical_month_abbr_fr and not test_vertical_month_unicode_weekdeays_gr \
-      and not test_event_different_timezones and not test_default_calendar and not test_birthdays \
-      and not test_birthdays_no_year"
-  '';
+  LC_ALL = "en_US.UTF-8";
 
-  meta = with stdenv.lib; {
-    homepage = "http://lostpackets.de/khal/";
+  disabledTests = [
+    # timing based
+    "test_etag"
+  ];
+
+  meta = with lib; {
     description = "CLI calendar application";
+    homepage = "http://lostpackets.de/khal/";
     license = licenses.mit;
     maintainers = with maintainers; [ gebner ];
+    broken = stdenv.isDarwin;
   };
 }

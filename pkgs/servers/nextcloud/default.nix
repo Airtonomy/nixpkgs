@@ -1,4 +1,4 @@
-{ stdenv, fetchurl, nixosTests }:
+{ lib, stdenv, fetchurl, nixosTests }:
 
 let
   generic = {
@@ -13,17 +13,21 @@ let
       inherit sha256;
     };
 
+    patches = [ ./0001-Setup-remove-custom-dbuser-creation-behavior.patch ];
+
     passthru.tests = nixosTests.nextcloud;
 
     installPhase = ''
+      runHook preInstall
       mkdir -p $out/
       cp -R . $out/
+      runHook postInstall
     '';
 
-    meta = with stdenv.lib; {
+    meta = with lib; {
       description = "Sharing solution for files, calendars, contacts and more";
       homepage = "https://nextcloud.com";
-      maintainers = with maintainers; [ schneefux bachp globin fpletz ma27 ];
+      maintainers = with maintainers; [ schneefux bachp globin ma27 ];
       license = licenses.agpl3Plus;
       platforms = with platforms; unix;
       knownVulnerabilities = extraVulnerabilities
@@ -31,34 +35,28 @@ let
     };
   };
 in {
-  nextcloud17 = throw ''
-    Nextcloud v17 has been removed from `nixpkgs` as the support for it will be dropped
-    by upstream within the lifetime of NixOS 20.09[1]. Please upgrade to Nextcloud v18 by
-    declaring
+  nextcloud23 = throw ''
+    Nextcloud v23 has been removed from `nixpkgs` as the support for is dropped
+    by upstream in 2022-12. Please upgrade to at least Nextcloud v24 by declaring
 
-        services.nextcloud.package = pkgs.nextcloud18;
+        services.nextcloud.package = pkgs.nextcloud24;
 
     in your NixOS config.
 
-    [1] https://docs.nextcloud.com/server/18/admin_manual/release_schedule.html
+    WARNING: if you were on Nextcloud 22 on NixOS 22.05 you have to upgrade to Nextcloud 23
+    first on 22.05 because Nextcloud doesn't support upgrades accross multiple major versions!
   '';
 
-  nextcloud18 = generic {
-    version = "18.0.10";
-    sha256 = "0kv9mdn36shr98kh27969b8xs7pgczbyjklrfskxy9mph7bbzir6";
-    eol = true;
+  nextcloud24 = generic {
+    version = "24.0.6";
+    sha256 = "b26dff9980a47e7e722805fdbbf87e07f59a3817b03ecc32698e028e9baf0301";
   };
 
-  nextcloud19 = generic {
-    version = "19.0.6";
-    sha256 = "sha256-pqqIayE0OyTailtd2zeYi+G1APjv/YHqyO8jCpq7KJg=";
-    extraVulnerabilities = [
-      "Nextcloud 19 is still supported, but CVE-2020-8259 & CVE-2020-8152 are unfixed!"
-    ];
+  nextcloud25 = generic {
+    version = "25.0.0";
+    sha256 = "2c05ac9d7b72b44ef8b3d2ae03ff0fd6121e254b8054556f5163bd8760dd8f49";
   };
 
-  nextcloud20 = generic {
-    version = "20.0.4";
-    sha256 = "sha256-Jp8WIuMm9dEeOH04YarU4rDnkzSul+7Vp7M1K6dmFCA=";
-  };
+  # tip: get the sha with:
+  # curl 'https://download.nextcloud.com/server/releases/nextcloud-${version}.tar.bz2.sha256'
 }

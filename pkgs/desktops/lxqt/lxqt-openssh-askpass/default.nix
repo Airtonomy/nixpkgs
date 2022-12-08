@@ -10,18 +10,18 @@
 , kwindowsystem
 , liblxqt
 , libqtxdg
-, lxqtUpdateScript
+, gitUpdater
 }:
 
 mkDerivation rec {
   pname = "lxqt-openssh-askpass";
-  version = "0.16.0";
+  version = "1.1.0";
 
   src = fetchFromGitHub {
     owner = "lxqt";
     repo = pname;
     rev = version;
-    sha256 = "163mshrwfwp31bjis66l50krsyp184idw9gyp7pdh047psca5129";
+    sha256 = "s1ywmlcHsbeaRi5zrhFMPS0SJ1s8IYnDXWkFvB1kaI4=";
   };
 
   nativeBuildInputs = [
@@ -39,13 +39,13 @@ mkDerivation rec {
     libqtxdg
   ];
 
-  passthru.updateScript = lxqtUpdateScript { inherit pname version src; };
+  passthru.updateScript = gitUpdater { };
 
   meta = with lib; {
-    description = "GUI to query passwords on behalf of SSH agents";
     homepage = "https://github.com/lxqt/lxqt-openssh-askpass";
-    license = licenses.lgpl21;
+    description = "GUI to query passwords on behalf of SSH agents";
+    license = licenses.lgpl21Plus;
     platforms = platforms.linux;
-    maintainers = with maintainers; [ romildo ];
+    maintainers = teams.lxqt.members;
   };
 }

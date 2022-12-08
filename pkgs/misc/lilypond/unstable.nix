@@ -1,21 +1,11 @@
-{ stdenv, fetchgit, lilypond, ghostscript, gyre-fonts }:
+{ lib, fetchurl, guile, lilypond }:
 
-let
-
-  version = "2.19.83";
-
-in
-
-lilypond.overrideAttrs (oldAttrs: {
-  inherit version;
-
-  src = fetchgit {
-    url = "https://git.savannah.gnu.org/r/lilypond.git";
-    rev = "release/${version}-1";
-    sha256 = "1ycyx9x76d79jh7wlwyyhdjkyrwnhzqpw006xn2fk35s0jrm2iz0";
-  };
-
-  meta = oldAttrs.meta // {
-    broken = stdenv.isDarwin;
+(lilypond.override {
+  inherit guile;
+}).overrideAttrs (oldAttrs: rec {
+  version = "2.23.12";
+  src = fetchurl {
+    url = "https://lilypond.org/download/sources/v${lib.versions.majorMinor version}/lilypond-${version}.tar.gz";
+    sha256 = "sha256-SLZ9/Jybltd8+1HANk8pTGHRb7MuZSJJDDY/S4Kwz/k=";
   };
 })

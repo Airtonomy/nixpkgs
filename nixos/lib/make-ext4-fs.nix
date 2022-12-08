@@ -74,11 +74,18 @@ pkgs.stdenv.mkDerivation {
         return 1
       fi
 
-      echo "Resizing to minimum allowed size"
+      # We may want to shrink the file system and resize the image to
+      # get rid of the unnecessary slack here--but see
+      # https://github.com/NixOS/nixpkgs/issues/125121 for caveats.
+
+      # shrink to fit
       resize2fs -M $img
 
-      # And a final fsck, because of the previous truncating.
-      fsck.ext4 -n -f $img
+      # Add 16 MebiByte to the current_size
+      new_size=$(dumpe2fs -h $img | awk -F: \
+        '/Block count/{count=$2} /Block size/{size=$2} END{print (count*size+16*2**20)/size}')
+
+      resize2fs $img $new_size
 
       if [ ${builtins.toString compressImage} ]; then
         echo "Compressing image"

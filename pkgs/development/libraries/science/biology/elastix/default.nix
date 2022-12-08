@@ -1,4 +1,4 @@
-{ stdenv, fetchFromGitHub, fetchpatch, cmake, itk, python3, Cocoa }:
+{ lib, stdenv, fetchFromGitHub, fetchpatch, cmake, itk, python3, Cocoa }:
 
 stdenv.mkDerivation rec {
   pname    = "elastix";
@@ -20,16 +20,12 @@ stdenv.mkDerivation rec {
   ];
 
   nativeBuildInputs = [ cmake python3 ];
-  buildInputs = [ itk ] ++ stdenv.lib.optionals stdenv.isDarwin [ Cocoa ];
+  buildInputs = [ itk ] ++ lib.optionals stdenv.isDarwin [ Cocoa ];
 
   doCheck = !stdenv.isDarwin;  # usual dynamic linker issues
 
-  preCheck = "
-    export LD_LIBRARY_PATH=$(pwd)/bin
-  ";
-
-  meta = with stdenv.lib; {
-    homepage = "http://elastix.isi.uu.nl/";
+  meta = with lib; {
+    homepage = "https://elastix.lumc.nl";
     description = "Image registration toolkit based on ITK";
     maintainers = with maintainers; [ bcdarwin ];
     platforms = platforms.x86_64;  # libitkpng linker issues with ITK 5.1

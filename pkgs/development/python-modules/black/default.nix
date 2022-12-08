@@ -1,72 +1,94 @@
-{ stdenv, lib
-, buildPythonPackage, fetchPypi, pythonOlder, setuptools_scm, pytestCheckHook
+{ stdenv
+, lib
+, buildPythonPackage
+, fetchPypi
+, pythonOlder
+, pytestCheckHook
 , aiohttp
 , aiohttp-cors
-, appdirs
-, attrs
 , click
-, dataclasses
+, colorama
+, hatch-fancy-pypi-readme
+, hatch-vcs
+, hatchling
 , mypy-extensions
 , pathspec
-, regex
-, toml
+, parameterized
+, platformdirs
+, tomli
 , typed-ast
-, typing-extensions }:
+, typing-extensions
+, uvloop
+}:
 
 buildPythonPackage rec {
   pname = "black";
-  version = "20.8b1";
+  version = "22.10.0";
+  format = "pyproject";
 
-  disabled = pythonOlder "3.6";
+  disabled = pythonOlder "3.7";
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "1spv6sldp3mcxr740dh3ywp25lly9s8qlvs946fin44rl1x5a0hw";
+    hash = "sha256-9RNYjaWZlD4M3k4yzJh56CXVhyDWVXBi0QmMWtgAgOE=";
   };
 
-  nativeBuildInputs = [ setuptools_scm ];
+  nativeBuildInputs = [
+    hatch-fancy-pypi-readme
+    hatch-vcs
+    hatchling
+  ];
 
   # Necessary for the tests to pass on Darwin with sandbox enabled.
   # Black starts a local server and needs to bind a local address.
   __darwinAllowLocalNetworking = true;
 
-  checkInputs =  [ pytestCheckHook ];
+  checkInputs = [ pytestCheckHook parameterized aiohttp ];
 
   preCheck = ''
     export PATH="$PATH:$out/bin"
+
+    # The top directory /build matches black's DEFAULT_EXCLUDE regex.
+    # Make /build the project root for black tests to avoid excluding files.
+    touch ../.git
+  '' + lib.optionalString stdenv.isDarwin ''
+    # Work around https://github.com/psf/black/issues/2105
+    export TMPDIR="/tmp"
   '';
 
   disabledTests = [
-    # Don't know why these tests fails
-    "test_cache_multiple_files"
-    "test_failed_formatting_does_not_get_cached"
     # requires network access
     "test_gen_check_output"
-    "test_process_queue"
   ] ++ lib.optionals stdenv.isDarwin [
     # fails on darwin
     "test_expression_diff"
+    # Fail on Hydra, see https://github.com/NixOS/nixpkgs/pull/130785
+    "test_bpo_2142_workaround"
+    "test_skip_magic_trailing_comma"
   ];
+  # multiple tests exceed max open files on hydra builders
+  doCheck = !(stdenv.isLinux && stdenv.isAarch64);
 
   propagatedBuildInputs = [
-    aiohttp
-    aiohttp-cors
-    appdirs
-    attrs
     click
     mypy-extensions
     pathspec
-    regex
-    toml
-    typed-ast
-    typing-extensions
-  ] ++ lib.optional (pythonOlder "3.7") dataclasses;
+    platformdirs
+    tomli
+  ] ++ lib.optional (pythonOlder "3.8") typed-ast
+  ++ lib.optional (pythonOlder "3.10") typing-extensions;
+
+  passthru.optional-dependencies = {
+    d = [ aiohttp aiohttp-cors ];
+    colorama = [ colorama ];
+    uvloop = [ uvloop ];
+  };
 
   meta = with lib; {
     description = "The uncompromising Python code formatter";
-    homepage    = "https://github.com/psf/black";
-    changelog   = "https://github.com/psf/black/blob/${version}/CHANGES.md";
-    license     = licenses.mit;
-    maintainers = with maintainers; [ sveitser ];
+    homepage = "https://github.com/psf/black";
+    changelog = "https://github.com/psf/black/blob/${version}/CHANGES.md";
+    license = licenses.mit;
+    maintainers = with maintainers; [ sveitser autophagy ];
   };
 }

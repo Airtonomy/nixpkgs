@@ -1,32 +1,50 @@
-{ stdenv, buildPythonPackage, fetchFromGitHub, python-editor, readchar, blessed, pytest, pytestcov, pexpect, pytest-mock }:
+{ lib
+, buildPythonPackage
+, fetchFromGitHub
+
+# native
+, poetry-core
+
+# propagated
+, blessed
+, python-editor
+, readchar
+
+# tests
+, pytest-mock
+, pytestCheckHook
+, pexpect
+}:
 
 buildPythonPackage rec {
   pname = "inquirer";
-  version = "2.7.0";
+  version = "2.9.2";
+  format = "pyproject";
 
-  # PyPi archive currently broken: https://github.com/magmax/python-inquirer/issues/106
   src = fetchFromGitHub rec {
     owner = "magmax";
     repo = "python-inquirer";
-    rev = version;
-    sha256 = "152l5qjgkag8zkr69ax2i5s8xcac1qvyngisrplbnbzwbpf77d0d";
+    rev = "v${version}";
+    sha256 = "sha256-TQEZeZDl4N78dE7CXy5OwquUoHuxxjmDAC3wdxqydaQ=";
   };
 
-  propagatedBuildInputs = [ blessed python-editor readchar ];
+  nativeBuildInputs = [
+    poetry-core
+  ];
 
-  postPatch = ''
-   substituteInPlace requirements.txt \
-     --replace "blessed==1.17.6" "blessed~=1.17" \
-     --replace "readchar==2.0.1" "readchar>=2.0.0"
-  '';
+  propagatedBuildInputs = [
+    blessed
+    python-editor
+    readchar
+  ];
 
-  checkInputs = [ pytest pytestcov pexpect pytest-mock ];
+  checkInputs = [
+    pexpect
+    pytest-mock
+    pytestCheckHook
+  ];
 
-  checkPhase = ''
-    pytest --cov-report=term-missing  --cov inquirer --no-cov-on-fail tests/unit tests/integration
-  '';
-
-  meta = with stdenv.lib; {
+  meta = with lib; {
     homepage = "https://github.com/magmax/python-inquirer";
     description = "A collection of common interactive command line user interfaces, based on Inquirer.js";
     license = licenses.mit;

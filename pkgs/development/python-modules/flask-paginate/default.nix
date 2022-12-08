@@ -2,11 +2,11 @@
 
 buildPythonPackage rec {
   pname = "flask-paginate";
-  version = "0.7.1";
+  version = "2022.1.8";
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "949b93d0535d1223b91ac0048586bd878aaebf4044c54c1dc3068acc9bdf441f";
+    sha256 = "a32996ec07ca004c45b768b0d50829728ab8f3986c0650ef538e42852c7aeba2";
   };
 
   propagatedBuildInputs = [ flask ];

@@ -1,4 +1,4 @@
-{ stdenv, fetchFromGitHub, python3, fetchpatch }:
+{ lib, fetchFromGitHub, python3 }:
 
 
 let
@@ -7,12 +7,20 @@ let
       self = py;
 
       # not compatible with prompt_toolkit >=2.0
-      prompt_toolkit = super.prompt_toolkit.overridePythonAttrs (oldAttrs: rec {
+      prompt-toolkit = super.prompt-toolkit.overridePythonAttrs (oldAttrs: rec {
         name = "${oldAttrs.pname}-${version}";
         version = "1.0.18";
         src = oldAttrs.src.override {
           inherit version;
           sha256 = "09h1153wgr5x2ny7ds0w2m81n3bb9j8hjb8sjfnrg506r01clkyx";
+        };
+      });
+      # Use click 7
+      click = super.click.overridePythonAttrs (old: rec {
+        version = "7.1.2";
+        src = old.src.override {
+          inherit version;
+          sha256 = "d2b5255c7c6349bc1bd1e59e08cd12acbbd63ce649f2588755783aa94dfb6b1a";
         };
       });
     };
@@ -37,20 +45,18 @@ buildPythonApplication rec {
     colorama
     requests
     pygments
-    prompt_toolkit
+    prompt-toolkit
     six
   ];
 
   # will fail without pre-seeded config files
   doCheck = false;
 
-  checkInputs = [ mock ];
+  checkInputs = [ unittestCheckHook mock ];
 
-  checkPhase = ''
-    ${python.interpreter} -m unittest discover -s tests -v
-  '';
+  unittestFlagsArray = [ "-s" "tests" "-v" ];
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     homepage = "https://github.com/donnemartin/haxor-news";
     description = "Browse Hacker News like a haxor";
     license = licenses.asl20;

@@ -1,54 +1,54 @@
-{ lib, fetchFromGitHub, buildGoPackage, btrfs-progs, go-md2man, installShellFiles, util-linux, nixosTests }:
+{ lib
+, fetchFromGitHub
+, buildGoModule
+, btrfs-progs
+, go-md2man
+, installShellFiles
+, util-linux
+, nixosTests
+}:
 
-with lib;
-
-buildGoPackage rec {
+buildGoModule rec {
   pname = "containerd";
-  version = "1.4.3";
-  # git commit for the above version's tag
-  commit = "269548fa27e0089a8b8278fc4fc781d7f65a939b";
+  version = "1.6.9";
 
   src = fetchFromGitHub {
     owner = "containerd";
     repo = "containerd";
     rev = "v${version}";
-    sha256 = "09xvhjg5f8h90w1y94kqqnqzhbhd62dcdd9wb9sdqakisjk6zrl0";
+    sha256 = "sha256-KvQdYQLzgt/MKPsA/mO5un6nE3/xcvVYwIveNn/uDnU=";
   };
 
-  goPackagePath = "github.com/containerd/containerd";
-  outputs = [ "out" "man" ];
+  vendorSha256 = null;
 
   nativeBuildInputs = [ go-md2man installShellFiles util-linux ];
 
   buildInputs = [ btrfs-progs ];
 
-  buildFlags = [ "VERSION=v${version}" "REVISION=${commit}" ];
-
-  BUILDTAGS = []
-    ++ optional (btrfs-progs == null) "no_btrfs";
+  BUILDTAGS = lib.optionals (btrfs-progs == null) [ "no_btrfs" ];
 
   buildPhase = ''
-    cd go/src/${goPackagePath}
+    runHook preBuild
     patchShebangs .
-    make binaries $buildFlags
+    make binaries "VERSION=v${version}" "REVISION=${src.rev}"
+    runHook postBuild
   '';
 
   installPhase = ''
-    for b in bin/*; do
-      install -Dm555 $b $out/$b
-    done
-
-    make man
-    installManPage man/*.[1-9]
+    runHook preInstall
+    install -Dm555 bin/* -t $out/bin
+    installShellCompletion --bash contrib/autocomplete/ctr
+    installShellCompletion --zsh --name _ctr contrib/autocomplete/zsh_autocomplete
+    runHook postInstall
   '';
 
   passthru.tests = { inherit (nixosTests) docker; };
 
-  meta = {
+  meta = with lib; {
     homepage = "https://containerd.io/";
     description = "A daemon to control runC";
     license = licenses.asl20;
-    maintainers = with maintainers; [ offline vdemeester ];
+    maintainers = with maintainers; [ offline vdemeester endocrimes zowoq ];
     platforms = platforms.linux;
   };
 }

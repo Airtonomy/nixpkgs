@@ -1,32 +1,44 @@
-{ stdenv
+{ lib
 , buildPythonPackage
-, fetchPypi
 , convertdate
-, dateutil
+, python-dateutil
+, fetchPypi
+, hijri-converter
 , korean-lunar-calendar
-, six
+, pytestCheckHook
+, pythonOlder
 }:
 
 buildPythonPackage rec {
   pname = "holidays";
-  version = "0.10.3";
+  version = "0.16";
+  format = "setuptools";
+
+  disabled = pythonOlder "3.7";
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "839281f2b1ae7ac576da7951472482f6e714818296853107ea861fa60f5013cc";
+    hash = "sha256-HX9P1rGYApj7uzMWsNV/pvFbUxMHTNrMEqOrk788pc0=";
   };
 
   propagatedBuildInputs = [
     convertdate
-    dateutil
+    python-dateutil
+    hijri-converter
     korean-lunar-calendar
-    six
   ];
-  pythonImportsCheck = [ "holidays" ];
 
-  meta = with stdenv.lib; {
-    homepage = "https://github.com/dr-prodigy/python-holidays";
+  checkInputs = [
+    pytestCheckHook
+  ];
+
+  pythonImportsCheck = [
+    "holidays"
+  ];
+
+  meta = with lib; {
     description = "Generate and work with holidays in Python";
+    homepage = "https://github.com/dr-prodigy/python-holidays";
     license = licenses.mit;
     maintainers = with maintainers; [ jluttine ];
   };

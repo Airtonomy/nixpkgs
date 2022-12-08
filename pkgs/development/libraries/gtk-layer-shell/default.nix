@@ -1,4 +1,4 @@
-{ stdenv
+{ lib, stdenv
 , fetchFromGitHub
 , meson
 , ninja
@@ -13,15 +13,16 @@
 
 stdenv.mkDerivation rec {
   pname = "gtk-layer-shell";
-  version = "0.5.1";
+  version = "0.7.0";
 
   outputs = [ "out" "dev" "devdoc" ];
+  outputBin = "devdoc"; # for demo
 
   src = fetchFromGitHub {
     owner = "wmww";
     repo = "gtk-layer-shell";
     rev = "v${version}";
-    sha256 = "1yfqfv3hn92cy9y5zgvz7qhq2ypill2z5857ki5snjimhjdz0cnw";
+    sha256 = "sha256-0S1WBpxXpWoMOecJQS6FKEXRZdw4E5hrjURPyhkxiMc=";
   };
 
   nativeBuildInputs = [
@@ -41,9 +42,10 @@ stdenv.mkDerivation rec {
 
   mesonFlags = [
     "-Ddocs=true"
+    "-Dexamples=true"
   ];
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "A library to create panels and other desktop components for Wayland using the Layer Shell protocol";
     license = licenses.lgpl3Plus;
     maintainers = with maintainers; [ eonpatapon ];

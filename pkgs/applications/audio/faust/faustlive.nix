@@ -1,36 +1,35 @@
-{ stdenv, fetchFromGitHub
-, llvm, qt48Full, qrencode, libmicrohttpd_0_9_70, libjack2, alsaLib, faust, curl
-, bc, coreutils, which, libsndfile, pkg-config
+{ lib, stdenv, fetchFromGitHub
+, llvm_10, qt5, qrencode, libmicrohttpd, libjack2, alsa-lib, faust, curl
+, bc, coreutils, which, libsndfile, flac, libogg, libvorbis, libopus, pkg-config, libxcb, cmake, gnutls, libtasn1, p11-kit
 }:
 
 stdenv.mkDerivation rec {
   pname = "faustlive";
-  version = "2.5.4";
+  version = "2.5.12";
   src = fetchFromGitHub {
     owner = "grame-cncm";
     repo = "faustlive";
     rev = version;
-    sha256 = "0npn8fvq8iafyamq4wrj1k1bmk4xd0my2sp3gi5jdjfx6hc1sm3n";
+    sha256 = "sha256-pq9zO4opCh9GEEtuQjrxKdNvOasDlcGGUsQD4je7Wyw=";
     fetchSubmodules = true;
   };
 
+  nativeBuildInputs = [ pkg-config qt5.wrapQtAppsHook cmake ];
+
   buildInputs = [
-    llvm qt48Full qrencode libmicrohttpd_0_9_70 libjack2 alsaLib faust curl
-    bc coreutils which libsndfile pkg-config
+    llvm_10 qt5.qtbase qrencode libmicrohttpd libjack2 alsa-lib faust curl
+    bc coreutils which libsndfile flac libogg libvorbis libopus libxcb gnutls libtasn1 p11-kit
   ];
 
   makeFlags = [ "PREFIX=$(out)" ];
 
-  postPatch = "cd Build";
-
-  installPhase = ''
-    install -d "$out/bin"
-    install -d "$out/share/applications"
-    install FaustLive/FaustLive "$out/bin"
-    install rsrc/FaustLive.desktop "$out/share/applications"
+  postInstall = ''
+    wrapProgram $out/bin/FaustLive --prefix LD_LIBRARY_PATH : "${lib.makeLibraryPath [ libmicrohttpd libsndfile faust llvm_10 ]}"
   '';
 
-  meta = with stdenv.lib; {
+  postPatch = "cd Build";
+
+  meta = with lib; {
     description = "A standalone just-in-time Faust compiler";
     longDescription = ''
       FaustLive is a standalone just-in-time Faust compiler. It tries to bring
@@ -39,5 +38,6 @@ stdenv.mkDerivation rec {
     '';
     homepage = "https://faust.grame.fr/";
     license = licenses.gpl3;
+    maintainers = with maintainers; [ magnetophon ];
   };
 }

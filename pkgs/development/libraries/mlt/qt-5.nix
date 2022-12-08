@@ -1,5 +1,6 @@
-{ stdenv
+{ lib
 , fetchFromGitHub
+, cmake
 , SDL
 , ffmpeg
 , frei0r
@@ -9,7 +10,7 @@
 , libvorbis
 , libxml2
 , movit
-, pkgconfig
+, pkg-config
 , sox
 , qtbase
 , qtsvg
@@ -17,22 +18,21 @@
 , vid-stab
 , opencv3
 , ladspa-sdk
-, genericUpdater
-, common-updater-scripts
+, gitUpdater
 , ladspaPlugins
 , mkDerivation
 , which
 }:
-let inherit (stdenv.lib) getDev; in
+
 mkDerivation rec {
   pname = "mlt";
-  version = "6.22.1";
+  version = "7.8.0";
 
   src = fetchFromGitHub {
     owner = "mltframework";
     repo = "mlt";
     rev = "v${version}";
-    sha256 = "0jxv848ykw0csbnayrd710ylw46m0picfv7rpzsxz1vh4jzs395k";
+    sha256 = "sha256-r8lvzz083WWlDtjvlsPwvOgplx2lPPkDDf3t0G9PqAQ=";
   };
 
   buildInputs = [
@@ -45,7 +45,6 @@ mkDerivation rec {
     libvorbis
     libxml2
     movit
-    pkgconfig
     qtbase
     qtsvg
     sox
@@ -56,55 +55,34 @@ mkDerivation rec {
     ladspaPlugins
   ];
 
-  nativeBuildInputs = [ which ];
+  nativeBuildInputs = [ cmake which pkg-config ];
 
   outputs = [ "out" "dev" ];
 
-  # Mostly taken from:
-  # http://www.kdenlive.org/user-manual/downloading-and-installing-kdenlive/installing-source/installing-mlt-rendering-engine
-  configureFlags = [
-    "--avformat-swscale"
-    "--enable-gpl"
-    "--enable-gpl3"
-    "--enable-opengl"
+  cmakeFlags = [
+    # RPATH of binary /nix/store/.../bin/... contains a forbidden reference to /build/
+    "-DCMAKE_SKIP_BUILD_RPATH=ON"
   ];
-
-  # mlt is unable to cope with our multi-prefix Qt build
-  # because it does not use CMake or qmake.
-  NIX_CFLAGS_COMPILE = "-I${getDev qtsvg}/include/QtSvg";
-
-  CXXFLAGS = "-std=c++11";
-
-  enableParallelBuilding = true;
 
   qtWrapperArgs = [
     "--prefix FREI0R_PATH : ${frei0r}/lib/frei0r-1"
     "--prefix LADSPA_PATH : ${ladspaPlugins}/lib/ladspa"
   ];
 
-  postInstall = ''
-    # Remove an unnecessary reference to movit.dev.
-    s=${movit.dev}/include
-    t=$(for ((i = 0; i < ''${#s}; i++)); do echo -n X; done)
-    sed -i $out/lib/mlt/libmltopengl.so -e "s|$s|$t|g"
-
-    # Remove an unnecessary reference to movit.dev.
-    s=${qtbase.dev}/include
-    t=$(for ((i = 0; i < ''${#s}; i++)); do echo -n X; done)
-    sed -i $out/lib/mlt/libmltqt.so -e "s|$s|$t|g"
+  postFixup = ''
+    substituteInPlace "$dev"/lib/pkgconfig/mlt-framework-7.pc \
+      --replace '=''${prefix}//' '=/'
   '';
 
   passthru = {
     inherit ffmpeg;
   };
 
-  passthru.updateScript = genericUpdater {
-    inherit pname version;
-    versionLister = "${common-updater-scripts}/bin/list-git-tags ${src.meta.homepage}";
+  passthru.updateScript = gitUpdater {
     rev-prefix = "v";
   };
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Open source multimedia framework, designed for television broadcasting";
     homepage = "https://www.mltframework.org/";
     license = licenses.gpl3;

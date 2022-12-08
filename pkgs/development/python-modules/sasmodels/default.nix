@@ -1,30 +1,60 @@
-{ lib, fetchFromGitHub, buildPythonPackage, pytest, numpy, scipy, matplotlib, docutils
-, pyopencl, opencl-headers
+{ lib
+, fetchFromGitHub
+, buildPythonPackage
+, pytest
+, numpy
+, scipy
+, matplotlib
+, docutils
+, pyopencl
+, opencl-headers
+, pythonOlder
 }:
 
 buildPythonPackage rec {
   pname = "sasmodels";
-  version = "1.0.2";
+  version = "1.0.6";
+  format = "setuptools";
+
+  disabled = pythonOlder "3.7";
 
   src = fetchFromGitHub {
     owner = "SasView";
     repo = "sasmodels";
     rev = "v${version}";
-    sha256 = "1qvh7q0fkls5r8r9mrph6igcvv8x3qsslqsc5jf1n20alcs5zjrl";
+    hash = "sha256-RVEPu07gp1ScciJQmjizyELcOD2WSjIlxunj5LnmXdw=";
   };
 
-  buildInputs = [ opencl-headers ];
-  checkInputs = [ pytest ];
-  propagatedBuildInputs = [ docutils matplotlib numpy scipy pyopencl ];
+  buildInputs = [
+    opencl-headers
+  ];
+
+  propagatedBuildInputs = [
+    docutils
+    matplotlib
+    numpy
+    scipy
+    pyopencl
+  ];
+
+  # Note: the 1.0.5 release should be compatible with pytest6, so this can
+  # be set back to 'pytest' at that point
+  checkInputs = [
+    pytest
+  ];
 
   checkPhase = ''
     HOME=$(mktemp -d) py.test -c ./pytest.ini
   '';
 
-  meta = {
+  pythonImportsCheck = [
+    "sasmodels"
+  ];
+
+  meta = with lib; {
     description = "Library of small angle scattering models";
-    homepage = "http://sasview.org";
-    license = lib.licenses.bsd3;
-    maintainers = with lib.maintainers; [ rprospero ];
+    homepage = "https://github.com/SasView/sasmodels";
+    license = licenses.bsd3;
+    maintainers = with maintainers; [ rprospero ];
   };
 }

@@ -1,22 +1,26 @@
-{ lib, buildDunePackage, alcotest-lwt, index, irmin, irmin-test, ocaml_lwt }:
+{ lib, buildDunePackage
+, index, ppx_irmin, irmin, optint, fmt, logs, lwt, mtime, cmdliner
+, alcotest, alcotest-lwt, astring, irmin-test
+}:
 
 buildDunePackage rec {
-  minimumOCamlVersion = "4.02.3";
+  minimalOCamlVersion = "4.08";
 
   pname = "irmin-pack";
 
-  inherit (irmin) version src;
+  inherit (irmin) version src strictDeps;
 
-  useDune2 = true;
+  nativeBuildInputs = [ ppx_irmin ];
 
-  propagatedBuildInputs = [ index irmin ocaml_lwt ];
+  propagatedBuildInputs = [ index irmin optint fmt logs lwt mtime cmdliner ];
 
-  checkInputs = lib.optionals doCheck [ alcotest-lwt irmin-test ];
+  checkInputs = [ astring alcotest alcotest-lwt irmin-test ];
 
   doCheck = true;
 
   meta = irmin.meta // {
     description = "Irmin backend which stores values in a pack file";
+    mainProgram = "irmin_fsck";
   };
 
 }

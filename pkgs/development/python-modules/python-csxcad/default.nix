@@ -32,11 +32,11 @@ buildPythonPackage rec {
     matplotlib
   ];
 
-  setupPyBuildFlags = "-I${openems}/include -L${openems}/lib -R${openems}/lib";
+  setupPyBuildFlags = [ "-I${openems}/include" "-L${openems}/lib" "-R${openems}/lib" ];
 
   meta = with lib; {
     description = "Python interface to CSXCAD";
-    homepage = http://openems.de/index.php/Main_Page.html;
+    homepage = "http://openems.de/index.php/Main_Page.html";
     license = licenses.gpl3;
     maintainers = with maintainers; [ matthuszagh ];
     platforms = platforms.linux;

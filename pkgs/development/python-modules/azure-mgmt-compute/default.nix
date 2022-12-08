@@ -1,20 +1,22 @@
 { lib
 , buildPythonPackage
 , fetchPypi
-, python
 , azure-mgmt-common
 , azure-mgmt-core
-, isPy3k
+, pythonOlder
 }:
 
 buildPythonPackage rec {
-  version = "18.0.0";
   pname = "azure-mgmt-compute";
+  version = "27.2.0";
+  format = "setuptools";
+
+  disabled = pythonOlder "3.6";
 
   src = fetchPypi {
     inherit pname version;
     extension = "zip";
-    sha256 = "34815c91193640ad8ff0c4dad7f2d997548c853d2e8b10250329ed516e55879e";
+    hash = "sha256-5caVUxZvt+7L/1LDfcD/SiUwvFVF1KXdS6mDIVrSKJ0=";
   };
 
   propagatedBuildInputs = [
@@ -22,10 +24,16 @@ buildPythonPackage rec {
     azure-mgmt-core
   ];
 
-  pythonNamespaces = [ "azure.mgmt" ];
+  pythonNamespaces = [
+    "azure.mgmt"
+  ];
 
   # has no tests
   doCheck = false;
+
+  pythonImportsCheck = [
+    "azure.mgmt.compute"
+  ];
 
   meta = with lib; {
     description = "This is the Microsoft Azure Compute Management Client Library";

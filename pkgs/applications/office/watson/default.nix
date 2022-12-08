@@ -1,32 +1,38 @@
-{ stdenv, fetchFromGitHub, pythonPackages, installShellFiles }:
+{ lib, fetchFromGitHub, python3, installShellFiles, fetchpatch }:
 
-with pythonPackages;
+with python3.pkgs;
 
 buildPythonApplication rec {
   pname = "watson";
-  version = "1.10.0";
+  version = "2.1.0";
 
   src = fetchFromGitHub {
     owner = "TailorDev";
     repo = "Watson";
     rev = version;
-    sha256 = "1s0k86ldqky6avwjaxkw1y02wyf59qwqldcahy3lhjn1b5dgsb3s";
+    sha256 = "sha256-/AASYeMkt18KPJljAjNPRYOpg/T5xuM10LJq4LrFD0g=";
   };
 
-  checkPhase = ''
-    pytest -vs tests
-  '';
+  patches = [
+    # https://github.com/TailorDev/Watson/pull/473
+    (fetchpatch {
+      name = "fix-completion.patch";
+      url = "https://github.com/TailorDev/Watson/commit/43ad061a981eb401c161266f497e34df891a5038.patch";
+      sha256 = "sha256-v8/asP1wooHKjyy9XXB4Rtf6x+qmGDHpRoHEne/ZCxc=";
+    })
+  ];
 
   postInstall = ''
     installShellCompletion --bash --name watson watson.completion
     installShellCompletion --zsh --name _watson watson.zsh-completion
+    installShellCompletion --fish watson.fish
   '';
 
-  checkInputs = [ py pytest pytest-datafiles pytest-mock pytestrunner ];
+  checkInputs = [ pytestCheckHook pytest-mock mock pytest-datafiles ];
   propagatedBuildInputs = [ arrow click click-didyoumean requests ];
   nativeBuildInputs = [ installShellFiles ];
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     homepage = "https://tailordev.github.io/Watson/";
     description = "A wonderful CLI to track your time!";
     license = licenses.mit;

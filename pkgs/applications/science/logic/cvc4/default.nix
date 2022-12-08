@@ -1,4 +1,4 @@
-{ stdenv, fetchFromGitHub, cmake, cln, gmp, git, swig, pkgconfig
+{ lib, stdenv, fetchFromGitHub, cmake, cln, gmp, git, swig, pkg-config
 , readline, libantlr3c, boost, jdk, python3, antlr3_4
 }:
 
@@ -13,15 +13,15 @@ stdenv.mkDerivation rec {
     sha256 = "1rhs4pvzaa1wk00czrczp58b2cxfghpsnq534m0l3snnya2958jp";
   };
 
-  nativeBuildInputs = [ pkgconfig cmake ];
-  buildInputs = [ gmp git python3.pkgs.toml cln readline swig libantlr3c antlr3_4 boost jdk python3 ];
+  nativeBuildInputs = [ pkg-config cmake ];
+  buildInputs = [ gmp git python3.pkgs.toml readline swig libantlr3c antlr3_4 boost jdk python3 ]
+    ++ lib.optionals (!stdenv.isDarwin) [ cln ];
   configureFlags = [
     "--enable-language-bindings=c,c++,java"
     "--enable-gpl"
-    "--with-cln"
     "--with-readline"
     "--with-boost=${boost.dev}"
-  ];
+  ] ++ lib.optionals (!stdenv.isDarwin) [ "--with-cln" ];
 
   prePatch = ''
     patch -p1 -i ${./minisat-fenv.patch} -d src/prop/minisat
@@ -35,10 +35,7 @@ stdenv.mkDerivation rec {
     "-DCMAKE_BUILD_TYPE=Production"
   ];
 
-
-  enableParallelBuilding = true;
-
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "A high-performance theorem prover and SMT solver";
     homepage    = "http://cvc4.cs.stanford.edu/web/";
     license     = licenses.gpl3;

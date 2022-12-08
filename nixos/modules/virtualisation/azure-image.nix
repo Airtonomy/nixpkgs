@@ -9,9 +9,10 @@ in
 
   options = {
     virtualisation.azureImage.diskSize = mkOption {
-      type = with types; int;
-      default = 2048;
-      description = ''
+      type = with types; either (enum [ "auto" ]) int;
+      default = "auto";
+      example = 2048;
+      description = lib.mdDoc ''
         Size of disk image. Unit is MB.
       '';
     };

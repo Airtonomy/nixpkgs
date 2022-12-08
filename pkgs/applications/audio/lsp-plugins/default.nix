@@ -1,42 +1,35 @@
-{ stdenv, fetchFromGitHub, pkgconfig, makeWrapper
-, libsndfile, jack2Full
+{ lib, stdenv, fetchurl, pkg-config, makeWrapper
+, libsndfile, jack2
 , libGLU, libGL, lv2, cairo
-, ladspaH, php }:
+, ladspaH, php, libXrandr }:
 
 stdenv.mkDerivation rec {
-  pname = "lsp-plugins";
-  version = "1.1.26";
+        pname = "lsp-plugins";
+        version = "1.2.3";
 
-  src = fetchFromGitHub {
-    owner = "sadko4u";
-    repo = pname;
-    rev = "${pname}-${version}";
-    sha256 = "1apw8zh3a3il4smkjji6bih4vbsymj0hjs10fgkrd4nazqkjvgyd";
-  };
+        src = fetchurl {
+                url = "https://github.com/sadko4u/${pname}/releases/download/${version}/${pname}-src-${version}.tar.gz";
+                sha256 = "sha256-ej8t3xk29VLJMO1lvXuzUlD00al8TTkPLL8z62fmTys=";
+        };
 
-  nativeBuildInputs = [ pkgconfig php makeWrapper ];
-  buildInputs = [ jack2Full libsndfile libGLU libGL lv2 cairo ladspaH ];
+        nativeBuildInputs = [ pkg-config php makeWrapper ];
+        buildInputs = [ jack2 libsndfile libGLU libGL lv2 cairo ladspaH libXrandr ];
 
-  makeFlags = [
-    "PREFIX=${placeholder ''out''}"
-    "ETC_PATH=$(out)/etc"
+        makeFlags = [
+                "PREFIX=${placeholder "out"}"
   ];
 
   NIX_CFLAGS_COMPILE = "-DLSP_NO_EXPERIMENTAL";
 
-  doCheck = true;
-
-  checkPhase = ''
-    runHook preCheck
-    TEST_PATH=$(pwd)".build-test"
-    make OBJDIR=$TEST_PATH test
-    $TEST_PATH/lsp-plugins-test utest
-    runHook postCheck
+  configurePhase = ''
+    make config PREFIX=${placeholder "out"}
   '';
 
-  buildFlags = [ "release" ];
+  doCheck = true;
 
-  meta = with stdenv.lib;
+  enableParallelBuilding = true;
+
+  meta = with lib;
     { description = "Collection of open-source audio plugins";
       longDescription = ''
         Compatible with follwing formats:
@@ -84,6 +77,8 @@ stdenv.mkDerivation rec {
         - Compressor MidSide - Kompressor MidSide
         - Compressor Mono - Kompressor Mono
         - Compressor Stereo - Kompressor Stereo
+        - Artistic Delay Mono - Künstlerische Verzögerung
+        - Artistic Delay Stereo - Künstlerische Verzögerung
         - Latency Meter - Latenzmessgerät
         - Loudness Compensator Mono - Lautstärke Kompensator Mono
         - Loudness Compensator Stereo - Lautstärke Kompensator Stereo
@@ -99,6 +94,9 @@ stdenv.mkDerivation rec {
         - Multiband Compressor MidSide x8 - Multi-band Kompressor MidSide x8
         - Multiband Compressor Mono x8 - Multi-band Kompressor Mono x8
         - Multiband Compressor Stereo x8 - Multi-band Kompressor Stereo x8
+        - Oscilloscope x1 - Oscilloscope x1
+        - Oscilloscope x2 - Oscilloscope x2
+        - Oscilloscope x4 - Oscilloscope x4
         - Oscillator Mono - Oszillator Mono
         - Parametric Equalizer x16 LeftRight - Parametrischer Entzerrer x16 LeftRight
         - Parametric Equalizer x16 MidSide - Parametrischer Entzerrer x16 MidSide

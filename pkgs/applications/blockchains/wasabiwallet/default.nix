@@ -1,8 +1,8 @@
-{ stdenv
+{ lib, stdenv
 , fetchurl
 , makeDesktopItem
 , curl
-, dotnet-netcore
+, dotnetCorePackages
 , fontconfig
 , krb5
 , openssl
@@ -11,9 +11,10 @@
 }:
 
 let
-  libPath = stdenv.lib.makeLibraryPath [
+  dotnet-runtime = dotnetCorePackages.runtime_5_0;
+  libPath = lib.makeLibraryPath [
     curl
-    dotnet-netcore
+    dotnet-runtime
     fontconfig.lib
     krb5
     openssl
@@ -24,11 +25,11 @@ let
 in
 stdenv.mkDerivation rec {
   pname = "wasabiwallet";
-  version = "1.1.12.3";
+  version = "2.0.1.3";
 
   src = fetchurl {
     url = "https://github.com/zkSNACKs/WalletWasabi/releases/download/v${version}/Wasabi-${version}.tar.gz";
-    sha256 = "1x4gqmiwdp5bjq7c5hjch3srsvf73d92lswnp355l7l7cxh2hcsx";
+    sha256 = "sha256-cATqg/n4/BDQtuCVjHAx3EfMLmlX5EjeQ01gavy/L8o=";
   };
 
   dontBuild = true;
@@ -40,7 +41,7 @@ stdenv.mkDerivation rec {
     desktopName = "Wasabi";
     genericName = "Bitcoin wallet";
     comment = meta.description;
-    categories = "Network;Utility;";
+    categories = [ "Network" "Utility" ];
   };
 
   installPhase = ''
@@ -56,9 +57,10 @@ stdenv.mkDerivation rec {
     cp -v $desktopItem/share/applications/* $out/share/applications
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Privacy focused Bitcoin wallet";
     homepage = "https://wasabiwallet.io/";
+    sourceProvenance = with sourceTypes; [ binaryNativeCode ];
     license = licenses.mit;
     platforms = [ "x86_64-linux" ];
     maintainers = with maintainers; [ mmahut ];

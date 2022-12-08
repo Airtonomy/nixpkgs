@@ -1,18 +1,23 @@
-{ buildGoPackage, fetchFromGitHub, stdenv, nixosTests }:
+{ lib
+, buildGoModule
+, fetchFromGitHub
+, nixosTests
+}:
 
-buildGoPackage rec {
+buildGoModule rec {
   pname = "nginx-sso";
   version = "0.25.0";
-  rev = "v${version}";
-
-  goPackagePath = "github.com/Luzifer/nginx-sso";
 
   src = fetchFromGitHub {
-    inherit rev;
     owner = "Luzifer";
     repo = "nginx-sso";
-    sha256 = "0z5h92rpr1rcfk11ggsb9w4ipg93fcb9byll7vl4c0mfcqkpm2dr";
+    rev = "v${version}";
+    sha256 = "sha256-uYl6J2auAkboPpT6lRZzI70bCU9LvxfCdCyHfLNIsHw=";
   };
+
+  vendorSha256 = null;
+
+  patches = [ ./rune.patch ];
 
   postInstall = ''
     mkdir -p $out/share
@@ -23,7 +28,7 @@ buildGoPackage rec {
     inherit (nixosTests) nginx-sso;
   };
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "SSO authentication provider for the auth_request nginx module";
     homepage = "https://github.com/Luzifer/nginx-sso";
     license = licenses.asl20;

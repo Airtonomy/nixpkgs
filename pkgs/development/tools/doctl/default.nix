@@ -1,8 +1,8 @@
-{ lib, buildGoModule, fetchFromGitHub, installShellFiles }:
+{ stdenv, lib, buildGoModule, fetchFromGitHub, installShellFiles, buildPackages }:
 
 buildGoModule rec {
   pname = "doctl";
-  version = "1.54.0";
+  version = "1.84.1";
 
   vendorSha256 = null;
 
@@ -10,20 +10,19 @@ buildGoModule rec {
 
   subPackages = [ "cmd/doctl" ];
 
-  buildFlagsArray = let t = "github.com/digitalocean/doctl"; in ''
-    -ldflags=
-    -X ${t}.Major=${lib.versions.major version}
-    -X ${t}.Minor=${lib.versions.minor version}
-    -X ${t}.Patch=${lib.versions.patch version}
-    -X ${t}.Label=release
-  '';
+  ldflags = let t = "github.com/digitalocean/doctl"; in [
+    "-X ${t}.Major=${lib.versions.major version}"
+    "-X ${t}.Minor=${lib.versions.minor version}"
+    "-X ${t}.Patch=${lib.versions.patch version}"
+    "-X ${t}.Label=release"
+  ];
 
   nativeBuildInputs = [ installShellFiles ];
 
   postInstall = ''
     export HOME=$(mktemp -d) # attempts to write to /homeless-shelter
     for shell in bash fish zsh; do
-      $out/bin/doctl completion $shell > doctl.$shell
+      ${stdenv.hostPlatform.emulator buildPackages} $out/bin/doctl completion $shell > doctl.$shell
       installShellCompletion doctl.$shell
     done
   '';
@@ -32,7 +31,7 @@ buildGoModule rec {
     owner = "digitalocean";
     repo = "doctl";
     rev = "v${version}";
-    sha256 = "163n3d07vv9d4356ql6hbw2vg6n5c834axz7y4gk8gm9badbna82";
+    sha256 = "sha256-F1vavqdBeKVWKWQTrgqT6NIGduAcFc42rl0rG8SEdLs=";
   };
 
   meta = with lib; {

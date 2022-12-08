@@ -1,4 +1,4 @@
-{ lib, stdenv, kernel, udev, autoconf, automake, libtool, kernelOlder }:
+{ lib, stdenv, fetchpatch, kernel, udev, autoconf, automake, libtool, hwdata, kernelOlder }:
 
 stdenv.mkDerivation {
   name = "usbip-${kernel.name}";
@@ -10,7 +10,7 @@ stdenv.mkDerivation {
     ./fix-snprintf-truncation.patch
     # fixes build with gcc9
     ./fix-strncpy-truncation.patch
-  ];
+  ] ++ kernel.patches;
 
   nativeBuildInputs = [ autoconf automake libtool ];
   buildInputs = [ udev ];
@@ -22,10 +22,12 @@ stdenv.mkDerivation {
     ./autogen.sh
   '';
 
-  meta = with stdenv.lib; {
+  configureFlags = [ "--with-usbids-dir=${hwdata}/share/hwdata/" ];
+
+  meta = with lib; {
     homepage = "https://github.com/torvalds/linux/tree/master/tools/usb/usbip";
     description = "allows to pass USB device from server to client over the network";
-    license = licenses.gpl2;
+    license = with licenses; [ gpl2Only gpl2Plus ];
     platforms = platforms.linux;
     broken = kernelOlder "4.10";
   };

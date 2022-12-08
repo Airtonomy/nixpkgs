@@ -1,8 +1,8 @@
-{ stdenv, fetchFromGitHub, numactl, pkgconfig }:
+{ lib, stdenv, fetchFromGitHub, numactl, pkg-config }:
 
 stdenv.mkDerivation rec {
   pname = "libpsm2";
-  version = "11.2.185";
+  version = "11.2.229";
 
   preConfigure= ''
     export UDEVDIR=$out/etc/udev
@@ -11,7 +11,14 @@ stdenv.mkDerivation rec {
 
   enableParallelBuilding = true;
 
-  buildInputs = [ numactl pkgconfig ];
+  nativeBuildInputs = [ pkg-config ];
+  buildInputs = [ numactl ];
+
+  makeFlags = [
+    # Disable blanket -Werror to avoid build failures
+    # on fresh toolchains like gcc-11.
+    "WERROR="
+  ];
 
   installFlags = [
     "DESTDIR=$(out)"
@@ -23,7 +30,7 @@ stdenv.mkDerivation rec {
     owner = "intel";
     repo = "opa-psm2";
     rev = "PSM2_${version}";
-    sha256 = "062hg4r6gz7pla9df70nqs5i2a3mp1wszmp4l0g771fykhhrxsjg";
+    sha256 = "sha256-t3tZCxGmGMscDmeyCATLbHxU7jEJqAzxwPV0Z8pl2ko=";
   };
 
   postInstall = ''
@@ -31,11 +38,11 @@ stdenv.mkDerivation rec {
     rmdir $out/usr
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     homepage = "https://github.com/intel/opa-psm2";
     description = "The PSM2 library supports a number of fabric media and stacks";
     license = with licenses; [ gpl2 bsd3 ];
-   platforms = [ "x86_64-linux" ];
+    platforms = [ "x86_64-linux" ];
     maintainers = [ maintainers.bzizou ];
   };
 }

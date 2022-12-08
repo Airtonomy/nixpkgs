@@ -1,31 +1,43 @@
-{ stdenv
+{ lib, stdenv
 , fetchFromGitHub
 , cmake
 , pkg-config
 , bzip2
+, installShellFiles
 , libusb1
 , libzip
 , openssl
+, zstd
 }:
 
 stdenv.mkDerivation rec {
   pname = "nxpmicro-mfgtools";
-  version = "1.4.43";
+  version = "1.4.243";
 
   src = fetchFromGitHub {
     owner = "NXPmicro";
     repo = "mfgtools";
     rev = "uuu_${version}";
-    sha256 = "1i1mvr6j0mc33axf6cmmsi83apr5rgq0z0sn23qav9r0izpnnh0w";
+    hash = "sha256-gyy9D6y1y+9GlT3wfW+huoWaZP1e8YzZnc7EbJftppI=";
   };
 
-  nativeBuildInputs = [ cmake pkg-config ];
+  nativeBuildInputs = [ cmake pkg-config installShellFiles ];
 
-  buildInputs = [ bzip2 libusb1 libzip openssl ];
+  buildInputs = [ bzip2 libusb1 libzip openssl zstd ];
 
   preConfigure = "echo ${version} > .tarball-version";
 
-  meta = with stdenv.lib; {
+  postInstall = ''
+    # rules printed by the following invocation are static,
+    # they come from hardcoded configs in libuuu/config.cpp:48
+    $out/bin/uuu -udev > udev-rules 2>stderr.txt
+    rules_file="$(cat stderr.txt|grep '1: put above udev run into'|sed 's|^.*/||')"
+    install -D udev-rules "$out/lib/udev/rules.d/$rules_file"
+    installShellCompletion --cmd uuu \
+      --bash ../snap/local/bash-completion/universal-update-utility
+  '';
+
+  meta = with lib; {
     description = "Freescale/NXP I.MX chip image deploy tools";
     longDescription = ''
       UUU (Universal Update Utility) is a command line tool, evolved out of
@@ -40,7 +52,8 @@ stdenv.mkDerivation rec {
     '';
     homepage = "https://github.com/NXPmicro/mfgtools";
     license = licenses.bsd3;
-    maintainers = [ maintainers.bmilanov ];
+    maintainers = with maintainers; [ bmilanov jraygauthier ];
+    mainProgram = "uuu";
     platforms = platforms.all;
   };
 }

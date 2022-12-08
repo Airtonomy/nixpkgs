@@ -1,4 +1,4 @@
-{ stdenv
+{ lib, stdenv
 , autoPatchelfHook
 , dpkg
 , fetchurl
@@ -10,7 +10,7 @@
 , zlib
 }:
 let
-  majMin = stdenv.lib.versions.majorMinor version;
+  majMin = lib.versions.majorMinor version;
   version = "7.6.21";
 in
 stdenv.mkDerivation rec {
@@ -38,7 +38,7 @@ stdenv.mkDerivation rec {
 
   unpackPhase = ''
     dpkg-deb -x ${src} ./
-    sed -e 's|/usr/bin|$out/bin|g' -i usr/share/applications/FAHViewer.desktop
+    sed -e "s|/usr/bin|$out/bin|g" -i usr/share/applications/FAHViewer.desktop
   '';
 
   installPhase = ''
@@ -48,8 +48,9 @@ stdenv.mkDerivation rec {
   meta = {
     description = "Folding@home viewer";
     homepage = "https://foldingathome.org/";
-    license = stdenv.lib.licenses.unfree;
-    maintainers = [ stdenv.lib.maintainers.zimbatm ];
+    sourceProvenance = with lib.sourceTypes; [ binaryNativeCode ];
+    license = lib.licenses.unfree;
+    maintainers = [ lib.maintainers.zimbatm ];
     platforms = [ "x86_64-linux" ];
   };
 }

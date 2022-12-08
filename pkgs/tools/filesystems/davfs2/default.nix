@@ -1,4 +1,4 @@
-{ stdenv
+{ lib, stdenv
 , fetchurl
 , fetchpatch
 , neon
@@ -9,11 +9,12 @@
 }:
 
 stdenv.mkDerivation rec {
-  name = "davfs2-1.6.0";
+  pname = "davfs2";
+  version = "1.6.1";
 
   src = fetchurl {
-    url = "mirror://savannah/davfs2/${name}.tar.gz";
-    sha256 = "sha256-LmtnVoW9kXdyvmDwmZrgmMgPef8g3BMej+xFR8u2O1A=";
+    url = "mirror://savannah/davfs2/davfs2-${version}.tar.gz";
+    sha256 = "sha256-zj65SOzlgqUck0zLDMcOZZg5FycXyv8XP2ml4q+QxcA=";
   };
 
   buildInputs = [ neon zlib ];
@@ -40,7 +41,7 @@ stdenv.mkDerivation rec {
   meta = {
     homepage = "https://savannah.nongnu.org/projects/davfs2";
     description = "Mount WebDAV shares like a typical filesystem";
-    license = stdenv.lib.licenses.gpl3Plus;
+    license = lib.licenses.gpl3Plus;
 
     longDescription = ''
       Web Distributed Authoring and Versioning (WebDAV), an extension to
@@ -50,6 +51,6 @@ stdenv.mkDerivation rec {
       with no built-in support for WebDAV.
     '';
 
-    platforms = stdenv.lib.platforms.linux;
+    platforms = lib.platforms.linux;
   };
 }

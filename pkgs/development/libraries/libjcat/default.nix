@@ -1,4 +1,5 @@
 { stdenv
+, lib
 , fetchFromGitHub
 , docbook_xml_dtd_43
 , docbook-xsl-nons
@@ -8,7 +9,6 @@
 , gpgme
 , gobject-introspection
 , vala
-, help2man
 , gtk-doc
 , meson
 , ninja
@@ -19,7 +19,7 @@
 
 stdenv.mkDerivation rec {
   pname = "libjcat";
-  version = "0.1.4";
+  version = "0.1.12";
 
   outputs = [ "bin" "out" "dev" "devdoc" "man" "installedTests" ];
 
@@ -27,7 +27,7 @@ stdenv.mkDerivation rec {
     owner = "hughsie";
     repo = "libjcat";
     rev = version;
-    sha256 = "156sykcdzdfmd7va59qld4gyzhbf2yk1dfgifi494g6i99zyigfh";
+    sha256 = "sha256-9+wtCJzvT9uAXRXj/koFG7asxm5JIDw0Ffp4wK6tbDk=";
   };
 
   patches = [
@@ -43,11 +43,8 @@ stdenv.mkDerivation rec {
     docbook-xsl-nons
     gobject-introspection
     vala
-    help2man
     gtk-doc
-    (python3.withPackages (pkgs: with pkgs; [
-      setuptools
-    ]))
+    python3
   ];
 
   buildInputs = [
@@ -62,10 +59,6 @@ stdenv.mkDerivation rec {
     "-Dinstalled_test_prefix=${placeholder "installedTests"}"
   ];
 
-  postPatch = ''
-    patchShebangs contrib/generate-version-script.py
-  '';
-
   doCheck = true;
 
   passthru = {
@@ -74,7 +67,7 @@ stdenv.mkDerivation rec {
     };
   };
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Library for reading and writing Jcat files";
     homepage = "https://github.com/hughsie/libjcat";
     license = licenses.lgpl21Plus;

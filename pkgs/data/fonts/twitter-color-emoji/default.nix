@@ -1,7 +1,7 @@
 # Based upon https://src.fedoraproject.org/rpms/twitter-twemoji-fonts
 # The main difference is that we use “Twitter Color Emoji” name (which is recognized by upstream fontconfig)
 
-{ stdenv
+{ lib, stdenv
 , fetchFromGitHub
 , cairo
 , imagemagick
@@ -14,18 +14,18 @@
 }:
 
 let
-  version = "13.0.1";
+  version = "14.0.0";
 
   twemojiSrc = fetchFromGitHub {
     name = "twemoji";
     owner = "twitter";
     repo = "twemoji";
     rev = "v${version}";
-    sha256 = "0acinlv2l3s1jga2i9wh16mvgkxw4ipzgvjx8c80zd104lpdpgd9";
+    sha256 = "sha256-ar6rBYudMIMngMVe/IowDV3X8wA77JBA6g0x/M7YLMg=";
   };
 
   pythonEnv =
-    python3.withPackages (p: [ p.fonttools p.nototools ]);
+    python3.withPackages (ps: with ps; [ fonttools nototools ]);
 
 in
 stdenv.mkDerivation rec {
@@ -55,16 +55,16 @@ stdenv.mkDerivation rec {
   ];
 
   postPatch = let
-    templateSubstitutions = stdenv.lib.concatStringsSep "; " [
-      ''s#Noto Color Emoji#Twitter Color Emoji#''
-      ''s#NotoColorEmoji#TwitterColorEmoji#''
+    templateSubstitutions = lib.concatStringsSep "; " [
+      "s#Noto Color Emoji#Twitter Color Emoji#"
+      "s#NotoColorEmoji#TwitterColorEmoji#"
       ''s#Copyright .* Google Inc\.#Twitter, Inc and other contributors.#''
-      ''s# Version .*# ${version}#''
-      ''s#.*is a trademark.*##''
+      "s# Version .*# ${version}#"
+      "s#.*is a trademark.*##"
       ''s#Google, Inc\.#Twitter, Inc and other contributors#''
-      ''s#http://www.google.com/get/noto/#https://twemoji.twitter.com/#''
-      ''s#.*is licensed under.*#      Creative Commons Attribution 4.0 International#''
-      ''s#http://scripts.sil.org/OFL#http://creativecommons.org/licenses/by/4.0/#''
+      "s#http://www.google.com/get/noto/#https://twemoji.twitter.com/#"
+      "s#.*is licensed under.*#      Creative Commons Attribution 4.0 International#"
+      "s#http://scripts.sil.org/OFL#http://creativecommons.org/licenses/by/4.0/#"
     ];
   in ''
     ${noto-fonts-emoji.postPatch}
@@ -91,7 +91,7 @@ stdenv.mkDerivation rec {
     install -Dm644 TwitterColorEmoji.ttf $out/share/fonts/truetype/TwitterColorEmoji.ttf
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Color emoji font with a flat visual style, designed and used by Twitter";
     longDescription = ''
       A bitmap color emoji font built from the Twitter Emoji for

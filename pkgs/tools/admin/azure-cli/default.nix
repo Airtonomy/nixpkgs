@@ -1,32 +1,33 @@
 { stdenv, lib, python3, fetchFromGitHub, installShellFiles }:
 
 let
-  version = "2.16.0";
+  version = "2.37.0";
+  srcName = "azure-cli-${version}-src";
+
   src = fetchFromGitHub {
+    name = srcName;
     owner = "Azure";
     repo = "azure-cli";
     rev = "azure-cli-${version}";
-    sha256 = "wuHPNpt5pizgAwxRxJpRBiX6keJpKRpHu6M5BpFUyeY=";
+    sha256 = "sha256-Y1P+cTOK7NbV7k9rg38vE7EPuZQo88IQW3IYYou8ZOI=";
   };
 
   # put packages that needs to be overriden in the py package scope
   py = import ./python-packages.nix {
-    inherit stdenv lib src version;
-    python = python3;
+    inherit stdenv lib src version python3;
   };
 in
 py.pkgs.toPythonApplication (py.pkgs.buildAzureCliPackage {
   pname = "azure-cli";
   inherit version src;
 
-  sourceRoot = "source/src/azure-cli";
+  sourceRoot = "${srcName}/src/azure-cli";
 
   prePatch = ''
     substituteInPlace setup.py \
-      --replace "javaproperties==0.5.1" "javaproperties" \
-      --replace "pytz==2019.1" "pytz" \
-      --replace "antlr4-python3-runtime~=4.7.2" "antlr4-python3-runtime~=4.7" \
-      --replace "mock~=4.0" "mock"
+      --replace "chardet~=3.0.4" "chardet" \
+      --replace "javaproperties~=0.5.1" "javaproperties" \
+      --replace "scp~=0.13.2" "scp"
 
     # remove namespace hacks
     # remove urllib3 because it was added as 'urllib3[secure]', which doesn't get handled well
@@ -44,11 +45,14 @@ py.pkgs.toPythonApplication (py.pkgs.buildAzureCliPackage {
     azure-cli-core
     azure-cli-telemetry
     azure-cosmos
+    azure-data-tables
     azure-datalake-store
     azure-functions-devops-build
     azure-graphrbac
+    azure-identity
     azure-keyvault
     azure-keyvault-administration
+    azure-keyvault-keys
     azure-loganalytics
     azure-mgmt-advisor
     azure-mgmt-apimanagement
@@ -67,6 +71,7 @@ py.pkgs.toPythonApplication (py.pkgs.buildAzureCliPackage {
     azure-mgmt-containerregistry
     azure-mgmt-containerservice
     azure-mgmt-cosmosdb
+    azure-mgmt-databoxedge
     azure-mgmt-datalake-analytics
     azure-mgmt-datalake-store
     azure-mgmt-datamigration
@@ -75,6 +80,7 @@ py.pkgs.toPythonApplication (py.pkgs.buildAzureCliPackage {
     azure-mgmt-dns
     azure-mgmt-eventgrid
     azure-mgmt-eventhub
+    azure-mgmt-extendedlocation
     azure-mgmt-hdinsight
     azure-mgmt-imagebuilder
     azure-mgmt-iotcentral
@@ -106,6 +112,8 @@ py.pkgs.toPythonApplication (py.pkgs.buildAzureCliPackage {
     azure-mgmt-security
     azure-mgmt-servicebus
     azure-mgmt-servicefabric
+    azure-mgmt-servicefabricmanagedclusters
+    azure-mgmt-servicelinker
     azure-mgmt-signalr
     azure-mgmt-sql
     azure-mgmt-sqlvirtualmachine
@@ -117,39 +125,44 @@ py.pkgs.toPythonApplication (py.pkgs.buildAzureCliPackage {
     azure-storage-blob
     azure-synapse-accesscontrol
     azure-synapse-artifacts
+    azure-synapse-managedprivateendpoints
     azure-synapse-spark
+    chardet
     colorama
     cryptography
+    distro
     Fabric
     jsmin
     knack
     mock
     paramiko
     pydocumentdb
+    PyGithub
     pygments
+    pynacl
     pyopenssl
     pytz
     pyyaml
     psutil
     requests
     scp
+    semver
     six
     sshtunnel
     urllib3
     vsts-cd-manager
-    websocket_client
+    websocket-client
     xmltodict
     javaproperties
     jsondiff
     # urllib3[secure]
-    ipaddress
     # shell completion
     argcomplete
   ];
 
-  # TODO: make shell completion actually work
-  # uses argcomplete, so completion needs PYTHONPATH to work
   postInstall = ''
+    substituteInPlace az.completion.sh \
+      --replace register-python-argcomplete ${py.pkgs.argcomplete}/bin/register-python-argcomplete
     installShellCompletion --bash --name az.bash az.completion.sh
     installShellCompletion --zsh --name _az az.completion.sh
 

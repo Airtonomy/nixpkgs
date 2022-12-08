@@ -2,18 +2,19 @@
 , python3
 , fetchFromGitHub
 , glibcLocales
+, libnotify
 }:
 
 python3.pkgs.buildPythonApplication rec {
   pname = "zulip-term";
-  version = "0.5.2";
+  version = "0.7.0";
 
   # no tests on PyPI
   src = fetchFromGitHub {
     owner = "zulip";
     repo = "zulip-terminal";
     rev = version;
-    sha256 = "1xhhy3v4wck74a83avil0rnmsi2grrh03cww19n5mv80p2q1cjmf";
+    sha256 = "sha256-ZouUU4p1FSGMxPuzDo5P971R+rDXpBdJn2MqvkJO+Fw=";
   };
 
   patches = [
@@ -21,21 +22,30 @@ python3.pkgs.buildPythonApplication rec {
   ];
 
   propagatedBuildInputs = with python3.pkgs; [
-    urwid
-    zulip
-    urwid-readline
     beautifulsoup4
     lxml
-    mypy-extensions
+    pygments
+    pyperclip
+    python-dateutil
+    pytz
+    typing-extensions
+    tzlocal
+    urwid
+    urwid-readline
+    zulip
   ];
 
   checkInputs = [
     glibcLocales
   ] ++ (with python3.pkgs; [
     pytestCheckHook
-    pytestcov
+    pytest-cov
     pytest-mock
   ]);
+
+  makeWrapperArgs = [
+    "--prefix" "PATH" ":" (lib.makeBinPath [ libnotify ])
+  ];
 
   meta = with lib; {
     description = "Zulip's official terminal client";

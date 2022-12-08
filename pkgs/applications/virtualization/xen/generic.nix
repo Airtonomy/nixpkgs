@@ -1,9 +1,9 @@
 config:
-{ stdenv, cmake, pkgconfig, which
+{ lib, stdenv, cmake, pkg-config, which
 
 # Xen
 , bison, bzip2, checkpolicy, dev86, figlet, flex, gettext, glib
-, iasl, libaio, libiconv, libuuid, ncurses, openssl, perl
+, acpica-tools, libaio, libiconv, libuuid, ncurses, openssl, perl
 , python2Packages
 # python2Packages.python
 , xz, yajl, zlib
@@ -13,25 +13,25 @@ config:
 
 # Scripts
 , coreutils, gawk, gnused, gnugrep, diffutils, multipath-tools
-, iproute, inetutils, iptables, bridge-utils, openvswitch, nbd, drbd
+, iproute2, inetutils, iptables, bridge-utils, openvswitch, nbd, drbd
 , lvm2, util-linux, procps, systemd
 
 # Documentation
 # python2Packages.markdown
-, transfig, ghostscript, texinfo, pandoc
+, fig2dev, ghostscript, texinfo, pandoc
 
 , binutils-unwrapped
 
 , ...} @ args:
 
-with stdenv.lib;
+with lib;
 
 let
   #TODO: fix paths instead
   scriptEnvPath = concatMapStringsSep ":" (x: "${x}/bin") [
     which perl
     coreutils gawk gnused gnugrep diffutils util-linux multipath-tools
-    iproute inetutils iptables bridge-utils openvswitch nbd drbd
+    iproute2 inetutils iptables bridge-utils openvswitch nbd drbd
   ];
 
   withXenfiles = f: concatStringsSep "\n" (mapAttrsToList f config.xenfiles);
@@ -66,12 +66,12 @@ stdenv.mkDerivation (rec {
 
   hardeningDisable = [ "stackprotector" "fortify" "pic" ];
 
-  nativeBuildInputs = [ pkgconfig ];
+  nativeBuildInputs = [ pkg-config cmake ];
   buildInputs = [
-    cmake which
+    which
 
     # Xen
-    bison bzip2 checkpolicy dev86 figlet flex gettext glib iasl libaio
+    bison bzip2 checkpolicy dev86 figlet flex gettext glib acpica-tools libaio
     libiconv libuuid ncurses openssl perl python2Packages.python xz yajl zlib
 
     # oxenstored
@@ -81,7 +81,7 @@ stdenv.mkDerivation (rec {
     python2Packages.wrapPython
 
     # Documentation
-    python2Packages.markdown transfig ghostscript texinfo pandoc
+    python2Packages.markdown fig2dev ghostscript texinfo pandoc
 
     # Others
   ] ++ (concatMap (x: x.buildInputs or []) (attrValues config.xenfiles))
@@ -250,9 +250,13 @@ stdenv.mkDerivation (rec {
                                  " (${args.meta.description})";
     longDescription = (args.meta.longDescription or "")
                     + "\nIncludes:\n"
-                    + withXenfiles (name: x: ''* ${name}: ${x.meta.description or "(No description)"}.'');
+                    + withXenfiles (name: x: "* ${name}: ${x.meta.description or "(No description)"}.");
     platforms = [ "x86_64-linux" ];
-    maintainers = with stdenv.lib.maintainers; [ eelco tstrobel oxij ];
-    license = stdenv.lib.licenses.gpl2;
+    maintainers = with lib.maintainers; [ eelco oxij ];
+    license = lib.licenses.gpl2;
+    # https://xenbits.xen.org/docs/unstable/support-matrix.html
+    knownVulnerabilities = lib.optionals (lib.versionOlder version "4.13") [
+      "This version of Xen has reached its end of life. See https://xenbits.xen.org/docs/unstable/support-matrix.html"
+    ];
   } // (config.meta or {});
 } // removeAttrs config [ "xenfiles" "buildInputs" "patches" "postPatch" "meta" ])

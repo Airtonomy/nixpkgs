@@ -31,31 +31,27 @@ let
     (name: spec:
       fetchFromGitHub {
         repo = name;
-        inherit (spec) owner rev sha256;
+        inherit (spec) owner rev hash;
       }
     )
-    (builtins.fromJSON (builtins.readFile ./deps.json));
+    (lib.importJSON ./deps.json);
 in
 stdenv.mkDerivation rec {
   pname = "cudatext";
-  version = "1.115.0";
+  version = "1.175.0";
 
   src = fetchFromGitHub {
     owner = "Alexey-T";
     repo = "CudaText";
     rev = version;
-    sha256 = "0q7gfpzc97fvyvabjdb9a4d3c2qhm4zf5bqgnsj73vkly80kgww8";
+    hash = "sha256-Q4T4CmMK+sxOst18pW4L4uMYzc/heMetntM0L+HrSlo=";
   };
-
-  patches = [
-    # Don't check for update
-    ./dont-check-update.patch
-  ];
 
   postPatch = ''
     substituteInPlace app/proc_globdata.pas \
       --replace "/usr/share/cudatext" "$out/share/cudatext" \
-      --replace "libpython3.so" "${python3}/lib/libpython3.so"
+      --replace "libpython3.so" "${python3}/lib/libpython${python3.pythonVersion}.so" \
+      --replace "AllowProgramUpdates:= true;" "AllowProgramUpdates:= false;"
   '';
 
   nativeBuildInputs = [ lazarus fpc ]
@@ -70,7 +66,7 @@ stdenv.mkDerivation rec {
   NIX_LDFLAGS = "--as-needed -rpath ${lib.makeLibraryPath buildInputs}";
 
   buildPhase = lib.concatStringsSep "\n" (lib.mapAttrsToList (name: dep: ''
-    cp -r --no-preserve=mode ${dep} ${name}
+    ln -s ${dep} ${name}
   '') deps) + ''
     lazbuild --lazarusdir=${lazarus}/share/lazarus --pcp=./lazarus --ws=${widgetset} \
       bgrabitmap/bgrabitmap/bgrabitmappack.lpk \
@@ -87,7 +83,7 @@ stdenv.mkDerivation rec {
   '';
 
   installPhase = ''
-    install -Dm755 app/cudatext $out/bin/cudatext
+    install -Dm755 app/cudatext -t $out/bin
 
     install -dm755 $out/share/cudatext
     cp -r app/{data,py,settings_default} $out/share/cudatext
@@ -95,8 +91,15 @@ stdenv.mkDerivation rec {
     install -Dm644 setup/debfiles/cudatext-512.png -t $out/share/pixmaps
     install -Dm644 setup/debfiles/cudatext.desktop -t $out/share/applications
   '' + lib.concatMapStringsSep "\n" (lexer: ''
-    install -Dm644 CudaText-lexers/${lexer}/*.{cuda-lexmap,lcf} $out/share/cudatext/data/lexlib
+    if [ -d "CudaText-lexers/${lexer}" ]; then
+      install -Dm644 CudaText-lexers/${lexer}/*.{cuda-lexmap,lcf} $out/share/cudatext/data/lexlib
+    else
+      echo "${lexer} lexer not found"
+      exit 1
+    fi
   '') additionalLexers;
+
+  passthru.updateScript = ./update.sh;
 
   meta = with lib; {
     description = "Cross-platform code editor";
@@ -105,7 +108,8 @@ stdenv.mkDerivation rec {
       Config system in JSON files. Multi-carets and multi-selections.
       Search and replace with RegEx. Extendable by Python plugins and themes.
     '';
-    homepage = "http://www.uvviewsoft.com/cudatext/";
+    homepage = "https://cudatext.github.io/";
+    changelog = "https://cudatext.github.io/history.txt";
     license = licenses.mpl20;
     maintainers = with maintainers; [ sikmir ];
     platforms = platforms.linux;

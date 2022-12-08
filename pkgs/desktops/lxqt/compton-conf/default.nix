@@ -1,12 +1,14 @@
-{ lib
+{ stdenv
+, lib
 , mkDerivation
 , fetchFromGitHub
 , cmake
-, pkgconfig
+, pkg-config
 , qtbase
 , qttools
 , lxqt
 , libconfig
+, gitUpdater
 }:
 
 mkDerivation rec {
@@ -22,7 +24,7 @@ mkDerivation rec {
 
   nativeBuildInputs = [
     cmake
-    pkgconfig
+    pkg-config
     lxqt.lxqt-build-tools
   ];
 
@@ -37,13 +39,14 @@ mkDerivation rec {
       --replace "DESTINATION \"\''${LXQT_ETC_XDG_DIR}" "DESTINATION \"etc/xdg" \
   '';
 
-  passthru.updateScript = lxqt.lxqtUpdateScript { inherit pname version src; };
+  passthru.updateScript = gitUpdater { };
 
   meta = with lib; {
-    description = "GUI configuration tool for compton X composite manager";
+    broken = stdenv.isDarwin;
     homepage = "https://github.com/lxqt/compton-conf";
-    license = licenses.lgpl21;
+    description = "GUI configuration tool for compton X composite manager";
+    license = licenses.lgpl21Plus;
     platforms = with platforms; unix;
-    maintainers = with maintainers; [ romildo ];
+    maintainers = teams.lxqt.members;
   };
 }

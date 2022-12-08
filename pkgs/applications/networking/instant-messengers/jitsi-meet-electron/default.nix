@@ -1,20 +1,19 @@
-{ stdenv
+{ lib, stdenv
 , fetchurl
 , appimageTools
 , makeWrapper
-, electron_9
+, electron
+, xorg
+, pipewire
 }:
 
-let
-  electron = electron_9;
-in
 stdenv.mkDerivation rec {
   pname = "jitsi-meet-electron";
-  version = "2.3.1";
+  version = "2022.3.1";
 
   src = fetchurl {
     url = "https://github.com/jitsi/jitsi-meet-electron/releases/download/v${version}/jitsi-meet-x86_64.AppImage";
-    sha256 = "0af87lvqw3sagi2cayripm62q17nfd841xz0ghvbixzfnqkvgf7x";
+    sha256 = "sha256-/5WpjmTLwQN73m7nHg4DKPbXIbD9WyJ+YBbFMD4ZDfg=";
     name = "${pname}-${version}.AppImage";
   };
 
@@ -47,10 +46,11 @@ stdenv.mkDerivation rec {
   postFixup = ''
     makeWrapper ${electron}/bin/electron $out/bin/${pname} \
       --add-flags $out/share/${pname}/resources/app.asar \
-      --prefix LD_LIBRARY_PATH : "${stdenv.lib.makeLibraryPath [ stdenv.cc.cc ]}"
+      --prefix LD_LIBRARY_PATH : "${lib.makeLibraryPath [ stdenv.cc.cc xorg.libXtst pipewire ]}" \
+      --add-flags "\''${NIXOS_OZONE_WL:+\''${WAYLAND_DISPLAY:+--ozone-platform-hint=auto --enable-features=WaylandWindowDecorations}}"
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Jitsi Meet desktop application powered by Electron";
     homepage = "https://github.com/jitsi/jitsi-meet-electron";
     license = licenses.asl20;

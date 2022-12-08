@@ -1,40 +1,91 @@
-{ stdenv, mkDerivation, fetchFromGitHub, installShellFiles,
-  qmake, qtbase, poppler, qtmultimedia }:
+{ lib
+, stdenv
+, fetchFromGitHub
+, cmake
+, pkg-config
+, wrapGAppsHook
+, wrapQtAppsHook
+, gst_all_1
+, qtbase
+, qtmultimedia
+, qttools
+, qtwayland
+, zlib
+# only required when using poppler
+, poppler
+# only required when using mupdf
+, freetype
+, gumbo
+, jbig2dec
+, mupdf
+, openjpeg
+# choose renderer: mupdf or poppler or both (not recommended)
+, usePoppler ? false
+, useMupdf ? true
+, useExternalRenderer ? false
+}:
 
-mkDerivation rec {
+stdenv.mkDerivation rec {
   pname = "beamerpresenter";
-  version = "0.1.3";
+  version = "0.2.3-1";
 
   src = fetchFromGitHub {
     owner = "stiglers-eponym";
     repo = "BeamerPresenter";
-    rev = "v${version}";
-    sha256 = "1nbcqrfdjcsc6czqk1v163whka4x1w883b1298aws8yi7vac4f1i";
+    rev = "dd41a00b3c6c8b881fa62945165c965634df66f0";
+    sha256 = "11yj1zl8hdnqbynkbyzg8kwyx1jl8c87x8f8qyllpk0s6cg304d0";
   };
 
-  nativeBuildInputs = [ qmake installShellFiles ];
-  buildInputs = [ qtbase qtmultimedia poppler ];
+  nativeBuildInputs = [
+    cmake
+    pkg-config
+    wrapGAppsHook
+    wrapQtAppsHook
+  ];
 
-  postPatch = ''
-    # Fix location of poppler-*.h
-    shopt -s globstar
-    for f in **/*.{h,cpp}; do
-      substituteInPlace $f --replace '#include <poppler-' '#include <poppler/qt5/poppler-'
-    done
+  dontWrapGApps = true;
+
+  buildInputs = [
+    gst_all_1.gst-libav
+    gst_all_1.gst-plugins-base
+    gst_all_1.gst-plugins-good
+    zlib
+    qtbase
+    qtmultimedia
+    qttools
+    qtwayland
+  ] ++ lib.optionals useMupdf [
+    freetype
+    gumbo
+    jbig2dec
+    mupdf
+    openjpeg
+  ] ++ lib.optionals usePoppler [
+    poppler
+  ];
+
+  cmakeFlags = [
+    "-DGIT_VERSION=OFF"
+    "-DUSE_POPPLER=${if usePoppler then "ON" else "OFF"}"
+    "-DUSE_MUPDF=${if useMupdf then "ON" else "OFF"}"
+    "-DUSE_QTPDF=OFF"
+    "-DUSE_MUPDF_THIRD=ON"
+    "-DUSE_EXTERNAL_RENDERER=${if useExternalRenderer then "ON" else "OFF"}"
+    "-DUSE_MUJS=OFF"
+    "-DUSE_GUMBO=ON"
+    "-DUSE_TRANSLATIONS=ON"
+    "-DQT_VERSION_MAJOR=${lib.versions.major qtbase.version}"
+  ];
+
+  preFixup = ''
+    qtWrapperArgs+=("''${gappsWrapperArgs[@]}")
   '';
 
-  installPhase = ''
-    install -m755 beamerpresenter -Dt $out/bin/
-    install -m644 src/icons/beamerpresenter.svg -Dt $out/share/icons/hicolor/scalable/apps/
-    install -m644 share/applications/beamerpresenter.desktop -Dt $out/share/applications/
-    installManPage man/*.{1,5}
-  '';
-
-  meta = with stdenv.lib; {
-    description = "Simple dual screen pdf presentation software";
+  meta = with lib; {
+    description = "Modular multi screen pdf presentation viewer";
     homepage = "https://github.com/stiglers-eponym/BeamerPresenter";
-    license = licenses.gpl3Plus;
+    license = with licenses; [ agpl3 gpl3Plus ];
     platforms = platforms.all;
-    maintainers = with maintainers; [ pacien ];
+    maintainers = with maintainers; [ pacien dotlambda ];
   };
 }

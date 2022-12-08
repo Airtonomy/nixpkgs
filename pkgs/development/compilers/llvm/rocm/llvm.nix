@@ -1,15 +1,19 @@
 { stdenv
+, lib
+, fetchgit
 , fetchFromGitHub
+, writeScript
 , cmake
+, ninja
 , python3
 , libxml2
 , libffi
 , libbfd
+, libxcrypt
 , ncurses
 , zlib
 , debugVersion ? false
 , enableManpages ? false
-, enableSharedLibraries ? true
 
 , version
 , src
@@ -25,29 +29,21 @@ in stdenv.mkDerivation rec {
 
   pname = "rocm-llvm";
 
-  outputs = [ "out" "python" ]
-    ++ stdenv.lib.optional enableSharedLibraries "lib";
+  sourceRoot = "${src.name}/llvm";
 
-  nativeBuildInputs = [ cmake python3 ];
+  nativeBuildInputs = [ cmake ninja python3 ];
 
-  buildInputs = [ libxml2 libffi ];
+  buildInputs = [ libxml2 libxcrypt ];
 
   propagatedBuildInputs = [ ncurses zlib ];
 
   cmakeFlags = with stdenv; [
     "-DCMAKE_BUILD_TYPE=${if debugVersion then "Debug" else "Release"}"
     "-DLLVM_INSTALL_UTILS=ON" # Needed by rustc
-    "-DLLVM_BUILD_TESTS=OFF"
-    "-DLLVM_ENABLE_FFI=ON"
-    "-DLLVM_ENABLE_RTTI=ON"
-    "-DLLVM_ENABLE_DUMP=ON"
     "-DLLVM_TARGETS_TO_BUILD=AMDGPU;${llvmNativeTarget}"
+    "-DLLVM_ENABLE_PROJECTS=clang;lld;compiler-rt"
   ]
-  ++
-  stdenv.lib.optional
-    enableSharedLibraries
-    "-DLLVM_LINK_LLVM_DYLIB=ON"
-  ++ stdenv.lib.optionals enableManpages [
+  ++ lib.optionals enableManpages [
     "-DLLVM_BINUTILS_INCDIR=${libbfd.dev}/include"
     "-DLLVM_BUILD_DOCS=ON"
     "-DLLVM_ENABLE_SPHINX=ON"
@@ -56,42 +52,40 @@ in stdenv.mkDerivation rec {
     "-DSPHINX_WARNINGS_AS_ERRORS=OFF"
   ];
 
+  patches = [
+    ./install-symlinks.patch
+  ];
+
   postPatch = ''
-    substitute '${./llvm-outputs.patch}' ./llvm-outputs.patch --subst-var lib
-    patch -p1 < ./llvm-outputs.patch
+    patchShebangs lib/OffloadArch/make_generated_offload_arch_h.sh
+    substituteInPlace ../clang/cmake/modules/CMakeLists.txt \
+      --replace 'FILES_MATCHING' 'NO_SOURCE_PERMISSIONS FILES_MATCHING'
   '';
 
-  # hacky fix: created binaries need to be run before installation
-  preBuild = ''
-    mkdir -p $out/
-    ln -sv $PWD/lib $out
+  updateScript = writeScript "update.sh" ''
+    #!/usr/bin/env nix-shell
+    #!nix-shell -i bash -p curl jq common-updater-scripts nix-prefetch-github
+
+    version="$(curl -sL "https://api.github.com/repos/RadeonOpenCompute/llvm-project/releases?per_page=1" | jq '.[0].tag_name | split("-") | .[1]' --raw-output)"
+    current_version="$(grep "version =" pkgs/development/compilers/llvm/rocm/default.nix | cut -d'"' -f2)"
+    if [[ "$version" != "$current_version" ]]; then
+      tarball_meta="$(nix-prefetch-github RadeonOpenCompute llvm-project --rev "rocm-$version")"
+      tarball_hash="$(nix to-base64 sha256-$(jq -r '.sha256' <<< "$tarball_meta"))"
+      sed -i "pkgs/development/compilers/llvm/rocm/default.nix" \
+        -e 's,version = "\(.*\)",version = "'"$version"'",' \
+        -e 's,hash = "\(.*\)",hash = "sha256-'"$tarball_hash"'",'
+    else
+      echo rocm-llvm already up-to-date
+    fi
   '';
 
-  postBuild = ''
-    rm -fR $out
-  '';
+  passthru.isClang = true;
 
-  preCheck = ''
-    export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$PWD/lib
-  '';
-
-  postInstall = ''
-    moveToOutput share/opt-viewer "$python"
-  ''
-  + stdenv.lib.optionalString enableSharedLibraries ''
-    moveToOutput "lib/libLLVM-*" "$lib"
-    moveToOutput "lib/libLLVM${stdenv.hostPlatform.extensions.sharedLibrary}" "$lib"
-    substituteInPlace "$out/lib/cmake/llvm/LLVMExports-${if debugVersion then "debug" else "release"}.cmake" \
-      --replace "\''${_IMPORT_PREFIX}/lib/libLLVM-" "$lib/lib/libLLVM-"
-  '';
-
-  passthru.src = src;
-
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "ROCm fork of the LLVM compiler infrastructure";
     homepage = "https://github.com/RadeonOpenCompute/llvm-project";
     license = with licenses; [ ncsa ];
-    maintainers = with maintainers; [ danieldk ];
+    maintainers = with maintainers; [ acowley lovesegfault Flakebi ];
     platforms = platforms.linux;
   };
 }

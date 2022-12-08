@@ -1,19 +1,19 @@
-{ stdenv, fetchFromGitHub }:
+{ lib, stdenv, fetchFromGitHub }:
 
 stdenv.mkDerivation rec {
   pname = "vpcs";
-  version = "0.8.1";
+  version = "0.8.2";
 
   src = fetchFromGitHub {
     owner = "GNS3";
     repo = pname;
     rev = "v${version}";
-    sha256 = "0kqy4bd3ns8nzn7fa72izn7a08sfrasy1rn7fd8ajah2wv8d2cak";
+    sha256 = "sha256-joEXRMtNZMQumkYDX1gdpGAV+XdNKiAMj3dh1GZxeqc=";
   };
 
   buildPhase = ''(
     cd src
-    ./mk.sh ${stdenv.buildPlatform.platform.kernelArch}
+    ./mk.sh ${stdenv.buildPlatform.linuxArch}
   )'';
 
   installPhase = ''
@@ -23,7 +23,7 @@ stdenv.mkDerivation rec {
 
   enableParallelBuilding = true;
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "A simple virtual PC simulator";
     longDescription = ''
       The VPCS (Virtual PC Simulator) can simulate up to 9 PCs. You can
@@ -33,6 +33,6 @@ stdenv.mkDerivation rec {
     inherit (src.meta) homepage;
     license = licenses.bsd2;
     platforms = platforms.linux;
-    maintainers = with maintainers; [ primeos ];
+    maintainers = with maintainers; [ ];
   };
 }

@@ -1,9 +1,16 @@
-{ buildPythonPackage, fetchPypi, atpublic }:
+{ lib
+, buildPythonPackage
+, fetchPypi
+, atpublic
+, pdm-pep517
+}:
 
 buildPythonPackage rec {
   pname = "flufl.i18n";
-  version = "3.1.3";
+  version = "4.1.1";
+  format = "pyproject";
 
+  nativeBuildInputs = [ pdm-pep517 ];
   propagatedBuildInputs = [ atpublic ];
 
   doCheck = false;
@@ -12,6 +19,14 @@ buildPythonPackage rec {
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "dcca738be27f2c43ddf6f9307667a17478353190071f38a9f92c9af8d2252ba4";
+    sha256 = "sha256-wKz6aggkJ9YBJ+o75XjC4Ddnn+Zi9hlYDnliwTc7DNs=";
+  };
+
+  meta = with lib; {
+    description = "A high level API for internationalizing Python libraries and applications";
+    homepage = "https://gitlab.com/warsaw/flufl.i18n";
+    changelog = "https://gitlab.com/warsaw/flufl.i18n/-/raw/${version}/docs/NEWS.rst";
+    license = licenses.asl20;
+    maintainers = with maintainers; [ ];
   };
 }

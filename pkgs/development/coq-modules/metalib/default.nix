@@ -1,33 +1,21 @@
-{ stdenv, fetchFromGitHub, coq }:
+{ lib, mkCoqDerivation, coq, version ? null }:
 
-stdenv.mkDerivation rec {
-  name = "coq${coq.coq-version}-metalib-${version}";
-  version = "20200527";
-
-  src = fetchFromGitHub {
-    owner = "plclub";
-    repo = "metalib";
-    rev = "597fd7d0c93eb159274e84a39d554f10f1efccf8";
-    sha256 = "0wbypc05d2lqfm9qaw98ynr5yc1p0ipsvyc3bh1rk9nz7zwirmjs";
-  };
+with lib; mkCoqDerivation {
+  pname = "metalib";
+  owner = "plclub";
+  inherit version;
+  defaultVersion = with versions; switch coq.coq-version [
+    { case = range "8.14" "8.16"; out = "8.15"; }
+    { case = range "8.10" "8.13"; out = "8.10"; }
+  ] null;
+  releaseRev = v: "coq${v}";
+  release."8.15".sha256 = "0wbp058zwa4bkdjj38aysy2g1avf9nrh8q23a3dil0q00qczi616";
+  release."8.10".sha256 = "0wbypc05d2lqfm9qaw98ynr5yc1p0ipsvyc3bh1rk9nz7zwirmjs";
 
   sourceRoot = "source/Metalib";
 
-  buildInputs = [ coq ];
-
-  enableParallelBuilding = true;
-
-  installFlags = "COQMF_COQLIB=$(out)/lib/coq/${coq.coq-version}";
-
-  meta = with stdenv.lib; {
-    homepage = "https://github.com/plclub/metalib";
+  meta = {
     license = licenses.mit;
     maintainers = [ maintainers.jwiegley ];
-    platforms = coq.meta.platforms;
   };
-
-  passthru = {
-    compatibleCoqVersions = v: builtins.elem v [ "8.10" "8.11" "8.12" ];
-  };
-
 }

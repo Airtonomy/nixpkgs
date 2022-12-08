@@ -1,4 +1,4 @@
-{ stdenv
+{ lib, stdenv
 , fetchCrate
 , rustPlatform
 , pkg-config
@@ -13,29 +13,29 @@
 
 rustPlatform.buildRustPackage rec {
   pname = "pijul";
-  version = "1.0.0-alpha.24";
+  version = "1.0.0-beta.2";
 
   src = fetchCrate {
     inherit version pname;
-    sha256 = "1h1vgx0zlymnhalqsgmp9gv6sxbizmyryldx5vzl6djl23dvzd6s";
+    sha256 = "sha256-78nzCOR+AZuiAA1OpKKW4kfdUnlN8+qVaO3dknMck58=";
   };
 
-  cargoSha256 = "1yx7qqfyabhrf6mcca4frdcp9a426khp90nznhshhm71liqr9y44";
-
-  cargoBuildFlags = stdenv.lib.optional gitImportSupport "--features=git";
+  cargoSha256 = "sha256-IhjN0HjIIuP+P8yfZ3NmZpVZBAuetOr4OVZoI8Qfspo=";
 
   doCheck = false;
   nativeBuildInputs = [ pkg-config ];
   buildInputs = [ openssl libsodium xxHash zstd ]
-    ++ (stdenv.lib.optionals gitImportSupport [ libgit2 ])
-    ++ (stdenv.lib.optionals stdenv.isDarwin (with darwin.apple_sdk.frameworks; [
+    ++ (lib.optionals gitImportSupport [ libgit2 ])
+    ++ (lib.optionals stdenv.isDarwin (with darwin.apple_sdk.frameworks; [
       CoreServices Security SystemConfiguration
     ]));
 
-  meta = with stdenv.lib; {
+  buildFeatures = lib.optional gitImportSupport "git";
+
+  meta = with lib; {
     description = "A distributed version control system";
     homepage = "https://pijul.org";
     license = with licenses; [ gpl2Plus ];
-    maintainers = with maintainers; [ gal_bolle dywedir ];
+    maintainers = with maintainers; [ gal_bolle dywedir fabianhjr ];
   };
 }

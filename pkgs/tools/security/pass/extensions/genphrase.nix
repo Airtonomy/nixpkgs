@@ -1,4 +1,4 @@
-{ stdenv, fetchFromGitHub }:
+{ lib, stdenv, fetchFromGitHub, python3 }:
 
 stdenv.mkDerivation rec {
   pname = "pass-genphrase";
@@ -13,6 +13,8 @@ stdenv.mkDerivation rec {
 
   dontBuild = true;
 
+  buildInputs = [ python3 ];
+
   installTargets = [ "globalinstall" ];
 
   installFlags = [ "PREFIX=$(out)" ];
@@ -22,7 +24,7 @@ stdenv.mkDerivation rec {
       --replace '$EXTENSIONS' "$out/lib/password-store/extensions/"
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Pass extension that generates memorable passwords";
     homepage = "https://github.com/congma/pass-genphrase";
     license = licenses.gpl3;

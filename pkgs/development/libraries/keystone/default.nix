@@ -1,4 +1,4 @@
-{ stdenv
+{ lib, stdenv
 , fetchFromGitHub
 , pkg-config
 , cmake
@@ -27,11 +27,12 @@ stdenv.mkDerivation rec {
     python3
   ];
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Lightweight multi-platform, multi-architecture assembler framework";
     homepage = "https://www.keystone-engine.org";
     license = licenses.gpl2Only;
     maintainers = with maintainers; [ luc65r ];
+    mainProgram = "kstool";
     platforms = platforms.unix;
   };
 }

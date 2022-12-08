@@ -1,25 +1,37 @@
-{ python3Packages, fetchurl, lib,
-  yubikey-personalization, libu2f-host, libusb1 }:
+{ python3Packages, fetchFromGitHub, lib, yubikey-personalization, libu2f-host, libusb1, procps
+, stdenv }:
 
 python3Packages.buildPythonPackage rec {
   pname = "yubikey-manager";
-  version = "3.1.1";
+  version = "5.0.0";
+  format = "pyproject";
 
-  srcs = fetchurl {
-    url = "https://developers.yubico.com/${pname}/Releases/${pname}-${version}.tar.gz";
-    sha256 = "1yhc8j67phrj5xgx09b5h7c67pgc4wj4jnkmkq0r3s6j7jn43vv8";
+  src = fetchFromGitHub {
+    repo = "yubikey-manager";
+    rev = "refs/tags/${version}";
+    owner = "Yubico";
+    sha256 = "sha256-ZQQhRiUsQwLaOY8NCzSc/PTmRewTL0ECBKj7Uj+6Gn8=";
   };
 
+  postPatch = ''
+    substituteInPlace pyproject.toml \
+      --replace 'fido2 = ">=0.9, <1.0"' 'fido2 = ">*"'
+    substituteInPlace "ykman/pcsc/__init__.py" \
+      --replace 'pkill' '${if stdenv.isLinux then "${procps}" else "/usr"}/bin/pkill'
+  '';
+
+  nativeBuildInputs = with python3Packages; [ poetry-core ];
+
   propagatedBuildInputs =
-    with python3Packages; [
+    with python3Packages; ([
       click
       cryptography
       pyscard
       pyusb
-      pyopenssl
       six
       fido2
-    ] ++ [
+      keyring
+    ]) ++ [
       libu2f-host
       libusb1
       yubikey-personalization
@@ -42,8 +54,7 @@ python3Packages.buildPythonPackage rec {
       --replace 'compdef _ykman_completion ykman;' '_ykman_completion "$@"'
   '';
 
-  # See https://github.com/NixOS/nixpkgs/issues/29169
-  doCheck = false;
+  checkInputs = with python3Packages; [ pytestCheckHook makefun ];
 
   meta = with lib; {
     homepage = "https://developers.yubico.com/yubikey-manager";
@@ -51,6 +62,7 @@ python3Packages.buildPythonPackage rec {
 
     license = licenses.bsd2;
     platforms = platforms.unix;
-    maintainers = with maintainers; [ benley mic92 ];
+    maintainers = with maintainers; [ benley lassulus pinpox ];
+    mainProgram = "ykman";
   };
 }

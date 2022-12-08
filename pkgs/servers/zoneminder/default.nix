@@ -1,5 +1,5 @@
-{ stdenv, lib, fetchFromGitHub, fetchurl, fetchpatch, substituteAll, cmake, makeWrapper, pkgconfig
-, curl, ffmpeg_3, glib, libjpeg, libselinux, libsepol, mp4v2, libmysqlclient, mysql, pcre, perl, perlPackages
+{ stdenv, lib, fetchFromGitHub, fetchurl, fetchpatch, substituteAll, cmake, makeWrapper, pkg-config
+, curl, ffmpeg, glib, libjpeg, libselinux, libsepol, mp4v2, libmysqlclient, mariadb, pcre, perl, perlPackages
 , polkit, util-linuxMinimal, x264, zlib
 , coreutils, procps, psmisc, nixosTests }:
 
@@ -41,27 +41,6 @@
 # around it.
 
 let
-  modules = [
-    {
-      path = "web/api/app/Plugin/Crud";
-      src = fetchFromGitHub {
-        owner = "ZoneMinder";
-        repo = "crud";
-        rev = "3.1.0-zm";
-        sha256 = "061avzyml7mla4hlx057fm8a9yjh6m6qslgyzn74cv5p2y7f463l";
-      };
-    }
-    {
-      path = "web/api/app/Plugin/CakePHP-Enum-Behavior";
-      src = fetchFromGitHub {
-        owner = "ZoneMinder";
-        repo = "CakePHP-Enum-Behavior";
-        rev = "1.0-zm";
-        sha256 = "0zsi6s8xymb183kx3szspbrwfjqcgga7786zqvydy6hc8c909cgx";
-      };
-    }
-  ];
-
   addons = [
     {
       path = "scripts/ZoneMinder/lib/ZoneMinder/Control/Xiaomi.pm";
@@ -78,13 +57,14 @@ let
 
 in stdenv.mkDerivation rec {
   pname = "zoneminder";
-  version = "1.34.22";
+  version = "1.36.28";
 
   src = fetchFromGitHub {
     owner  = "ZoneMinder";
     repo   = "zoneminder";
     rev    = version;
-    sha256 = "1144j9crm0q5pwxnkmy3ahw1vbkddpbk2ys2m2pxxxiqifdhll83";
+    sha256 = "sha256-x00u7AWMNS+wAO/tdWi7GYbMZZM7XnszCO57ZDlm0J0=";
+    fetchSubmodules = true;
   };
 
   patches = [
@@ -93,11 +73,6 @@ in stdenv.mkDerivation rec {
   ];
 
   postPatch = ''
-    ${lib.concatStringsSep "\n" (map (e: ''
-      rm -rf ${e.path}/*
-      cp -r ${e.src}/* ${e.path}/
-    '') modules)}
-
     rm -rf web/api/lib/Cake/Test
 
     ${lib.concatStringsSep "\n" (map (e: ''
@@ -122,15 +97,15 @@ in stdenv.mkDerivation rec {
     done
 
     substituteInPlace scripts/zmdbbackup.in \
-      --replace /usr/bin/mysqldump ${mysql.client}/bin/mysqldump
+      --replace /usr/bin/mysqldump ${mariadb.client}/bin/mysqldump
 
     substituteInPlace scripts/zmupdate.pl.in \
-      --replace "'mysql'" "'${mysql.client}/bin/mysql'" \
-      --replace "'mysqldump'" "'${mysql.client}/bin/mysqldump'"
+      --replace "'mysql'" "'${mariadb.client}/bin/mysql'" \
+      --replace "'mysqldump'" "'${mariadb.client}/bin/mysqldump'"
 
     for f in scripts/ZoneMinder/lib/ZoneMinder/Config.pm.in \
              scripts/zmupdate.pl.in \
-             src/zm_config.h.in \
+             src/zm_config_data.h.in \
              web/api/app/Config/bootstrap.php.in \
              web/includes/config.php.in ; do
       substituteInPlace $f --replace @ZM_CONFIG_SUBDIR@ /etc/zoneminder
@@ -138,7 +113,7 @@ in stdenv.mkDerivation rec {
 
     for f in includes/Event.php views/image.php ; do
       substituteInPlace web/$f \
-        --replace "'ffmpeg " "'${ffmpeg_3}/bin/ffmpeg "
+        --replace "'ffmpeg " "'${ffmpeg}/bin/ffmpeg "
     done
 
     substituteInPlace web/includes/functions.php \
@@ -147,7 +122,7 @@ in stdenv.mkDerivation rec {
   '';
 
   buildInputs = [
-    curl ffmpeg_3 glib libjpeg libselinux libsepol mp4v2 libmysqlclient mysql.client pcre perl polkit x264 zlib
+    curl ffmpeg glib libjpeg libselinux libsepol mp4v2 libmysqlclient mariadb.client pcre perl polkit x264 zlib
     util-linuxMinimal # for libmount
   ] ++ (with perlPackages; [
     # build-time dependencies
@@ -157,9 +132,7 @@ in stdenv.mkDerivation rec {
     CryptEksblowfish DataEntropy # zmupdate.pl
   ]);
 
-  nativeBuildInputs = [ cmake makeWrapper pkgconfig ];
-
-  enableParallelBuilding = true;
+  nativeBuildInputs = [ cmake makeWrapper pkg-config ];
 
   cmakeFlags = [
     "-DWITH_SYSTEMD=ON"
@@ -196,7 +169,7 @@ in stdenv.mkDerivation rec {
     ln -s $out/share/zoneminder/www $out/share/zoneminder/www/zm
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Video surveillance software system";
     homepage = "https://zoneminder.com";
     license = licenses.gpl3;

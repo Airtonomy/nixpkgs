@@ -1,35 +1,53 @@
-{ lib, buildPythonPackage, fetchPypi, pythonOlder
+{ lib
+, buildPythonPackage
+, fetchPypi
+, fontpens
 , fonttools
-, pytest, pytestrunner, lxml, fs, unicodedata2, fontpens
+, fs
+, lxml
+, pytestCheckHook
+, pythonOlder
+, setuptools-scm
+, unicodedata2
 }:
 
 buildPythonPackage rec {
   pname = "defcon";
-  version = "0.7.2";
+  version = "0.10.2";
+  format = "setuptools";
+
+  disabled = pythonOlder "3.7";
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "1lfqsvxmq1j0nvp26gidnqkj1dyxv7jalc6i7fz1r3nc7niflrqr";
+    hash = "sha256-ruOW5taeRa5lyCZHgTktTCkRaTSyc3rXbYIwtAwYKkQ=";
     extension = "zip";
   };
+
+  nativeBuildInputs = [
+    setuptools-scm
+  ];
 
   propagatedBuildInputs = [
     fonttools
   ];
 
   checkInputs = [
-    pytest
-    pytestrunner
-    lxml
-    fs
-    unicodedata2
     fontpens
+    fs
+    lxml
+    pytestCheckHook
+    unicodedata2
+  ];
+
+  pythonImportsCheck = [
+    "defcon"
   ];
 
   meta = with lib; {
     description = "A set of UFO based objects for use in font editing applications";
     homepage = "https://github.com/robotools/defcon";
     license = licenses.mit;
-    maintainers = [ maintainers.sternenseemann ];
+    maintainers = with maintainers; [ sternenseemann ];
   };
 }

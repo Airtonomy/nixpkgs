@@ -1,24 +1,31 @@
-{ stdenv, file, curl, pkgconfig, python3, openssl, cmake, zlib
-, installShellFiles, makeWrapper, libiconv, cacert, rustPlatform, rustc
-, CoreFoundation, Security
+{ lib, stdenv, pkgsHostHost
+, file, curl, pkg-config, python3, openssl, cmake, zlib
+, installShellFiles, makeWrapper, cacert, rustPlatform, rustc
+, libiconv, CoreFoundation, Security
 }:
 
 rustPlatform.buildRustPackage {
-  name = "cargo-${rustc.version}";
+  pname = "cargo";
   inherit (rustc) version src;
 
   # the rust source tarball already has all the dependencies vendored, no need to fetch them again
   cargoVendorDir = "vendor";
   buildAndTestSubdir = "src/tools/cargo";
 
-  passthru.rustc = rustc;
+  passthru = {
+    rustc = rustc;
+    inherit (rustc) tests;
+  };
 
   # changes hash of vendor directory otherwise
   dontUpdateAutotoolsGnuConfigScripts = true;
 
-  nativeBuildInputs = [ pkgconfig cmake installShellFiles makeWrapper ];
+  nativeBuildInputs = [
+    pkg-config cmake installShellFiles makeWrapper
+    (lib.getDev pkgsHostHost.curl)
+  ];
   buildInputs = [ cacert file curl python3 openssl zlib ]
-    ++ stdenv.lib.optionals stdenv.isDarwin [ CoreFoundation Security libiconv ];
+    ++ lib.optionals stdenv.isDarwin [ libiconv CoreFoundation Security ];
 
   # cargo uses git-rs which is made for a version of libgit2 from recent master that
   # is not compatible with the current version in nixpkgs.
@@ -54,11 +61,21 @@ rustPlatform.buildRustPackage {
   # Disable check phase as there are failures (4 tests fail)
   doCheck = false;
 
-  meta = with stdenv.lib; {
+  doInstallCheck = !stdenv.hostPlatform.isStatic &&
+    stdenv.hostPlatform.parsed.kernel.execFormat == lib.systems.parse.execFormats.elf;
+  installCheckPhase = ''
+    runHook preInstallCheck
+    readelf -a $out/bin/.cargo-wrapped | grep -F 'Shared library: [libcurl.so'
+    runHook postInstallCheck
+  '';
+
+  meta = with lib; {
     homepage = "https://crates.io";
     description = "Downloads your Rust project's dependencies and builds your project";
     maintainers = with maintainers; [ retrry ];
     license = [ licenses.mit licenses.asl20 ];
     platforms = platforms.unix;
+    # weird segfault in a build script
+    broken = stdenv.targetPlatform.isMusl && !stdenv.targetPlatform.isStatic;
   };
 }

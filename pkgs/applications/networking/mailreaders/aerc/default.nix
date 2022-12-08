@@ -1,20 +1,27 @@
-{ stdenv, buildGoModule, fetchurl
-, go, ncurses, notmuch, scdoc
-, python3, perl, w3m, dante
-, fetchFromGitHub
+{ lib
+, buildGoModule
+, fetchFromSourcehut
+, ncurses
+, notmuch
+, scdoc
+, python3
+, w3m
+, dante
 }:
 
 buildGoModule rec {
   pname = "aerc";
-  version = "0.4.0";
+  version = "0.13.0";
 
-  src = fetchurl {
-    url = "https://git.sr.ht/~sircmpwn/aerc/archive/${version}.tar.gz";
-    sha256 = "05qy14k9wmyhsg1hiv4njfx1zn1m9lz4d1p50kc36v7pq0n4csfk";
+  src = fetchFromSourcehut {
+    owner = "~rjarry";
+    repo = "aerc";
+    rev = version;
+    hash = "sha256-pUp/hW4Kk3pixGfbQvphLJM9Dc/w01T1KPRewOicPqM=";
   };
 
-  runVend = true;
-  vendorSha256 = "13zs5113ip85yl6sw9hzclxwlnrhy18d39vh9cwbq97dgnh9rz89";
+  proxyVendor = true;
+  vendorHash = "sha256-Nx+k0PLPIx7Ia0LobXUOw7oOFVz1FXV49haAkRAVOcM=";
 
   doCheck = false;
 
@@ -27,33 +34,36 @@ buildGoModule rec {
     ./runtime-sharedir.patch
   ];
 
+  postPatch = ''
+    substituteAllInPlace config/aerc.conf
+    substituteAllInPlace config/config.go
+    substituteAllInPlace doc/aerc-config.5.scd
+  '';
+
+  makeFlags = [ "PREFIX=${placeholder "out"}" ];
+
   pythonPath = [
     python3.pkgs.colorama
   ];
 
   buildInputs = [ python3 notmuch ];
 
-  buildPhase = "
-    runHook preBuild
-    # we use make instead of go build
-    runHook postBuild
-  ";
-
   installPhase = ''
     runHook preInstall
-    make PREFIX=$out GOFLAGS="$GOFLAGS -tags=notmuch" install
-    wrapPythonProgramsIn $out/share/aerc/filters "$out $pythonPath"
+
+    make $makeFlags GOFLAGS="$GOFLAGS -tags=notmuch" install
+
     runHook postInstall
   '';
 
   postFixup = ''
     wrapProgram $out/bin/aerc --prefix PATH ":" \
-      "$out/share/aerc/filters:${stdenv.lib.makeBinPath [ ncurses ]}"
+      "${lib.makeBinPath [ ncurses ]}"
     wrapProgram $out/share/aerc/filters/html --prefix PATH ":" \
-      ${stdenv.lib.makeBinPath [ w3m dante ]}
+      ${lib.makeBinPath [ w3m dante ]}
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "An email client for your terminal";
     homepage = "https://aerc-mail.org/";
     maintainers = with maintainers; [ tadeokondrak ];

@@ -1,23 +1,19 @@
-{ stdenv, fetchFromBitbucket, python3 }:
+{ lib, stdenv, fetchFromGitHub, python3 }:
 
 stdenv.mkDerivation rec {
-  version = "7.2";
+  version = "9.1";
   pname = "tab";
 
-  src = fetchFromBitbucket {
-    owner = "tkatchev";
+  src = fetchFromGitHub {
+    owner = "ivan-tkatchev";
     repo = pname;
     rev = version;
-    sha256 = "1bm15lw0vp901dj2vsqx6yixmn7ls3brrzh1w6zgd1ksjzlm5aax";
+    sha256 = "sha256-AhgWeV/ojB8jM16A5ggrOD1YjWfRVcoQbkd3S2bgdyE=";
   };
 
   checkInputs = [ python3 ];
 
   doCheck = !stdenv.isDarwin;
-
-  preCheck = ''
-    substituteInPlace Makefile --replace "python2 go2.py" "python go.py"
-  '';
 
   checkTarget = "test";
 
@@ -30,9 +26,9 @@ stdenv.mkDerivation rec {
     runHook postInstall
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Programming language/shell calculator";
-    homepage    = "https://tkatchev.bitbucket.io/tab/";
+    homepage    = "http://tab-lang.xyz";
     license     = licenses.boost;
     maintainers = with maintainers; [ mstarzyk ];
     platforms   = with platforms; unix;

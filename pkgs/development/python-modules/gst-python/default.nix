@@ -1,19 +1,20 @@
-{ buildPythonPackage
+{ lib
+, buildPythonPackage
 , fetchurl
 , meson
 , ninja
-, stdenv
-, pkgconfig
-, python3
+
+, pkg-config
+, python
 , pygobject3
 , gobject-introspection
-, gst-plugins-base
+, gst_all_1
 , isPy3k
 }:
 
 buildPythonPackage rec {
   pname = "gst-python";
-  version = "1.18.0";
+  version = "1.20.0";
 
   format = "other";
 
@@ -21,28 +22,33 @@ buildPythonPackage rec {
 
   src = fetchurl {
     url = "${meta.homepage}/src/gst-python/${pname}-${version}.tar.xz";
-    sha256 = "0ifx2s2j24sj2w5jm7cxyg1kinnhbxiz4x0qp3gnsjlwbawfigvn";
+    sha256 = "j2e9xWBrozYGxryJbonefc2M9PykWfcTibG2/gdbXlQ=";
   };
 
   # Python 2.x is not supported.
   disabled = !isPy3k;
 
+  depsBuildBuild = [
+    pkg-config
+  ];
+
   nativeBuildInputs = [
     meson
     ninja
-    pkgconfig
-    python3
+    pkg-config
     gobject-introspection
-    gst-plugins-base
+    gst_all_1.gst-plugins-base
   ];
 
   propagatedBuildInputs = [
-    gst-plugins-base
+    gst_all_1.gst-plugins-base
     pygobject3
   ];
 
   mesonFlags = [
-    "-Dpygi-overrides-dir=${placeholder "out"}/${python3.sitePackages}/gi/overrides"
+    "-Dpygi-overrides-dir=${placeholder "out"}/${python.sitePackages}/gi/overrides"
+    # Exec format error during configure
+    "-Dpython=${python.pythonForBuild.interpreter}"
   ];
 
   doCheck = true;
@@ -51,11 +57,9 @@ buildPythonPackage rec {
   # https://github.com/NixOS/nixpkgs/issues/47390
   installCheckPhase = "meson test --print-errorlogs";
 
-  meta = {
+  meta = with lib; {
     homepage = "https://gstreamer.freedesktop.org";
-
     description = "Python bindings for GStreamer";
-
-    license = stdenv.lib.licenses.lgpl2Plus;
+    license = licenses.lgpl2Plus;
   };
 }

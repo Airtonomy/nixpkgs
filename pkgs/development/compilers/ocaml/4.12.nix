@@ -1,9 +1,11 @@
 import ./generic.nix {
   major_version = "4";
   minor_version = "12";
-  patch_version = "0-alpha2";
-  src = fetchTarball {
-    url = "http://caml.inria.fr/pub/distrib/ocaml-4.12/ocaml-4.12.0~alpha2.tar.xz";
-    sha256 = "148vgjcfajjvrvh0q9kb2y7fszqd02cikb5wyznz7kjxka6xxyn9";
-  };
+  patch_version = "1";
+  sha256 = "1jbjjnmqq6ymsy81x188i256bz4z5jrz1pws8g1qf59c32ganjkf";
+  patches = [
+    { url = "https://src.fedoraproject.org/rpms/ocaml/raw/129153b85109944bf0b2922949f77ef8f32b39a1/f/0004-Dynamically-allocate-the-alternate-signal-stack-1026.patch";
+      sha256 = "sha256-FdQ1HkMKHU9QvgLPUBvMdPiEa7w7IL3+1F3SLv63Gog=";
+    }
+  ];
 }

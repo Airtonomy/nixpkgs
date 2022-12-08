@@ -1,14 +1,14 @@
-{ stdenv, fetchFromGitHub }:
+{ lib, stdenv, fetchFromGitHub }:
 
 stdenv.mkDerivation rec {
   pname = "mcrcon";
-  version = "0.7.1";
+  version = "0.7.2";
 
   src = fetchFromGitHub {
     owner = "Tiiffi";
     repo = "mcrcon";
     rev = "v${version}";
-    sha256 = "004h1glagyw1mic1k461bky0w2fxdfhrhcqjzr9wp6gvyy9s8bix";
+    sha256 = "sha256-cedeKsZgEyu0jqN4kBSgMJzFNUfCVXCEwH3M54miSG4=";
   };
 
   buildPhase = ''
@@ -27,7 +27,7 @@ stdenv.mkDerivation rec {
       It is well suited for remote administration and to be used as part of automated server maintenance scripts.
       It does not trigger "IO: Broken pipe" or "IO: Connection reset" spam bugs on the server side.
     '';
-    maintainers = with stdenv.lib.maintainers; [ dermetfan ];
-    license = with stdenv.lib.licenses; [ zlib libpng ];
+    maintainers = with lib.maintainers; [ dermetfan ];
+    license = with lib.licenses; [ zlib libpng ];
   };
 }

@@ -1,29 +1,32 @@
-{ stdenv, fetchurl, fetchsvn, makeWrapper, unzip, jre, libXxf86vm }:
+{ lib, stdenv, fetchurl, fetchsvn, makeWrapper, unzip, jre, libXxf86vm
+, extraJavaOpts ? "-Djosm.restart=true -Djava.net.useSystemProxies=true"
+}:
 let
   pname = "josm";
-  version = "17329";
+  version = "18583";
   srcs = {
     jar = fetchurl {
       url = "https://josm.openstreetmap.de/download/josm-snapshot-${version}.jar";
-      sha256 = "0hra146akadqz9acj1xa2vzrmipfzf8li7sgsmk169xr991y653k";
+      hash = "sha256-6S6E7ngTCBXb0epPfYxIswLvfm9r2Ql0wgOs/PxpmIM=";
     };
     macosx = fetchurl {
-      url = "https://josm.openstreetmap.de/download/macosx/josm-macosx-${version}.zip";
-      sha256 = "0i09jnfqbcirmic9vayrp78lnyk4mfh7ax3v3cs8kyqhk930pscf";
+      url = "https://josm.openstreetmap.de/download/macosx/josm-macos-${version}-java17.zip";
+      hash = "sha256-3XEoSCXEpeqZj1y4nns5+0JR1SINYE1rsmQ4fMflxRQ=";
     };
     pkg = fetchsvn {
       url = "https://josm.openstreetmap.de/svn/trunk/native/linux/tested";
       rev = version;
-      sha256 = "0ybjca6dhnbwl3xqwrc91c444fzs1zrlnz7qr3l79s1vll9r4qd1";
+      sha256 = "sha256-Cga17ymUROJb5scpyOlo6JIgQ77yHavI0ciUpZN+jLk=";
     };
   };
 in
-stdenv.mkDerivation {
+stdenv.mkDerivation rec {
   inherit pname version;
 
   dontUnpack = true;
 
-  buildInputs = stdenv.lib.optionals (!stdenv.isDarwin) [ jre makeWrapper ];
+  nativeBuildInputs = [ makeWrapper ];
+  buildInputs = lib.optionals (!stdenv.isDarwin) [ jre ];
 
   installPhase =
     if stdenv.isDarwin then ''
@@ -35,15 +38,15 @@ stdenv.mkDerivation {
 
       # Add libXxf86vm to path because it is needed by at least Kendzi3D plugin
       makeWrapper ${jre}/bin/java $out/bin/josm \
-        --add-flags "-Djosm.restart=true -Djava.net.useSystemProxies=true" \
-        --add-flags "-jar $out/share/josm/josm.jar" \
+        --add-flags "${extraJavaOpts} -jar $out/share/josm/josm.jar" \
         --prefix LD_LIBRARY_PATH ":" '${libXxf86vm}/lib'
     '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "An extensible editor for OpenStreetMap";
     homepage = "https://josm.openstreetmap.de/";
     changelog = "https://josm.openstreetmap.de/wiki/Changelog";
+    sourceProvenance = with sourceTypes; [ binaryBytecode ];
     license = licenses.gpl2Plus;
     maintainers = with maintainers; [ rycee sikmir ];
     platforms = platforms.all;

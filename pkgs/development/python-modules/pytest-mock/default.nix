@@ -1,41 +1,44 @@
 { lib
 , buildPythonPackage
+, pythonOlder
 , fetchPypi
-, fetchpatch
-, isPy3k
 , pytest
-, mock
-, setuptools_scm
+, pytest-asyncio
+, pytestCheckHook
+, setuptools-scm
 }:
 
 buildPythonPackage rec {
   pname = "pytest-mock";
-  version = "3.3.1";
+  version = "3.8.2";
+
+  disabled = pythonOlder "3.7";
+
+  format = "setuptools";
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "a4d6d37329e4a893e77d9ffa89e838dd2b45d5dc099984cf03c703ac8411bb82";
+    hash = "sha256-d/A/RVQ5JVhwApXgWu0LEJaiDUpgpPPdzeWLDDHI/KI=";
   };
 
-  propagatedBuildInputs = lib.optional (!isPy3k) mock;
+  nativeBuildInputs = [ setuptools-scm ];
 
-  nativeBuildInputs = [
-   setuptools_scm
-  ];
-
-  checkInputs = [
+  buildInputs = [
     pytest
   ];
 
-  # ignore test which only works with pytest5 output structure
-  checkPhase = ''
-    pytest -k 'not detailed_introspection_async'
-  '';
+  checkInputs = [
+    pytest-asyncio
+    pytestCheckHook
+  ];
+
+  pythonImportsCheck = [ "pytest_mock" ];
 
   meta = with lib; {
-    description = "Thin-wrapper around the mock package for easier use with py.test.";
-    homepage    = "https://github.com/pytest-dev/pytest-mock";
-    license     = licenses.mit;
-    maintainers = with maintainers; [ nand0p ];
+    description = "Thin wrapper around the mock package for easier use with pytest";
+    homepage = "https://github.com/pytest-dev/pytest-mock";
+    changelog = "https://github.com/pytest-dev/pytest-mock/blob/v${version}/CHANGELOG.rst";
+    license = licenses.mit;
+    maintainers = with maintainers; [ dotlambda ];
   };
 }

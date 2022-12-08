@@ -1,4 +1,4 @@
-{ stdenv, fetchurl, rpmextract, patchelf, bash }:
+{ lib, stdenv, fetchurl, rpmextract, patchelf, bash }:
 
 stdenv.mkDerivation rec {
   pname = "scaleft";
@@ -13,7 +13,7 @@ stdenv.mkDerivation rec {
   nativeBuildInputs = [ patchelf rpmextract ];
 
   libPath =
-    stdenv.lib.makeLibraryPath
+    lib.makeLibraryPath
        [ stdenv.cc stdenv.cc.cc.lib ];
 
   buildCommand = ''
@@ -31,9 +31,10 @@ stdenv.mkDerivation rec {
     patchShebangs $out
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "ScaleFT provides Zero Trust software which you can use to secure your internal servers and services";
     homepage = "https://www.scaleft.com";
+    sourceProvenance = with sourceTypes; [ binaryNativeCode ];
     license = licenses.unfree;
     maintainers = with maintainers; [ jloyet ];
     platforms = [ "x86_64-linux" ];

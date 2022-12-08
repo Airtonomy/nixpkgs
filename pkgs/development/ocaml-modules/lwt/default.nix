@@ -1,23 +1,25 @@
-{ lib, fetchzip, pkgconfig, ncurses, libev, buildDunePackage, ocaml
-, cppo, ocaml-migrate-parsetree, ocplib-endian, result
-, mmap, seq
+{ lib, fetchFromGitHub, libev, buildDunePackage
+, cppo, dune-configurator, ocplib-endian
 }:
-
-let inherit (lib) optional versionAtLeast; in
 
 buildDunePackage rec {
   pname = "lwt";
-  version = "5.3.0";
+  version = "5.6.1";
 
-  src = fetchzip {
-    url = "https://github.com/ocsigen/${pname}/archive/${version}.tar.gz";
-    sha256 = "15hgy3220m2b8imipa514n7l65m1h5lc6l1hanqwwvs7ghh2aqp2";
+  minimalOCamlVersion = "4.08";
+
+  src = fetchFromGitHub {
+    owner = "ocsigen";
+    repo = "lwt";
+    rev = version;
+    sha256 = "sha256-XstKs0tMwliCyXnP0Vzi5WC27HKJGnATUYtbbQmH1TE=";
   };
 
-  nativeBuildInputs = [ pkgconfig ];
-  buildInputs = [ cppo ocaml-migrate-parsetree ]
-   ++ optional (!versionAtLeast ocaml.version "4.07") ncurses;
-  propagatedBuildInputs = [ libev mmap ocplib-endian seq result ];
+  strictDeps = true;
+
+  nativeBuildInputs = [ cppo ];
+  buildInputs = [ dune-configurator ];
+  propagatedBuildInputs = [ libev ocplib-endian ];
 
   meta = {
     homepage = "https://ocsigen.org/lwt/";

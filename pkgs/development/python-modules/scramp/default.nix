@@ -1,19 +1,56 @@
-{ lib, buildPythonPackage, fetchFromGitHub, pytestCheckHook }:
+{ lib
+, asn1crypto
+, buildPythonPackage
+, fetchFromGitHub
+, importlib-metadata
+, pytest-mock
+, pytestCheckHook
+, pythonOlder
+, setuptools
+}:
 
 buildPythonPackage rec {
   pname = "scramp";
-  version = "1.2.0";
+  version = "1.4.4";
+  format = "pyproject";
+
+  disabled = pythonOlder "3.7";
 
   src = fetchFromGitHub {
     owner = "tlocke";
     repo = "scramp";
     rev = version;
-    sha256 = "15jb7z5l2lijxr60fb9v55i3f81h6d83c0b7fv5q0fv5q259nv0a";
+    hash = "sha256-WOyv1fLSXG7p+WKs2QSwlsh8FSK/lxp6I1hPY0VIkKo=";
   };
 
-  checkInputs = [ pytestCheckHook ];
+  nativeBuildInputs = [
+    setuptools
+  ];
 
-  pythonImportsCheck = [ "scramp" ];
+  propagatedBuildInputs = [
+    asn1crypto
+  ] ++ lib.optionals (pythonOlder "3.8") [
+    importlib-metadata
+  ];
+
+  checkInputs = [
+    pytest-mock
+    pytestCheckHook
+  ];
+
+  postPatch = ''
+    # Upstream uses versioningit to set the version
+    sed -i '/^name =.*/a version = "${version}"' pyproject.toml
+    sed -i "/dynamic =/d" pyproject.toml
+  '';
+
+  pythonImportsCheck = [
+    "scramp"
+  ];
+
+  disabledTests = [
+    "test_readme"
+  ];
 
   meta = with lib; {
     description = "Implementation of the SCRAM authentication protocol";

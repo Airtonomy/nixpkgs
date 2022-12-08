@@ -1,10 +1,11 @@
-{ stdenv, nixosTests, lib, fetchurl, pkgconfig, jansson, pcre
+{ stdenv, nixosTests, lib, fetchurl, pkg-config, jansson, pcre, libxcrypt
 # plugins: list of strings, eg. [ "python2" "python3" ]
 , plugins ? []
 , pam, withPAM ? stdenv.isLinux
 , systemd, withSystemd ? stdenv.isLinux
+, libcap, withCap ? stdenv.isLinux
 , python2, python3, ncurses
-, ruby, php, libmysqlclient
+, ruby, php
 }:
 
 let php-embed = php.override {
@@ -13,13 +14,13 @@ let php-embed = php.override {
     };
 
     pythonPlugin = pkg : lib.nameValuePair "python${if pkg.isPy2 then "2" else "3"}" {
-                           interpreter = pkg.interpreter;
+                           interpreter = pkg.pythonForBuild.interpreter;
                            path = "plugins/python";
                            inputs = [ pkg ncurses ];
                            install = ''
                              install -Dm644 uwsgidecorators.py $out/${pkg.sitePackages}/uwsgidecorators.py
-                             ${pkg.executable} -m compileall $out/${pkg.sitePackages}/
-                             ${pkg.executable} -O -m compileall $out/${pkg.sitePackages}/
+                             ${pkg.pythonForBuild.executable} -m compileall $out/${pkg.sitePackages}/
+                             ${pkg.pythonForBuild.executable} -O -m compileall $out/${pkg.sitePackages}/
                            '';
                          };
 
@@ -58,23 +59,25 @@ in
 
 stdenv.mkDerivation rec {
   pname = "uwsgi";
-  version = "2.0.19.1";
+  version = "2.0.20";
 
   src = fetchurl {
     url = "https://projects.unbit.it/downloads/${pname}-${version}.tar.gz";
-    sha256 = "0256v72b7zr6ds4srpaawk1px3bp0djdwm239w3wrxpw7dzk1gjn";
+    sha256 = "1yfz5h07rxzrqf1rdj5fzhk47idgglxj7kqr8zl8lgcpv1kriaw8";
   };
 
   patches = [
         ./no-ext-session-php_session.h-on-NixOS.patch
         ./additional-php-ldflags.patch
+        ./missing-arginfo-php8.patch # https://github.com/unbit/uwsgi/issues/2356
   ];
 
-  nativeBuildInputs = [ python3 pkgconfig ];
+  nativeBuildInputs = [ python3 pkg-config ];
 
-  buildInputs =  [ jansson pcre ]
+  buildInputs =  [ jansson pcre libxcrypt ]
               ++ lib.optional withPAM pam
               ++ lib.optional withSystemd systemd
+              ++ lib.optional withCap libcap
               ++ lib.concatMap (x: x.inputs) needed
               ;
 
@@ -83,9 +86,19 @@ stdenv.mkDerivation rec {
                  ++ lib.optional withSystemd "systemd_logger"
                  );
 
+  UWSGI_INCLUDES = lib.optionalString withCap "${libcap.dev}/include";
+
   passthru = {
     inherit python2 python3;
   };
+
+  postPatch = ''
+    for f in uwsgiconfig.py plugins/*/uwsgiplugin.py; do
+      substituteInPlace "$f" \
+        --replace pkg-config "$PKG_CONFIG"
+    done
+    sed -e "s/ + php_version//" -i plugins/php/uwsgiplugin.py
+  '';
 
   configurePhase = ''
     export pluginDir=$out/lib/uwsgi
@@ -113,7 +126,7 @@ stdenv.mkDerivation rec {
     ${lib.concatMapStringsSep "\n" (x: x.install or "") needed}
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     homepage = "https://uwsgi-docs.readthedocs.org/en/latest/";
     description = "A fast, self-healing and developer/sysadmin-friendly application container server coded in pure C";
     license = licenses.gpl2;

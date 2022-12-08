@@ -1,8 +1,10 @@
 { stdenv
+, lib
+, fetchpatch
 , fetchurl
 , meson
 , ninja
-, pkgconfig
+, pkg-config
 , gobject-introspection
 , lcms2
 , vala
@@ -10,19 +12,19 @@
 
 stdenv.mkDerivation rec {
   pname = "babl";
-  version = "0.1.82";
+  version = "0.1.96";
 
   outputs = [ "out" "dev" ];
 
   src = fetchurl {
-    url = "https://download.gimp.org/pub/babl/${stdenv.lib.versions.majorMinor version}/${pname}-${version}.tar.xz";
-    sha256 = "1iddkwdfw1bmfl6n8y1d4kkm3rb15rzvrfri6a7cnx37mpa96bf6";
+    url = "https://download.gimp.org/pub/babl/${lib.versions.majorMinor version}/${pname}-${version}.tar.xz";
+    sha256 = "sha256-M2c/5Fmpg/QRJFpJ+B/X8ZZq8eqOypsJWpQMVCuFRfY=";
   };
 
   nativeBuildInputs = [
     meson
     ninja
-    pkgconfig
+    pkg-config
     gobject-introspection
     vala
   ];
@@ -31,9 +33,10 @@ stdenv.mkDerivation rec {
     lcms2
   ];
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Image pixel format conversion library";
     homepage = "https://gegl.org/babl/";
+    changelog = "https://gitlab.gnome.org/GNOME/babl/-/blob/BABL_${lib.replaceStrings [ "." ] [ "_" ] version}/NEWS";
     license = licenses.lgpl3Plus;
     maintainers = with maintainers; [ jtojnar ];
     platforms = platforms.unix;

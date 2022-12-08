@@ -1,11 +1,19 @@
-{ stdenv, fetchurl, openssl, readline, which, nettools }:
+{ lib
+, fetchurl
+, nettools
+, openssl
+, readline
+, stdenv
+, which
+}:
 
 stdenv.mkDerivation rec {
-  name = "socat-1.7.3.4";
+  pname = "socat";
+  version = "1.7.4.3";
 
   src = fetchurl {
-    url = "http://www.dest-unreach.org/socat/download/${name}.tar.bz2";
-    sha256 = "1z7xgnwiqpcv1j6aghhj9nqbx7cg3gpc4n9j7vi9hm7nhv5788wp";
+    url = "http://www.dest-unreach.org/socat/download/${pname}-${version}.tar.bz2";
+    sha256 = "sha256-1HMYEEQVB3Y1EZ3+5EvPtB3jSXN0qaABsa/24vCFgAc=";
   };
 
   postPatch = ''
@@ -15,6 +23,11 @@ stdenv.mkDerivation rec {
       --replace /sbin/ifconfig ifconfig
   '';
 
+  configureFlags = lib.optionals stdenv.hostPlatform.isMusl [
+    # musl doesn't have getprotobynumber_r
+    "sc_cv_getprotobynumber_r=2"
+  ];
+
   buildInputs = [ openssl readline ];
 
   hardeningEnable = [ "pie" ];
@@ -22,12 +35,11 @@ stdenv.mkDerivation rec {
   checkInputs = [ which nettools ];
   doCheck = false; # fails a bunch, hangs
 
-  meta = {
-    description = "A utility for bidirectional data transfer between two independent data channels";
+  meta = with lib; {
+    description = "Utility for bidirectional data transfer between two independent data channels";
     homepage = "http://www.dest-unreach.org/socat/";
-    repositories.git = "git://repo.or.cz/socat.git";
-    platforms = stdenv.lib.platforms.unix;
-    license = stdenv.lib.licenses.gpl2;
-    maintainers = [ stdenv.lib.maintainers.eelco ];
+    platforms = platforms.unix;
+    license = with licenses; [ gpl2Only ];
+    maintainers = with maintainers; [ eelco ];
   };
 }

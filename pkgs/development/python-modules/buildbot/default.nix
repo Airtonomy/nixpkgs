@@ -1,15 +1,23 @@
-{ stdenv, lib, buildPythonPackage, fetchPypi, makeWrapper, isPy3k,
-  python, twisted, jinja2, zope_interface, future, sqlalchemy,
-  sqlalchemy_migrate, dateutil, txaio, autobahn, pyjwt, pyyaml, treq,
-  txrequests, pypugjs, boto3, moto, mock, python-lz4, setuptoolsTrial,
-  isort, pylint, flake8, buildbot-worker, buildbot-pkg, buildbot-plugins,
-  parameterized, git, openssh, glibcLocales, nixosTests }:
+{ stdenv, lib, buildPythonPackage, fetchPypi, makeWrapper, isPy3k
+, python, twisted, jinja2, msgpack, zope_interface, sqlalchemy, alembic
+, python-dateutil, txaio, autobahn, pyjwt, pyyaml, treq, txrequests, pypugjs
+, boto3, moto, mock, lz4, setuptoolsTrial
+, buildbot-worker, buildbot-pkg, buildbot-plugins, parameterized, git, openssh
+, glibcLocales
+, nixosTests
+}:
 
 let
   withPlugins = plugins: buildPythonPackage {
-    name = "${package.name}-with-plugins";
-    phases = [ "installPhase" "fixupPhase" ];
-    buildInputs = [ makeWrapper ];
+    pname = "${package.pname}-with-plugins";
+    inherit (package) version;
+    format = "other";
+
+    dontUnpack = true;
+    dontBuild = true;
+    doCheck = false;
+
+    nativeBuildInputs = [ makeWrapper ];
     propagatedBuildInputs = plugins ++ package.propagatedBuildInputs;
 
     installPhase = ''
@@ -25,28 +33,29 @@ let
 
   package = buildPythonPackage rec {
     pname = "buildbot";
-    version = "2.9.2";
+    version = "3.6.1";
 
     src = fetchPypi {
       inherit pname version;
-      sha256 = "019xfxjnyfi69d5sm3alvib24g8giqlvc102p8hqg8mfm7hc9z2v";
+      sha256 = "sha256-ByJPkI0AHis+Ey1lSuMly4M6W4s/xes4eG0gPPJ3fZA=";
     };
 
     propagatedBuildInputs = [
       # core
       twisted
       jinja2
+      msgpack
       zope_interface
       sqlalchemy
-      sqlalchemy_migrate
-      dateutil
+      alembic
+      python-dateutil
       txaio
       autobahn
       pyjwt
       pyyaml
     ]
       # tls
-      ++ twisted.extras.tls;
+      ++ twisted.optional-dependencies.tls;
 
     checkInputs = [
       treq
@@ -55,11 +64,8 @@ let
       boto3
       moto
       mock
-      python-lz4
+      lz4
       setuptoolsTrial
-      isort
-      pylint
-      flake8
       buildbot-worker
       buildbot-pkg
       buildbot-plugins.www
@@ -85,6 +91,9 @@ let
     preCheck = ''
       export LC_ALL="en_US.UTF-8"
       export PATH="$out/bin:$PATH"
+
+      # remove testfile which is missing configuration file from sdist
+      rm buildbot/test/integration/test_graphql.py
     '';
 
     disabled = !isPy3k;
@@ -92,12 +101,14 @@ let
     passthru = {
       inherit withPlugins;
       tests.buildbot = nixosTests.buildbot;
+      updateScript = ./update.sh;
     };
 
     meta = with lib; {
+      broken = stdenv.isDarwin;
       homepage = "https://buildbot.net/";
       description = "An open-source continuous integration framework for automating software build, test, and release processes";
-      maintainers = with maintainers; [ nand0p ryansydnor lopsided98 ];
+      maintainers = with maintainers; [ ryansydnor lopsided98 ];
       license = licenses.gpl2;
     };
   };

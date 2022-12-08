@@ -1,4 +1,4 @@
-{ stdenv, buildEnv, writeText, pkgs, pkgsi686Linux }:
+{ stdenv, lib, buildEnv, writeText, writeShellScriptBin, pkgs, pkgsi686Linux }:
 
 { name, profile ? ""
 , targetPkgs ? pkgs: [], multiPkgs ? pkgs: []
@@ -22,8 +22,10 @@
 # /lib will link to /lib32
 
 let
-  is64Bit = stdenv.hostPlatform.parsed.cpu.bits == 64;
-  isMultiBuild  = multiPkgs != null && is64Bit;
+  inherit (stdenv) is64bit;
+
+  # use of glibc_multi is only supported on x86_64-linux
+  isMultiBuild  = multiPkgs != null && stdenv.isx86_64 && stdenv.isLinux;
   isTargetBuild = !isMultiBuild;
 
   # list of packages (usually programs) which are only be installed for the
@@ -41,7 +43,7 @@ let
   basePkgs = with pkgs;
     [ glibcLocales
       (if isMultiBuild then glibc_multi else glibc)
-      (toString gcc.cc.lib) bashInteractive coreutils less shadow su
+      (toString gcc.cc.lib) bashInteractiveFHS coreutils less shadow su
       gawk diffutils findutils gnused gnugrep
       gnutar gzip bzip2 xz
     ];
@@ -49,12 +51,19 @@ let
     [ (toString gcc.cc.lib)
     ];
 
+  ldconfig = writeShellScriptBin "ldconfig" ''
+    # due to a glibc bug, 64-bit ldconfig complains about patchelf'd 32-bit libraries, so we're using 32-bit ldconfig
+    exec ${pkgsi686Linux.glibc.bin}/bin/ldconfig -f /etc/ld.so.conf -C /etc/ld.so.cache "$@"
+  '';
   etcProfile = writeText "profile" ''
     export PS1='${name}-chrootenv:\u@\h:\w\$ '
     export LOCALE_ARCHIVE='/usr/lib/locale/locale-archive'
     export LD_LIBRARY_PATH="/run/opengl-driver/lib:/run/opengl-driver-32/lib:/usr/lib:/usr/lib32''${LD_LIBRARY_PATH:+:}$LD_LIBRARY_PATH"
     export PATH="/run/wrappers/bin:/usr/bin:/usr/sbin:$PATH"
     export TZDIR='/etc/zoneinfo'
+
+    # XDG_DATA_DIRS is used by pressure-vessel (steam proton) and vulkan loaders to find the corresponding icd
+    export XDG_DATA_DIRS=$XDG_DATA_DIRS''${XDG_DATA_DIRS:+:}/run/opengl-driver/share:/run/opengl-driver-32/share
 
     # Force compilers and other tools to look in default search paths
     unset NIX_ENFORCE_PURITY
@@ -86,9 +95,39 @@ let
   # Composes a /usr-like directory structure
   staticUsrProfileTarget = buildEnv {
     name = "${name}-usr-target";
-    paths = [ etcPkg ] ++ basePkgs ++ targetPaths;
+    # ldconfig wrapper must come first so it overrides the original ldconfig
+    paths = [ etcPkg ldconfig ] ++ basePkgs ++ targetPaths;
     extraOutputsToInstall = [ "out" "lib" "bin" ] ++ extraOutputsToInstall;
     ignoreCollisions = true;
+    postBuild = ''
+      if [[ -d  $out/share/gsettings-schemas/ ]]; then
+          # Recreate the standard schemas directory if its a symlink to make it writable
+          if [[ -L $out/share/glib-2.0 ]]; then
+              target=$(readlink $out/share/glib-2.0)
+              rm $out/share/glib-2.0
+              mkdir $out/share/glib-2.0
+              ln -fs $target/* $out/share/glib-2.0
+          fi
+
+          if [[ -L $out/share/glib-2.0/schemas ]]; then
+              target=$(readlink $out/share/glib-2.0/schemas)
+              rm $out/share/glib-2.0/schemas
+              mkdir $out/share/glib-2.0/schemas
+              ln -fs $target/* $out/share/glib-2.0/schemas
+          fi
+
+          mkdir -p $out/share/glib-2.0/schemas
+
+          for d in $out/share/gsettings-schemas/*; do
+              # Force symlink, in case there are duplicates
+              ln -fs $d/glib-2.0/schemas/*.xml $out/share/glib-2.0/schemas
+              ln -fs $d/glib-2.0/schemas/*.gschema.override $out/share/glib-2.0/schemas
+          done
+
+          # and compile them
+          ${pkgs.glib.dev}/bin/glib-compile-schemas $out/share/glib-2.0/schemas
+      fi
+    '';
   };
 
   staticUsrProfileMulti = buildEnv {
@@ -102,7 +141,7 @@ let
   setupLibDirsTarget = ''
     # link content of targetPaths
     cp -rsHf ${staticUsrProfileTarget}/lib lib
-    ln -s lib lib${if is64Bit then "64" else "32"}
+    ln -s lib lib${if is64bit then "64" else "32"}
   '';
 
   # setup /lib, /lib32 and /lib64
@@ -132,14 +171,27 @@ let
     mkdir -m0755 usr
     cd usr
     ${setupLibDirs}
-    for i in bin sbin share include; do
+    ${lib.optionalString isMultiBuild ''
+    if [ -d "${staticUsrProfileMulti}/share" ]; then
+      cp -rLf ${staticUsrProfileMulti}/share share
+    fi
+    ''}
+    if [ -d "${staticUsrProfileTarget}/share" ]; then
+      if [ -d share ]; then
+        chmod -R 755 share
+        cp -rLTf ${staticUsrProfileTarget}/share share
+      else
+        cp -rsHf ${staticUsrProfileTarget}/share share
+      fi
+    fi
+    for i in bin sbin include; do
       if [ -d "${staticUsrProfileTarget}/$i" ]; then
         cp -rsHf "${staticUsrProfileTarget}/$i" "$i"
       fi
     done
     cd ..
 
-    for i in var etc; do
+    for i in var etc opt; do
       if [ -d "${staticUsrProfileTarget}/$i" ]; then
         cp -rsHf "${staticUsrProfileTarget}/$i" "$i"
       fi

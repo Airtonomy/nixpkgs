@@ -16,19 +16,19 @@ let
     exec = "evilpixie %F";
     icon = "evilpixie";
     genericName = "Image Editor";
-    categories = "Graphics;2DGraphics;RasterGraphics;";
-    mimeType = "image/bmp;image/gif;image/jpeg;image/jpg;image/png;image/x-pcx;image/x-targa;image/x-tga;";
+    categories = [ "Graphics" "2DGraphics" "RasterGraphics" ];
+    mimeTypes = [ "image/bmp" "image/gif" "image/jpeg" "image/jpg" "image/png" "image/x-pcx" "image/x-targa" "image/x-tga" ];
   };
 
 in mkDerivation rec {
   pname = "evilpixie";
-  version = "0.2";
+  version = "0.2.1";
 
   src = fetchFromGitHub {
     owner = "bcampbell";
     repo = "evilpixie";
     rev = "v${version}";
-    sha256 = "1yg4ic3kcxqmr7k5bbvrv5iavlnhpdx6510z5wha9k9k5q9c4dvh";
+    sha256 = "0dwgfr8kmkfppgf5wx9i5f7fjz3gxk0ji1l06x1z4r3vj52hdbph";
   };
 
   nativeBuildInputs = [
@@ -49,9 +49,9 @@ in mkDerivation rec {
 
   meta = with lib; {
     description = "Pixel-oriented paint program, modelled on Deluxe Paint";
-    homepage = "http://evilpixie.scumways.com/";
+    homepage = "https://github.com/bcampbell/evilpixie"; # http://evilpixie.scumways.com/ is gone
     downloadPage = "https://github.com/bcampbell/evilpixie/releases";
-    license = licenses.gpl3;
+    license = licenses.gpl3Only;
     maintainers = with maintainers; [ fgaz ];
     platforms = platforms.all;
   };

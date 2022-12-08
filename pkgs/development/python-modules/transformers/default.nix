@@ -1,108 +1,107 @@
-{ buildPythonPackage
-, stdenv
+{ lib
+, buildPythonPackage
 , fetchFromGitHub
-, isPy39
+, pythonOlder
 , cookiecutter
 , filelock
+, huggingface-hub
+, importlib-metadata
 , regex
 , requests
 , numpy
-, pandas
-, parameterized
+, packaging
+, tensorflow
+, sagemaker
+, ftfy
 , protobuf
-, sacremoses
-, timeout-decorator
+, scikit-learn
+, pillow
+, pyyaml
+, torch
 , tokenizers
 , tqdm
-, pytestCheckHook
 }:
 
 buildPythonPackage rec {
   pname = "transformers";
-  version = "4.1.1";
-  disabled = isPy39;
+  version = "4.24.0";
+  format = "setuptools";
+
+  disabled = pythonOlder "3.7";
 
   src = fetchFromGitHub {
     owner = "huggingface";
     repo = pname;
-    rev = "v${version}";
-    sha256 = "1l1gxdsakjmzsgggypq45pnwm87brhlccjfzafs43460pz0wbd6k";
+    rev = "refs/tags/v${version}";
+    hash = "sha256-aGtTey+QK12URZcGNaRAlcaOphON4ViZOGdigtXU1g0=";
   };
 
   propagatedBuildInputs = [
-    cookiecutter
     filelock
+    huggingface-hub
     numpy
     protobuf
+    packaging
+    pyyaml
     regex
     requests
-    sacremoses
     tokenizers
     tqdm
+  ] ++ lib.optionals (pythonOlder "3.8") [
+    importlib-metadata
   ];
 
-  checkInputs = [
-    pandas
-    parameterized
-    pytestCheckHook
-    timeout-decorator
+  passthru.optional-dependencies = {
+    ja = [
+      # fugashi
+      # ipadic
+      # unidic_lite
+      # unidic
+    ];
+    sklearn = [
+      scikit-learn
+    ];
+    tf = [
+      tensorflow
+      # onnxconverter-common
+      # tf2onnx
+    ];
+    torch = [
+      torch
+    ];
+    tokenizers = [
+      tokenizers
+    ];
+    modelcreation = [
+      cookiecutter
+    ];
+    sagemaker = [
+      sagemaker
+    ];
+    ftfy = [ ftfy ];
+    onnx = [
+      # onnxconverter-common
+      # tf2onnx
+    ];
+    vision = [
+      pillow
+    ];
+  };
+
+
+  # Many tests require internet access.
+  doCheck = false;
+
+  pythonImportsCheck = [
+    "transformers"
   ];
 
-  postPatch = ''
-    substituteInPlace setup.py \
-      --replace "tokenizers == 0.9.4" "tokenizers"
-  '';
-
-  preCheck = ''
-    export HOME="$TMPDIR"
-
-    # This test requires the `datasets` module to download test
-    # data. However, since we cannot download in the Nix sandbox
-    # and `dataset` is an optional dependency for transformers
-    # itself, we will just remove the tests files that import
-    # `dataset`.
-    rm tests/test_retrieval_rag.py
-    rm tests/test_trainer.py
-  '';
-
-  # We have to run from the main directory for the tests. However,
-  # letting pytest discover tests leads to errors.
-  pytestFlagsArray = [ "tests" ];
-
-  # Disable tests that require network access.
-  disabledTests = [
-    "BlenderbotSmallTokenizerTest"
-    "Blenderbot3BTokenizerTests"
-    "GetFromCacheTests"
-    "TokenizationTest"
-    "TestTokenizationBart"
-    "test_all_tokenizers"
-    "test_batch_encoding_is_fast"
-    "test_batch_encoding_pickle"
-    "test_batch_encoding_word_to_tokens"
-    "test_config_from_model_shortcut"
-    "test_config_model_type_from_model_identifier"
-    "test_from_pretrained_use_fast_toggle"
-    "test_hf_api"
-    "test_outputs_can_be_shorter"
-    "test_outputs_not_longer_than_maxlen"
-    "test_padding_accepts_tensors"
-    "test_pretokenized_tokenizers"
-    "test_tokenizer_equivalence_en_de"
-    "test_tokenizer_from_model_type"
-    "test_tokenizer_from_model_type"
-    "test_tokenizer_from_pretrained"
-    "test_tokenizer_from_tokenizer_class"
-    "test_tokenizer_identifier_with_correct_config"
-    "test_tokenizer_identifier_non_existent"
-  ];
-
-  meta = with stdenv.lib; {
+  meta = with lib; {
     homepage = "https://github.com/huggingface/transformers";
-    description = "State-of-the-art Natural Language Processing for TensorFlow 2.0 and PyTorch";
+    description = "Natural Language Processing for TensorFlow 2.0 and PyTorch";
     changelog = "https://github.com/huggingface/transformers/releases/tag/v${version}";
     license = licenses.asl20;
     platforms = platforms.unix;
-    maintainers = with maintainers; [ danieldk pashashocky ];
+    maintainers = with maintainers; [ pashashocky ];
   };
 }

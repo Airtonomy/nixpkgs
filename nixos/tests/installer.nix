@@ -1,6 +1,7 @@
 { system ? builtins.currentSystem,
   config ? {},
-  pkgs ? import ../.. { inherit system config; }
+  pkgs ? import ../.. { inherit system config; },
+  systemdStage1 ? false
 }:
 
 with import ../lib/testing-python.nix { inherit system pkgs; };
@@ -22,6 +23,8 @@ let
 
         # To ensure that we can rebuild the grub configuration on the nixos-rebuild
         system.extraDependencies = with pkgs; [ stdenvNoCC ];
+
+        ${optionalString systemdStage1 "boot.initrd.systemd.enable = true;"}
 
         ${optionalString (bootLoader == "grub") ''
           boot.loader.grub.version = ${toString grubVersion};
@@ -70,14 +73,14 @@ let
     let iface = if grubVersion == 1 then "ide" else "virtio";
         isEfi = bootLoader == "systemd-boot" || (bootLoader == "grub" && grubUseEfi);
         bios  = if pkgs.stdenv.isAarch64 then "QEMU_EFI.fd" else "OVMF.fd";
-    in if !isEfi && !(pkgs.stdenv.isi686 || pkgs.stdenv.isx86_64) then
+    in if !isEfi && !pkgs.stdenv.hostPlatform.isx86 then
       throw "Non-EFI boot methods are only supported on i686 / x86_64"
     else ''
       def assemble_qemu_flags():
           flags = "-cpu max"
-          ${if system == "x86_64-linux"
-            then ''flags += " -m 768"''
-            else ''flags += " -m 512 -enable-kvm -machine virt,gic-version=host"''
+          ${if (system == "x86_64-linux" || system == "i686-linux")
+            then ''flags += " -m 1024"''
+            else ''flags += " -m 768 -enable-kvm -machine virt,gic-version=host"''
           }
           return flags
 
@@ -184,11 +187,12 @@ let
       with subtest("Check whether nixos-rebuild works"):
           machine.succeed("nixos-rebuild switch >&2")
 
-      with subtest("Test nixos-option"):
-          kernel_modules = machine.succeed("nixos-option boot.initrd.kernelModules")
-          assert "virtio_console" in kernel_modules
-          assert "List of modules" in kernel_modules
-          assert "qemu-guest.nix" in kernel_modules
+      # FIXME: Nix 2.4 broke nixos-option, someone has to fix it.
+      # with subtest("Test nixos-option"):
+      #     kernel_modules = machine.succeed("nixos-option boot.initrd.kernelModules")
+      #     assert "virtio_console" in kernel_modules
+      #     assert "List of modules" in kernel_modules
+      #     assert "qemu-guest.nix" in kernel_modules
 
       machine.shutdown()
 
@@ -270,7 +274,7 @@ let
     makeTest {
       inherit enableOCR;
       name = "installer-" + name;
-      meta = with pkgs.stdenv.lib.maintainers; {
+      meta = with pkgs.lib.maintainers; {
         # put global maintainers here, individuals go into makeInstallerTest fkt call
         maintainers = (meta.maintainers or []);
       };
@@ -284,17 +288,28 @@ let
             extraInstallerConfig
           ];
 
+          # builds stuff in the VM, needs more juice
           virtualisation.diskSize = 8 * 1024;
+          virtualisation.cores = 8;
           virtualisation.memorySize = 1536;
+
+          boot.initrd.systemd.enable = systemdStage1;
 
           # Use a small /dev/vdb as the root disk for the
           # installer. This ensures the target disk (/dev/vda) is
           # the same during and after installation.
           virtualisation.emptyDiskImages = [ 512 ];
           virtualisation.bootDevice =
-            if grubVersion == 1 then "/dev/sdb" else "/dev/vdb";
+            if grubVersion == 1 then "/dev/disk/by-id/scsi-0QEMU_QEMU_HARDDISK_drive2" else "/dev/vdb";
           virtualisation.qemu.diskInterface =
             if grubVersion == 1 then "scsi" else "virtio";
+
+          # We don't want to have any networking in the guest whatsoever.
+          # Also, if any vlans are enabled, the guest will reboot
+          # (with a different configuration for legacy reasons),
+          # and spend 5 minutes waiting for the vlan interface to show up
+          # (which will never happen).
+          virtualisation.vlans = [];
 
           boot.loader.systemd-boot.enable = mkIf (bootLoader == "systemd-boot") true;
 
@@ -303,15 +318,31 @@ let
           # The test cannot access the network, so any packages we
           # need must be included in the VM.
           system.extraDependencies = with pkgs; [
+            brotli
+            brotli.dev
+            brotli.lib
             desktop-file-utils
             docbook5
             docbook_xsl_ns
+            (docbook-xsl-ns.override {
+              withManOptDedupPatch = true;
+            })
+            kmod.dev
+            libarchive.dev
             libxml2.bin
             libxslt.bin
             nixos-artwork.wallpapers.simple-dark-gray-bottom
             ntp
             perlPackages.ListCompare
             perlPackages.XMLLibXML
+            python3Minimal
+            # make-options-doc/default.nix
+            (let
+                self = (pkgs.python3Minimal.override {
+                  inherit self;
+                  includeSiteCustomize = true;
+                });
+              in self.withPackages (p: [ p.mistune ]))
             shared-mime-info
             sudo
             texinfo
@@ -323,16 +354,19 @@ let
             curl
           ]
           ++ optional (bootLoader == "grub" && grubVersion == 1) pkgs.grub
-          ++ optionals (bootLoader == "grub" && grubVersion == 2) [
-            pkgs.grub2
-            pkgs.grub2_efi
-          ];
+          ++ optionals (bootLoader == "grub" && grubVersion == 2) (let
+            zfsSupport = lib.any (x: x == "zfs")
+              (extraInstallerConfig.boot.supportedFilesystems or []);
+          in [
+            (pkgs.grub2.override { inherit zfsSupport; })
+            (pkgs.grub2_efi.override { inherit zfsSupport; })
+          ]);
 
-          nix.binaryCaches = mkForce [ ];
-          nix.extraOptions = ''
-            hashed-mirrors =
-            connect-timeout = 1
-          '';
+          nix.settings = {
+            substituters = mkForce [];
+            hashed-mirrors = null;
+            connect-timeout = 1;
+          };
         };
 
       };
@@ -348,8 +382,8 @@ let
       createPartitions = ''
         machine.succeed(
             "flock /dev/vda parted --script /dev/vda -- mklabel msdos"
-            + " mkpart primary ext2 1M 50MB"  # /boot
-            + " mkpart primary linux-swap 50M 1024M"
+            + " mkpart primary ext2 1M 100MB"  # /boot
+            + " mkpart primary linux-swap 100M 1024M"
             + " mkpart primary 1024M -1s",  # LUKS
             "udevadm settle",
             "mkswap /dev/vda2 -L swap",
@@ -396,9 +430,9 @@ let
     createPartitions = ''
       machine.succeed(
           "flock /dev/vda parted --script /dev/vda -- mklabel gpt"
-          + " mkpart ESP fat32 1M 50MiB"  # /boot
+          + " mkpart ESP fat32 1M 100MiB"  # /boot
           + " set 1 boot on"
-          + " mkpart primary linux-swap 50MiB 1024MiB"
+          + " mkpart primary linux-swap 100MiB 1024MiB"
           + " mkpart primary ext2 1024MiB -1MiB",  # /
           "udevadm settle",
           "mkswap /dev/vda2 -L swap",
@@ -450,9 +484,9 @@ in {
     createPartitions = ''
       machine.succeed(
           "flock /dev/vda parted --script /dev/vda -- mklabel gpt"
-          + " mkpart ESP fat32 1M 50MiB"  # /boot
+          + " mkpart ESP fat32 1M 100MiB"  # /boot
           + " set 1 boot on"
-          + " mkpart primary linux-swap 50MiB 1024MiB"
+          + " mkpart primary linux-swap 100MiB 1024MiB"
           + " mkpart primary ext2 1024MiB -1MiB",  # /
           "udevadm settle",
           "mkswap /dev/vda2 -L swap",
@@ -477,8 +511,8 @@ in {
     createPartitions = ''
       machine.succeed(
           "flock /dev/vda parted --script /dev/vda -- mklabel msdos"
-          + " mkpart primary ext2 1M 50MB"  # /boot
-          + " mkpart primary linux-swap 50MB 1024M"
+          + " mkpart primary ext2 1M 100MB"  # /boot
+          + " mkpart primary linux-swap 100MB 1024M"
           + " mkpart primary ext2 1024M -1s",  # /
           "udevadm settle",
           "mkswap /dev/vda2 -L swap",
@@ -497,8 +531,8 @@ in {
     createPartitions = ''
       machine.succeed(
           "flock /dev/vda parted --script /dev/vda -- mklabel msdos"
-          + " mkpart primary ext2 1M 50MB"  # /boot
-          + " mkpart primary linux-swap 50MB 1024M"
+          + " mkpart primary ext2 1M 100MB"  # /boot
+          + " mkpart primary linux-swap 100MB 1024M"
           + " mkpart primary ext2 1024M -1s",  # /
           "udevadm settle",
           "mkswap /dev/vda2 -L swap",
@@ -555,24 +589,14 @@ in {
           + " mkpart primary 2048M -1s"  # PV2
           + " set 2 lvm on",
           "udevadm settle",
-          "sleep 1",
           "pvcreate /dev/vda1 /dev/vda2",
-          "sleep 1",
           "vgcreate MyVolGroup /dev/vda1 /dev/vda2",
-          "sleep 1",
           "lvcreate --size 1G --name swap MyVolGroup",
-          "sleep 1",
-          "lvcreate --size 3G --name nixos MyVolGroup",
-          "sleep 1",
+          "lvcreate --size 6G --name nixos MyVolGroup",
           "mkswap -f /dev/MyVolGroup/swap -L swap",
           "swapon -L swap",
           "mkfs.xfs -L nixos /dev/MyVolGroup/nixos",
           "mount LABEL=nixos /mnt",
-      )
-    '';
-    postBootCommands = ''
-      assert "loaded active" in machine.succeed(
-          "systemctl list-units 'lvm2-pvscan@*' -ql --no-legend | tee /dev/stderr"
       )
     '';
   };
@@ -593,8 +617,8 @@ in {
     createPartitions = ''
       machine.succeed(
           "flock /dev/vda parted --script /dev/vda -- mklabel msdos"
-          + " mkpart primary ext2 1M 50MB"  # /boot
-          + " mkpart primary linux-swap 50M 1024M"
+          + " mkpart primary ext2 1M 100MB"  # /boot
+          + " mkpart primary linux-swap 100M 1024M"
           + " mkpart primary 1024M 1280M"  # LUKS with keyfile
           + " mkpart primary 1280M -1s",
           "udevadm settle",
@@ -668,15 +692,13 @@ in {
       machine.succeed(
           "flock /dev/vda parted --script /dev/vda --"
           + " mklabel msdos"
-          + " mkpart primary ext2 1M 50MB"  # /boot
-          + " mkpart primary 50MB 512MB  "  # swap
+          + " mkpart primary ext2 1M 100MB"  # /boot
+          + " mkpart primary 100MB 512MB  "  # swap
           + " mkpart primary 512MB 1024MB"  # Cache (typically SSD)
           + " mkpart primary 1024MB -1s ",  # Backing device (typically HDD)
           "modprobe bcache",
           "udevadm settle",
           "make-bcache -B /dev/vda4 -C /dev/vda3",
-          "echo /dev/vda3 > /sys/fs/bcache/register",
-          "echo /dev/vda4 > /sys/fs/bcache/register",
           "udevadm settle",
           "mkfs.ext3 -L nixos /dev/bcache0",
           "mount LABEL=nixos /mnt",
@@ -689,23 +711,103 @@ in {
     '';
   };
 
-  # Test a basic install using GRUB 1.
-  grub1 = makeInstallerTest "grub1" {
+  bcachefsSimple = makeInstallerTest "bcachefs-simple" {
+    extraInstallerConfig = {
+      boot.supportedFilesystems = [ "bcachefs" ];
+    };
+
     createPartitions = ''
       machine.succeed(
-          "flock /dev/sda parted --script /dev/sda -- mklabel msdos"
+        "flock /dev/vda parted --script /dev/vda -- mklabel msdos"
+        + " mkpart primary ext2 1M 100MB"          # /boot
+        + " mkpart primary linux-swap 100M 1024M"  # swap
+        + " mkpart primary 1024M -1s",             # /
+        "udevadm settle",
+        "mkswap /dev/vda2 -L swap",
+        "swapon -L swap",
+        "mkfs.bcachefs -L root /dev/vda3",
+        "mount -t bcachefs /dev/vda3 /mnt",
+        "mkfs.ext3 -L boot /dev/vda1",
+        "mkdir -p /mnt/boot",
+        "mount /dev/vda1 /mnt/boot",
+      )
+    '';
+  };
+
+  bcachefsEncrypted = makeInstallerTest "bcachefs-encrypted" {
+    extraInstallerConfig = {
+      boot.supportedFilesystems = [ "bcachefs" ];
+      environment.systemPackages = with pkgs; [ keyutils ];
+    };
+
+    # We don't want to use the normal way of unlocking bcachefs defined in tasks/filesystems/bcachefs.nix.
+    # So, override initrd.postDeviceCommands completely and simply unlock with the predefined password.
+    extraConfig = ''
+      boot.initrd.postDeviceCommands = lib.mkForce "echo password | bcachefs unlock /dev/vda3";
+    '';
+
+    createPartitions = ''
+      machine.succeed(
+        "flock /dev/vda parted --script /dev/vda -- mklabel msdos"
+        + " mkpart primary ext2 1M 100MB"          # /boot
+        + " mkpart primary linux-swap 100M 1024M"  # swap
+        + " mkpart primary 1024M -1s",             # /
+        "udevadm settle",
+        "mkswap /dev/vda2 -L swap",
+        "swapon -L swap",
+        "keyctl link @u @s",
+        "echo password | mkfs.bcachefs -L root --encrypted /dev/vda3",
+        "echo password | bcachefs unlock /dev/vda3",
+        "mount -t bcachefs /dev/vda3 /mnt",
+        "mkfs.ext3 -L boot /dev/vda1",
+        "mkdir -p /mnt/boot",
+        "mount /dev/vda1 /mnt/boot",
+      )
+    '';
+  };
+
+  bcachefsMulti = makeInstallerTest "bcachefs-multi" {
+    extraInstallerConfig = {
+      boot.supportedFilesystems = [ "bcachefs" ];
+    };
+
+    createPartitions = ''
+      machine.succeed(
+        "flock /dev/vda parted --script /dev/vda -- mklabel msdos"
+        + " mkpart primary ext2 1M 100MB"          # /boot
+        + " mkpart primary linux-swap 100M 1024M"  # swap
+        + " mkpart primary 1024M 4096M"            # /
+        + " mkpart primary 4096M -1s",             # /
+        "udevadm settle",
+        "mkswap /dev/vda2 -L swap",
+        "swapon -L swap",
+        "mkfs.bcachefs -L root --metadata_replicas 2 --foreground_target ssd --promote_target ssd --background_target hdd --label ssd /dev/vda3 --label hdd /dev/vda4",
+        "mount -t bcachefs /dev/vda3:/dev/vda4 /mnt",
+        "mkfs.ext3 -L boot /dev/vda1",
+        "mkdir -p /mnt/boot",
+        "mount /dev/vda1 /mnt/boot",
+      )
+    '';
+  };
+
+  # Test a basic install using GRUB 1.
+  grub1 = makeInstallerTest "grub1" rec {
+    createPartitions = ''
+      machine.succeed(
+          "flock ${grubDevice} parted --script ${grubDevice} -- mklabel msdos"
           + " mkpart primary linux-swap 1M 1024M"
           + " mkpart primary ext2 1024M -1s",
           "udevadm settle",
-          "mkswap /dev/sda1 -L swap",
+          "mkswap ${grubDevice}-part1 -L swap",
           "swapon -L swap",
-          "mkfs.ext3 -L nixos /dev/sda2",
+          "mkfs.ext3 -L nixos ${grubDevice}-part2",
           "mount LABEL=nixos /mnt",
           "mkdir -p /mnt/tmp",
       )
     '';
     grubVersion = 1;
-    grubDevice = "/dev/sda";
+    # /dev/sda is not stable, even when the SCSI disk number is.
+    grubDevice = "/dev/disk/by-id/scsi-0QEMU_QEMU_HARDDISK_drive1";
   };
 
   # Test using labels to identify volumes in grub

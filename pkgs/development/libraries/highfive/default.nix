@@ -1,4 +1,4 @@
-{ stdenv
+{ lib, stdenv
 , fetchFromGitHub
 , cmake
 , boost
@@ -11,14 +11,14 @@
 assert mpiSupport -> mpi != null;
 
 stdenv.mkDerivation rec {
-  pname = "highfive";
-  version = "2.2";
+  pname = "highfive${lib.optionalString mpiSupport "-mpi"}";
+  version = "2.4.1";
 
   src = fetchFromGitHub {
     owner = "BlueBrain";
     repo = "HighFive";
-    rev = "4c70d818ed18231563fe49ff197d1c41054be592";
-    sha256 = "02xy3c2ix3nw8109aw75ixj651knzc5rjqwqrxximm4hzwx09frk";
+    rev = "v${version}";
+    sha256 = "sha256-P60S3UR8wC3BHxRiqFdSjn6Akvykud40g5yEko5dIjw=";
   };
 
   nativeBuildInputs = [ cmake ];
@@ -36,10 +36,9 @@ stdenv.mkDerivation rec {
     "-DHIGHFIVE_UNIT_TESTS=OFF"
     "-DHIGHFIVE_USE_INSTALL_DEPS=ON"
   ]
-  ++ (stdenv.lib.optionals mpiSupport [ "-DHIGHFIVE_PARALLEL_HDF5=ON" ]);
+  ++ (lib.optionals mpiSupport [ "-DHIGHFIVE_PARALLEL_HDF5=ON" ]);
 
-  meta = with stdenv.lib; {
-    inherit version;
+  meta = with lib; {
     description = "Header-only C++ HDF5 interface";
     license = licenses.boost;
     homepage = "https://bluebrain.github.io/HighFive/";

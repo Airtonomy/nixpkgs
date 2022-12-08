@@ -1,43 +1,44 @@
-{ stdenv
+{ lib
 , buildPythonPackage
 , isPy3k
 , fetchPypi
-, html5lib
 , wcwidth
-, setuptools
-, pytest
+, pytestCheckHook
 }:
 
 buildPythonPackage rec {
   pname = "ftfy";
-  version = "5.8";
+  version = "6.1.1";
 
   disabled = !isPy3k;
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "081p5z20dirrf1i3nshylc31qd5mbxibjc7gzj8x4isbiizpdisi";
+    sha256 = "sha256-v8IBn4T82FFBkVIyCmN1YEoPFFnCgbWxmbLNDS5yf48=";
   };
 
   propagatedBuildInputs = [
-    html5lib
     wcwidth
-    setuptools
   ];
 
   checkInputs = [
-    pytest
+    pytestCheckHook
   ];
 
-  # We suffix PATH like this because the tests want the ftfy executable
-  checkPhase = ''
-    PATH=$out/bin:$PATH pytest
+  preCheck = ''
+    export PATH=$out/bin:$PATH
   '';
 
-  meta = with stdenv.lib; {
+  disabledTestPaths = [
+    # Calls poetry and fails to match output exactly
+    "tests/test_cli.py"
+  ];
+
+
+  meta = with lib; {
     description = "Given Unicode text, make its representation consistent and possibly less broken";
     homepage = "https://github.com/LuminosoInsight/python-ftfy";
     license = licenses.mit;
-    maintainers = with maintainers; [ sdll aborsu ];
+    maintainers = with maintainers; [ aborsu ];
   };
 }

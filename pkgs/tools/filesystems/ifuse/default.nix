@@ -1,19 +1,36 @@
-{ stdenv, fetchFromGitHub, autoreconfHook, pkgconfig, usbmuxd, fuse, libimobiledevice }:
+{ lib
+, stdenv
+, fetchFromGitHub
+, autoreconfHook
+, pkg-config
+, fuse
+, usbmuxd
+, libimobiledevice
+}:
 
 stdenv.mkDerivation rec {
   pname = "ifuse";
-  version = "1.1.4";
+  version = "1.1.4+date=2022-04-04";
 
   src = fetchFromGitHub {
     owner = "libimobiledevice";
     repo = pname;
-    rev = version;
-    sha256 = "1r12y3h1j7ikkwk874h9969kr4ksyamvrwywx19ml6rsr01arw84";
+    rev = "6f5b8e410f9615b3369ca5eb5367745e13d83b92";
+    hash = "sha256-KbuJLS2BWua9DnhLv2KtsQObin0PQwXQwEdgi3lSAPk=";
   };
 
-  nativeBuildInputs = [ autoreconfHook pkgconfig fuse usbmuxd libimobiledevice ];
+  nativeBuildInputs = [
+    autoreconfHook
+    pkg-config
+  ];
 
-  meta = with stdenv.lib; {
+  buildInputs = [
+    fuse
+    usbmuxd
+    libimobiledevice
+  ];
+
+  meta = with lib; {
     homepage = "https://github.com/libimobiledevice/ifuse";
     description = "A fuse filesystem implementation to access the contents of iOS devices";
     longDescription = ''
@@ -23,7 +40,7 @@ stdenv.mkDerivation rec {
       devices.
     '';
     license = licenses.lgpl21Plus;
-    platforms = platforms.linux;
+    platforms = platforms.unix;
     maintainers = with maintainers; [ infinisil ];
   };
 }

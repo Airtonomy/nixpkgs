@@ -5,11 +5,11 @@ let
 in
 {
   name = "magnetico";
-  meta = with pkgs.stdenv.lib.maintainers; {
+  meta = with pkgs.lib.maintainers; {
     maintainers = [ rnhmjoj ];
   };
 
-  machine = { ... }: {
+  nodes.machine = { ... }: {
     imports = [ ../modules/profiles/minimal.nix ];
 
     networking.firewall.allowedTCPPorts = [ 9000 ];

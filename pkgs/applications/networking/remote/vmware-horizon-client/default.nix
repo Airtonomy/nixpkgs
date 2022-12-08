@@ -1,26 +1,44 @@
-{ stdenv, buildFHSUserEnv, fetchurl, makeWrapper, makeDesktopItem, libxslt, atk
-, fontconfig, freetype, gdk-pixbuf, glib, gtk2, libudev0-shim, libxml2
-, pango, pixman, libX11, libXext, libXinerama, libXrandr , libXrender
-, libXtst, libXcursor, libXi, libxkbfile , libXScrnSaver, zlib, liberation_ttf
-, libtiff, dbus, at-spi2-atk, harfbuzz, gtk3-x11, libuuid, pcsclite
+{ stdenv
+, lib
+, buildFHSUserEnv
+, fetchurl
+, gsettings-desktop-schemas
+, makeDesktopItem
+, makeWrapper
+, writeTextDir
+, configText ? ""
 }:
-
 let
-  version = "2006";
+  version = "2206";
 
   sysArch =
     if stdenv.hostPlatform.system == "x86_64-linux" then "x64"
     else throw "Unsupported system: ${stdenv.hostPlatform.system}";
-    # The downloaded archive also contains i386 and ARM binaries, but these have not been tested.
+  # The downloaded archive also contains ARM binaries, but these have not been tested.
+
+  # For USB support, ensure that /var/run/vmware/<YOUR-UID>
+  # exists and is owned by you. Then run vmware-usbarbitrator as root.
+  bins = [ "vmware-view" "vmware-view-legacy" "vmware-usbarbitrator" ];
+
+  mainProgram = "vmware-view-legacy";
+
+  # This forces the default GTK theme (Adwaita) because Horizon is prone to
+  # UI usability issues when using non-default themes, such as Adwaita-dark.
+  wrapBinCommands = name: ''
+    makeWrapper "$out/bin/${name}" "$out/bin/${name}_wrapper" \
+    --set GTK_THEME Adwaita \
+    --suffix XDG_DATA_DIRS : "${gsettings-desktop-schemas}/share/gsettings-schemas/${gsettings-desktop-schemas.name}" \
+    --suffix LD_LIBRARY_PATH : "$out/lib/vmware/view/crtbora:$out/lib/vmware"
+  '';
 
   vmwareHorizonClientFiles = stdenv.mkDerivation {
-    name = "vmwareHorizonClientFiles";
+    pname = "vmware-horizon-files";
     inherit version;
     src = fetchurl {
-      url = https://download3.vmware.com/software/view/viewclients/CART21FQ2/vmware-view-client-linux-2006-8.0.0-16522670.tar.gz;
-      sha256 = "8c46d49fea42f8c1f7cf32a5f038f5a47d2b304743b1e4f4c68c658621b0e79c";
+      url = "https://download3.vmware.com/software/CART23FQ2_LIN_2206_TARBALL/VMware-Horizon-Client-Linux-2206-8.6.0-20094634.tar.gz";
+      sha256 = "9819eae5708bf0d71156b81283e3a70100e2e22de9db827a8956ca8e83b2414a";
     };
-    buildInputs = [ makeWrapper ];
+    nativeBuildInputs = [ makeWrapper ];
     installPhase = ''
       mkdir ext $out
       find ${sysArch} -type f -print0 | xargs -0n1 tar -Cext --strip-components=1 -xf
@@ -30,26 +48,57 @@ let
       # when it cannot detect a new enough version already present on the system.
       # The checks are distribution-specific and do not function correctly on NixOS.
       # Deleting the bundled library is the simplest way to force it to use our version.
-      rm -f "$out/lib/vmware/gcc/libstdc++.so.6"
+      rm "$out/lib/vmware/gcc/libstdc++.so.6"
 
-      # Force the default GTK theme (Adwaita) because Horizon is prone to
-      # UI usability issues when using non-default themes, such as Adwaita-dark.
-      makeWrapper "$out/bin/vmware-view" "$out/bin/vmware-view_wrapper" \
-          --set GTK_THEME Adwaita \
-          --suffix LD_LIBRARY_PATH : "$out/lib/vmware/view/crtbora:$out/lib/vmware"
+      # This library causes the program to core-dump occasionally. Use ours instead.
+      rm -r $out/lib/vmware/view/crtbora
+
+      ${lib.concatMapStrings wrapBinCommands bins}
     '';
   };
 
-  vmwareFHSUserEnv = buildFHSUserEnv {
-    name = "vmware-view";
+  vmwareFHSUserEnv = name: buildFHSUserEnv {
+    inherit name;
 
-    runScript = "${vmwareHorizonClientFiles}/bin/vmware-view_wrapper";
+    runScript = "${vmwareHorizonClientFiles}/bin/${name}_wrapper";
 
-    targetPkgs = pkgs: [
-      pcsclite dbus vmwareHorizonClientFiles atk fontconfig freetype gdk-pixbuf glib gtk2
-      libudev0-shim libxml2 pango pixman liberation_ttf libX11 libXext libXinerama
-      libXrandr libXrender libXtst libXcursor libXi libxkbfile at-spi2-atk libXScrnSaver
-      zlib libtiff harfbuzz gtk3-x11 libuuid
+    targetPkgs = pkgs: with pkgs; [
+      at-spi2-atk
+      atk
+      cairo
+      dbus
+      fontconfig
+      freetype
+      gdk-pixbuf
+      glib
+      gtk2
+      gtk3-x11
+      harfbuzz
+      liberation_ttf
+      libjpeg
+      libpulseaudio
+      libtiff
+      libudev0-shim
+      libuuid
+      libv4l
+      libxml2
+      pango
+      pcsclite
+      pixman
+      vmwareHorizonClientFiles
+      xorg.libX11
+      xorg.libXcursor
+      xorg.libXext
+      xorg.libXi
+      xorg.libXinerama
+      xorg.libxkbfile
+      xorg.libXrandr
+      xorg.libXrender
+      xorg.libXScrnSaver
+      xorg.libXtst
+      zlib
+
+      (writeTextDir "etc/vmware/config" configText)
     ];
   };
 
@@ -57,24 +106,38 @@ let
     name = "vmware-view";
     desktopName = "VMware Horizon Client";
     icon = "${vmwareHorizonClientFiles}/share/icons/vmware-view.png";
-    exec = "${vmwareFHSUserEnv}/bin/vmware-view %u";
-    mimeType = "x-scheme-handler/vmware-view";
+    exec = "${vmwareFHSUserEnv mainProgram}/bin/${mainProgram} %u";
+    mimeTypes = [ "x-scheme-handler/vmware-view" ];
   };
 
-in stdenv.mkDerivation {
-  name = "vmware-view";
+  binLinkCommands = lib.concatMapStringsSep
+    "\n"
+    (bin: "ln -s ${vmwareFHSUserEnv bin}/bin/${bin} $out/bin/")
+    bins;
+
+in
+stdenv.mkDerivation {
+  pname = "vmware-horizon-client";
+  inherit version;
+
   dontUnpack = true;
+
   installPhase = ''
     mkdir -p $out/bin $out/share/applications
-    cp "${desktopItem}"/share/applications/* $out/share/applications/
-    ln -s "${vmwareFHSUserEnv}/bin/vmware-view" "$out/bin/"
+    cp ${desktopItem}/share/applications/* $out/share/applications/
+    ${binLinkCommands}
   '';
 
-  meta = with stdenv.lib; {
+  unwrapped = vmwareHorizonClientFiles;
+
+  passthru.updateScript = ./update.sh;
+
+  meta = with lib; {
+    inherit mainProgram;
     description = "Allows you to connect to your VMware Horizon virtual desktop";
     homepage = "https://www.vmware.com/go/viewclients";
     license = licenses.unfree;
-    platforms = platforms.linux;
+    platforms = [ "x86_64-linux" ];
     maintainers = with maintainers; [ buckley310 ];
   };
 }

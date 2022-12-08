@@ -1,7 +1,10 @@
-{ stdenv
+{ lib
 , mkDerivation
 , fetchFromGitHub
+
 , qmake
+, qttools
+
 , curl
 , ffmpeg
 , libmediainfo
@@ -9,29 +12,40 @@
 , qtbase
 , qtdeclarative
 , qtmultimedia
+, qtsvg
+, quazip
 }:
 
 mkDerivation rec {
   pname = "mediaelch";
-  version = "2.8.2";
+  version = "2.8.18";
 
   src = fetchFromGitHub {
     owner = "Komet";
     repo = "MediaElch";
     rev = "v${version}";
-    sha256 = "0y26vfgrdym461lzmm5x3z5ai9ky09vlk3cy4sq6hwlj7mzcz0k7";
+    sha256 = "sha256-9kwU9j8YNF/OmzrQaRAlBpW+t/tIpZJw5+pfEoTmCBA=";
     fetchSubmodules = true;
   };
 
-  nativeBuildInputs = [ qmake ];
+  nativeBuildInputs = [ qmake qttools ];
 
-  buildInputs = [ curl libmediainfo libzen ffmpeg qtbase qtdeclarative qtmultimedia ];
+  buildInputs = [ curl ffmpeg libmediainfo libzen qtbase qtdeclarative qtmultimedia qtsvg ];
 
-  prePatch = ''
+  qmakeFlags = [
+    "USE_EXTERN_QUAZIP=${quazip}/include/quazip5"
+  ];
+
+  postPatch = ''
     substituteInPlace MediaElch.pro --replace "/usr" "$out"
   '';
 
-  meta = with stdenv.lib; {
+  qtWrapperArgs = [
+    # libmediainfo.so.0 is loaded dynamically
+    "--prefix LD_LIBRARY_PATH : ${libmediainfo}/lib"
+  ];
+
+  meta = with lib; {
     homepage = "https://mediaelch.de/mediaelch/";
     description = "Media Manager for Kodi";
     license = licenses.lgpl3Only;

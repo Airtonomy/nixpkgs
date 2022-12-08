@@ -1,4 +1,4 @@
-{ fetchurl, stdenv
+{ fetchurl, lib, stdenv
 , CoreServices
 }:
 
@@ -14,9 +14,9 @@ stdenv.mkDerivation rec {
   # Test can randomly fail: https://hydra.nixos.org/build/7243912
   doCheck = false;
 
-  buildInputs = stdenv.lib.optional stdenv.isDarwin CoreServices;
+  buildInputs = lib.optional stdenv.isDarwin CoreServices;
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Unit testing framework for C";
 
     longDescription =
@@ -31,6 +31,7 @@ stdenv.mkDerivation rec {
     homepage = "https://libcheck.github.io/check/";
 
     license = licenses.lgpl2Plus;
+    mainProgram = "checkmk";
     platforms = platforms.all;
   };
 }

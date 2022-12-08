@@ -5,11 +5,11 @@ The `buildPhase` and `installPhase` attributes can be reused directly
 in many cases. When more fine-grained control on how to run the “topkg”
 build system is required, the attribute `run` can be used.
 */
-{ stdenv, fetchurl, ocaml, findlib, ocamlbuild, result, opaline }:
+{ stdenv, lib, fetchurl, ocaml, findlib, ocamlbuild, result, opaline }:
 
 let
   param =
-  if stdenv.lib.versionAtLeast ocaml.version "4.03" then {
+  if lib.versionAtLeast ocaml.version "4.03" then {
     version = "1.0.3";
     sha256 = "0b77gsz9bqby8v77kfi4lans47x9p2lmzanzwins5r29maphb8y6";
   } else {
@@ -27,7 +27,7 @@ let
 in
 
 stdenv.mkDerivation rec {
-  name = "ocaml${ocaml.version}-topkg-${version}";
+  pname = "ocaml${ocaml.version}-topkg";
   inherit (param) version;
 
   src = fetchurl {
@@ -38,6 +38,8 @@ stdenv.mkDerivation rec {
   nativeBuildInputs = [ ocaml findlib ocamlbuild ];
   propagatedBuildInputs = param.propagatedBuildInputs or [];
 
+  strictDeps = true;
+
   buildPhase = "${run} build";
   createFindlibDestdir = true;
   installPhase = "${opaline}/bin/opaline -prefix $out -libdir $OCAMLFIND_DESTDIR";
@@ -46,8 +48,8 @@ stdenv.mkDerivation rec {
 
   meta = {
     homepage = "https://erratique.ch/software/topkg";
-    license = stdenv.lib.licenses.isc;
-    maintainers = [ stdenv.lib.maintainers.vbgl ];
+    license = lib.licenses.isc;
+    maintainers = [ lib.maintainers.vbgl ];
     description = "A packager for distributing OCaml software";
     inherit (ocaml.meta) platforms;
   };

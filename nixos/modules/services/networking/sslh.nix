@@ -43,42 +43,42 @@ in
 
   options = {
     services.sslh = {
-      enable = mkEnableOption "sslh";
+      enable = mkEnableOption (lib.mdDoc "sslh");
 
       verbose = mkOption {
         type = types.bool;
         default = false;
-        description = "Verbose logs.";
+        description = lib.mdDoc "Verbose logs.";
       };
 
       timeout = mkOption {
         type = types.int;
         default = 2;
-        description = "Timeout in seconds.";
+        description = lib.mdDoc "Timeout in seconds.";
       };
 
       transparent = mkOption {
         type = types.bool;
         default = false;
-        description = "Will the services behind sslh (Apache, sshd and so on) see the external IP and ports as if the external world connected directly to them";
+        description = lib.mdDoc "Will the services behind sslh (Apache, sshd and so on) see the external IP and ports as if the external world connected directly to them";
       };
 
       listenAddresses = mkOption {
         type = types.coercedTo types.str singleton (types.listOf types.str);
         default = [ "0.0.0.0" "[::]" ];
-        description = "Listening addresses or hostnames.";
+        description = lib.mdDoc "Listening addresses or hostnames.";
       };
 
       port = mkOption {
         type = types.int;
         default = 443;
-        description = "Listening port.";
+        description = lib.mdDoc "Listening port.";
       };
 
       appendConfig = mkOption {
         type = types.str;
         default = defaultAppendConfig;
-        description = "Verbatim configuration file.";
+        description = lib.mdDoc "Verbatim configuration file.";
       };
     };
   };
@@ -132,7 +132,7 @@ in
           { table = "mangle"; command = "OUTPUT ! -o lo -p tcp -m connmark --mark 0x02/0x0f -j CONNMARK --restore-mark --mask 0x0f"; }
         ];
       in {
-        path = [ pkgs.iptables pkgs.iproute pkgs.procps ];
+        path = [ pkgs.iptables pkgs.iproute2 pkgs.procps ];
 
         preStart = ''
           # Cleanup old iptables entries which might be still there

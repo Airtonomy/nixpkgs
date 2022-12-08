@@ -1,6 +1,6 @@
-{ stdenv, fetchurl }:
+{ lib, stdenv, fetchurl }:
 
-with stdenv.lib;
+with lib;
 
 stdenv.mkDerivation rec {
   pname = "htmlunit-driver-standalone";
@@ -20,6 +20,7 @@ stdenv.mkDerivation rec {
     description = "A WebDriver server for running Selenium tests on the HtmlUnit headless browser";
     maintainers = with maintainers; [ coconnor offline ];
     platforms = platforms.all;
+    sourceProvenance = with sourceTypes; [ binaryBytecode ];
     license = licenses.asl20;
   };
 }

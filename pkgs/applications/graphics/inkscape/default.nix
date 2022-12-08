@@ -1,22 +1,23 @@
 { stdenv
+, lib
 , boehmgc
 , boost
 , cairo
 , cmake
-, double-conversion
 , fetchurl
+, fetchpatch
 , gettext
-, gdl
+, ghostscript
 , glib
-, glib-networking
 , glibmm
 , gsl
+, gspell
 , gtk-mac-integration
 , gtkmm3
-, gtkspell3
 , gdk-pixbuf
 , imagemagick
 , lcms
+, lib2geom
 , libcdr
 , libexif
 , libpng
@@ -43,18 +44,26 @@
 let
   python3Env = python3.withPackages
     (ps: with ps; [
+      appdirs
+      beautifulsoup4
+      cachecontrol
       numpy
       lxml
+      packaging
+      pillow
       scour
-    ]);
+      pyserial
+      requests
+      pygobject3
+    ] ++ inkex.propagatedBuildInputs);
 in
 stdenv.mkDerivation rec {
   pname = "inkscape";
-  version = "1.0.1";
+  version = "1.2.1";
 
   src = fetchurl {
-    url = "https://media.inkscape.org/dl/resources/file/${pname}-${version}.tar.xz";
-    sha256 = "1hjp5nnyx2m3miji6q4lcb6zgbi498v641dc7apkqqvayknrb4ng";
+    url = "https://media.inkscape.org/dl/resources/file/inkscape-${version}.tar.xz";
+    sha256 = "Rs59oOunykutwdtw6cu2fgrfm7NCaH3G4ItcohuNTBs=";
   };
 
   # Inkscape hits the ARGMAX when linking on macOS. It appears to be
@@ -70,12 +79,28 @@ stdenv.mkDerivation rec {
       # e.g., those from the "Effects" menu.
       python3 = "${python3Env}/bin/python";
     })
+
+    # Fix build with Poppler 22.09
+    (fetchpatch {
+      url = "https://github.com/archlinux/svntogit-packages/raw/b2f65dfb60ae0c8cd6cd9affd3d71064082a6201/trunk/inkscape-1.2.1-poppler-22.09.0.patch";
+      sha256 = "pArvsS/qoCTMAisF8yj3agZKrb90zRFZkck1TX0KeGc=";
+    })
   ];
 
   postPatch = ''
     patchShebangs share/extensions
+    substituteInPlace share/extensions/eps_input.inx \
+      --replace "location=\"path\">ps2pdf" "location=\"absolute\">${ghostscript}/bin/ps2pdf"
+    substituteInPlace share/extensions/ps_input.inx \
+      --replace "location=\"path\">ps2pdf" "location=\"absolute\">${ghostscript}/bin/ps2pdf"
+    substituteInPlace share/extensions/ps_input.py \
+      --replace "call('ps2pdf'" "call('${ghostscript}/bin/ps2pdf'"
     patchShebangs share/templates
     patchShebangs man/fix-roff-punct
+
+    # double-conversion is a dependency of 2geom
+    substituteInPlace CMakeScripts/DefineDependsandFlags.cmake \
+      --replace 'find_package(DoubleConversion REQUIRED)' ""
   '';
 
   nativeBuildInputs = [
@@ -94,16 +119,14 @@ stdenv.mkDerivation rec {
   buildInputs = [
     boehmgc
     boost
-    double-conversion
-    gdl
     gettext
     glib
-    glib-networking
     glibmm
     gsl
     gtkmm3
     imagemagick
     lcms
+    lib2geom
     libcdr
     libexif
     libpng
@@ -122,20 +145,20 @@ stdenv.mkDerivation rec {
     potrace
     python3Env
     zlib
-  ] ++ stdenv.lib.optionals (!stdenv.isDarwin) [
-    gtkspell3
-  ] ++ stdenv.lib.optionals stdenv.isDarwin [
+  ] ++ lib.optionals (!stdenv.isDarwin) [
+    gspell
+  ] ++ lib.optionals stdenv.isDarwin [
     cairo
     gtk-mac-integration
   ];
 
   # Make sure PyXML modules can be found at run-time.
-  postInstall = stdenv.lib.optionalString stdenv.isDarwin ''
+  postInstall = lib.optionalString stdenv.isDarwin ''
     install_name_tool -change $out/lib/libinkscape_base.dylib $out/lib/inkscape/libinkscape_base.dylib $out/bin/inkscape
     install_name_tool -change $out/lib/libinkscape_base.dylib $out/lib/inkscape/libinkscape_base.dylib $out/bin/inkview
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Vector graphics editor";
     homepage = "https://www.inkscape.org";
     license = licenses.gpl3Plus;

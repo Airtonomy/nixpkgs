@@ -1,18 +1,20 @@
 { atk
-, autoreconfHook
 , cacert
-, fetchpatch
 , dbus
 , cinnamon-control-center
 , cinnamon-desktop
 , cinnamon-menus
 , cinnamon-session
+, cinnamon-translations
 , cjs
+, clutter
 , fetchFromGitHub
 , gdk-pixbuf
+, gettext
 , libgnomekbd
 , glib
 , gobject-introspection
+, gsound
 , gtk3
 , intltool
 , json-glib
@@ -20,19 +22,21 @@
 , libsoup
 , libstartup_notification
 , libXtst
+, libXdamage
 , muffin
 , networkmanager
-, pkgconfig
+, pkg-config
 , polkit
+, lib
 , stdenv
 , wrapGAppsHook
 , libxml2
 , gtk-doc
-, gnome3
+, gnome
 , python3
 , keybinder3
 , cairo
-, xapps
+, xapp
 , upower
 , nemo
 , libnotify
@@ -42,65 +46,73 @@
 , pciutils
 , timezonemap
 , libnma
+, meson
+, ninja
+, gst_all_1
+, perl
 }:
 
-let
-  libcroco = callPackage ./libcroco.nix { };
-in
 stdenv.mkDerivation rec {
   pname = "cinnamon-common";
-  version = "4.6.1";
+  version = "5.4.12";
 
   src = fetchFromGitHub {
     owner = "linuxmint";
     repo = "cinnamon";
     rev = version;
-    sha256 = "149lhg953fa0glm250f76z2jzyaabh97jxiqkjnqvsk6bjk1d0bw";
+    hash = "sha256-uyQZXri3V3dKnowB97QlPWboZz1neblyvCuSacsPROg=";
   };
 
   patches = [
-    # remove dbus-glib
-    (fetchpatch {
-      url = "https://github.com/linuxmint/cinnamon/commit/ce99760fa15c3de2e095b9a5372eeaca646fbed1.patch";
-      sha256 = "0p2sbdi5w7sgblqbgisb6f8lcj1syzq5vlk0ilvwaqayxjylg8gz";
-    })
-    (fetchpatch {
-      url = "https://leigh123linux.fedorapeople.org/pub/patches/new_cjs.patch";
-      sha256 = "07biv3vkbn3jzijbdrxcw73p8xz2djbsax014mlkvmryrmys0rg4";
-    })
+    ./use-sane-install-dir.patch
+    ./libdir.patch
   ];
 
   buildInputs = [
-    # TODO: review if we really need this all
-    (python3.withPackages (pp: with pp; [ dbus-python setproctitle pygobject3 pycairo xapp pillow pytz tinycss2 pam pexpect distro ]))
+    (python3.withPackages (pp: with pp; [
+      dbus-python
+      setproctitle
+      pygobject3
+      pycairo
+      python3.pkgs.xapp # The scope prefix is required
+      pillow
+      pytz
+      tinycss2
+      python-pam
+      pexpect
+      distro
+      requests
+    ]))
     atk
     cacert
     cinnamon-control-center
     cinnamon-desktop
     cinnamon-menus
     cjs
+    clutter
     dbus
     gdk-pixbuf
     glib
+    gsound
     gtk3
     json-glib
-    libcroco
-    libsoup
+    libsoup # referenced in js/ui/environment.js
     libstartup_notification
     libXtst
+    libXdamage
     muffin
     networkmanager
-    pkgconfig
     polkit
     libxml2
     libgnomekbd
+    gst_all_1.gstreamer
 
     # bindings
     cairo
-    gnome3.caribou
+    gnome.caribou
     keybinder3
     upower
-    xapps
+    xapp
     timezonemap
     nemo
     libnotify
@@ -114,23 +126,22 @@ stdenv.mkDerivation rec {
 
   nativeBuildInputs = [
     gobject-introspection
-    autoreconfHook
+    meson
+    ninja
     wrapGAppsHook
     intltool
     gtk-doc
+    perl
+    python3.pkgs.wrapPython
+    pkg-config
   ];
 
-  autoreconfPhase = ''
-    GTK_DOC_CHECK=false NOCONFIGURE=1 bash ./autogen.sh
+  # use locales from cinnamon-translations (not using --localedir because datadir is used)
+  postInstall = ''
+    ln -s ${cinnamon-translations}/share/locale $out/share/locale
   '';
 
-  configureFlags = [ "--disable-static" "--with-ca-certificates=${cacert}/etc/ssl/certs/ca-bundle.crt" "--with-libxml=${libxml2.dev}/include/libxml2" "--enable-gtk-doc=no" ];
-
   postPatch = ''
-    substituteInPlace src/Makefile.am \
-      --replace "\$(libdir)/muffin" "${muffin}/lib/muffin"
-    patchShebangs autogen.sh
-
     find . -type f -exec sed -i \
       -e s,/usr/share/cinnamon,$out/share/cinnamon,g \
       -e s,/usr/share/locale,/run/current-system/sw/share/locale,g \
@@ -138,10 +149,14 @@ stdenv.mkDerivation rec {
 
     sed "s|/usr/share/sounds|/run/current-system/sw/share/sounds|g" -i ./files/usr/share/cinnamon/cinnamon-settings/bin/SettingsWidgets.py
 
-    sed "s|/usr/bin/upload-system-info|${xapps}/bin/upload-system-info|g" -i ./files/usr/share/cinnamon/cinnamon-settings/modules/cs_info.py
-    sed "s|upload-system-info|${xapps}/bin/upload-system-info|g" -i ./files/usr/share/cinnamon/cinnamon-settings/modules/cs_info.py
+    sed "s|/usr/bin/upload-system-info|${xapp}/bin/upload-system-info|g" -i ./files/usr/share/cinnamon/cinnamon-settings/modules/cs_info.py
+    sed "s|\"upload-system-info\"|\"${xapp}/bin/upload-system-info\"|g" -i ./files/usr/share/cinnamon/cinnamon-settings/modules/cs_info.py
 
     sed "s|/usr/bin/cinnamon-control-center|${cinnamon-control-center}/bin/cinnamon-control-center|g" -i ./files/usr/bin/cinnamon-settings
+
+    sed "s|/usr/bin/cinnamon-screensaver-command|/run/current-system/sw/bin/cinnamon-screensaver-command|g" \
+      -i ./files/usr/share/cinnamon/applets/menu@cinnamon.org/applet.js -i ./files/usr/share/cinnamon/applets/user@cinnamon.org/applet.js
+
     # this one really IS optional
     sed "s|/usr/bin/gnome-control-center|/run/current-system/sw/bin/gnome-control-center|g" -i ./files/usr/bin/cinnamon-settings
 
@@ -153,14 +168,29 @@ stdenv.mkDerivation rec {
     sed 's|"lspci"|"${pciutils}/bin/lspci"|g' -i ./files/usr/share/cinnamon/cinnamon-settings/modules/cs_info.py
 
     sed "s| cinnamon-session| ${cinnamon-session}/bin/cinnamon-session|g" -i ./files/usr/bin/cinnamon-session-cinnamon  -i ./files/usr/bin/cinnamon-session-cinnamon2d
-    sed "s|/usr/bin|$out/bin|g" -i ./files/usr/share/xsessions/cinnamon.desktop ./files/usr/share/xsessions/cinnamon2d.desktop
+    sed "s|/usr/bin|$out/bin|g" -i ./files/usr/share/xsessions/cinnamon.desktop ./files/usr/share/xsessions/cinnamon2d.desktop ./files/usr/share/applications/cinnamon2d.desktop
+
+    sed "s|msgfmt|${gettext}/bin/msgfmt|g" -i ./files/usr/share/cinnamon/cinnamon-settings/bin/Spices.py
+
+    patchShebangs src/data-to-c.pl
+  '';
+
+  preFixup = ''
+    # https://github.com/NixOS/nixpkgs/issues/101881
+    gappsWrapperArgs+=(
+      --prefix XDG_DATA_DIRS : "${gnome.caribou}/share"
+    )
+
+    # https://github.com/NixOS/nixpkgs/issues/129946
+    buildPythonPath "${python3.pkgs.xapp}"
+    patchPythonScript $out/share/cinnamon/cinnamon-desktop-editor/cinnamon-desktop-editor.py
   '';
 
   passthru = {
-    providedSessions = ["cinnamon" "cinnamon2d"];
+    providedSessions = [ "cinnamon" "cinnamon2d" ];
   };
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     homepage = "https://github.com/linuxmint/cinnamon";
     description = "The Cinnamon desktop environment";
     license = [ licenses.gpl2 ];

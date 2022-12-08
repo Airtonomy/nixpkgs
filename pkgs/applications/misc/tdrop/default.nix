@@ -2,15 +2,15 @@
 , xwininfo, xdotool, xprop, gawk, coreutils
 , gnugrep, procps }:
 
-stdenv.mkDerivation {
+stdenv.mkDerivation rec {
   pname = "tdrop";
-  version = "unstable-2020-05-14";
+  version = "0.5.0";
 
   src = fetchFromGitHub {
     owner = "noctuid";
     repo = "tdrop";
-    rev = "a9f2862515e5c190ac61d394e7fe7e1039871b89";
-    sha256 = "1zxhihgba33k8byjsracsyhby9qpdngbly6c8hpz3pbsyag5liwc";
+    rev = version;
+    sha256 = "sha256-fHvGXaZL7MMvTnkap341B79PDDo2lOVPPcOH4AX/zXo=";
   };
 
   dontBuild = true;
@@ -33,11 +33,11 @@ stdenv.mkDerivation {
 
   nativeBuildInputs = [ makeWrapper ];
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "A Glorified WM-Independent Dropdown Creator";
     homepage = "https://github.com/noctuid/tdrop";
     license = licenses.bsd2;
     platforms = platforms.linux;
-    maintainers = with maintainers; [ wedens ];
+    maintainers = with maintainers; [ ];
   };
 }

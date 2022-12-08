@@ -3,7 +3,7 @@
 , extraPkgs ? pkgs: [ ] # extra packages to add to targetPkgs
 , extraLibraries ? pkgs: [ ] # extra packages to add to multiPkgs
 , extraProfile ? "" # string to append to profile
-, nativeOnly ? false
+, extraArgs ? "" # arguments to always pass to steam
 , runtimeOnly ? false
 , runtimeShell
 , stdenv
@@ -16,20 +16,18 @@
 let
   commonTargetPkgs = pkgs: with pkgs;
     [
-      steamPackages.steam-fonts
       # Needed for operating system detection until
       # https://github.com/ValveSoftware/steam-for-linux/issues/5909 is resolved
       lsb-release
       # Errors in output without those
       pciutils
-      python2
       # Games' dependencies
       xorg.xrandr
       which
       # Needed by gdialog, including in the steam-runtime
       perl
       # Open URLs
-      xdg_utils
+      xdg-utils
       iana-etc
       # Steam Play / Proton
       python3
@@ -63,29 +61,13 @@ let
     fi
   '';
 
-  setupSh = writeScript "setup.sh" ''
-    #!${runtimeShell}
-  '';
-
-  runSh = writeScript "run.sh" ''
-    #!${runtimeShell}
-    runtime_paths="${lib.concatStringsSep ":" ldPath}"
-    if [ "$1" == "--print-steam-runtime-library-paths" ]; then
-      echo "$runtime_paths''${LD_LIBRARY_PATH:+:}$LD_LIBRARY_PATH"
-      exit 0
-    fi
-    export LD_LIBRARY_PATH="$runtime_paths''${LD_LIBRARY_PATH:+:}$LD_LIBRARY_PATH"
-    export STEAM_LD_LIBRARY_PATH="$STEAM_LD_LIBRARY_PATH''${STEAM_LD_LIBRARY_PATH:+:}$LD_LIBRARY_PATH"
-    exec "$@"
-  '';
-
 in buildFHSUserEnv rec {
   name = "steam";
 
   targetPkgs = pkgs: with pkgs; [
     steamPackages.steam
     # License agreement
-    gnome3.zenity
+    gnome.zenity
   ] ++ commonTargetPkgs pkgs;
 
   multiPkgs = pkgs: with pkgs; [
@@ -98,6 +80,12 @@ in buildFHSUserEnv rec {
     xorg.libXfixes
     libGL
     libva
+    pipewire.lib
+
+    # steamwebhelper
+    harfbuzz
+    libthai
+    pango
 
     # Not formally in runtime but needed by some games
     at-spi2-atk
@@ -105,22 +93,25 @@ in buildFHSUserEnv rec {
     gst_all_1.gstreamer
     gst_all_1.gst-plugins-ugly
     gst_all_1.gst-plugins-base
+    json-glib # paradox launcher (Stellaris)
     libdrm
+    libxkbcommon # paradox launcher
+    libvorbis # Dead Cells
     mono
     xorg.xkeyboardconfig
     xorg.libpciaccess
+    xorg.libXScrnSaver # Dead Cells
     udev # shadow of the tomb raider
+    icu # dotnet runtime, e.g. stardew valley
 
-    ## screeps dependencies
+    # screeps dependencies
     gtk3
     dbus
     zlib
-    glib
     atk
     cairo
     freetype
     gdk-pixbuf
-    pango
     fontconfig
 
     # friends options won't display "Launch Game" without it
@@ -133,69 +124,68 @@ in buildFHSUserEnv rec {
     libGLU
     libuuid
     libbsd
-    alsaLib
-  ] ++ (if (!nativeOnly) then [
-    (steamPackages.steam-runtime-wrapped.override {
-      inherit runtimeOnly;
-    })
-  ] else [
+    alsa-lib
+
+    # Loop Hero
+    libidn2
+    libpsl
+    nghttp2.lib
+    openssl_1_1
+    rtmpdump
+
+    # dependencies for mesa drivers, needed inside pressure-vessel
+    mesa.llvmPackages.llvm.lib
+    vulkan-loader
+    expat
+    wayland
+    xorg.libxcb
+    xorg.libXdamage
+    xorg.libxshmfence
+    xorg.libXxf86vm
+    libelf
+
     # Required
     glib
     gtk2
     bzip2
-    zlib
-    gdk-pixbuf
 
     # Without these it silently fails
     xorg.libXinerama
-    xorg.libXdamage
     xorg.libXcursor
     xorg.libXrender
     xorg.libXScrnSaver
-    xorg.libXxf86vm
     xorg.libXi
     xorg.libSM
     xorg.libICE
     gnome2.GConf
-    freetype
-    (curl.override { gnutlsSupport = true; sslSupport = false; })
+    curlWithGnuTls
     nspr
     nss
-    fontconfig
-    cairo
-    pango
-    expat
-    dbus
     cups
     libcap
     SDL2
     libusb1
     dbus-glib
-    libav
-    atk
+    ffmpeg
     # Only libraries are needed from those two
     libudev0-shim
-    networkmanager098
 
     # Verified games requirements
     xorg.libXt
     xorg.libXmu
-    xorg.libxcb
     libogg
     libvorbis
     SDL
     SDL2_image
     glew110
-    openssl
     libidn
     tbb
-    wayland
-    libxkbcommon
 
     # Other things from runtime
     flac
     freeglut
     libjpeg
+    libpng
     libpng12
     libsamplerate
     libmikmod
@@ -209,6 +199,8 @@ in buildFHSUserEnv rec {
     SDL2_ttf
     SDL2_mixer
     libappindicator-gtk2
+    libdbusmenu-gtk2
+    libindicator-gtk2
     libcaca
     libcanberra
     libgcrypt
@@ -216,22 +208,9 @@ in buildFHSUserEnv rec {
     librsvg
     xorg.libXft
     libvdpau
-  ] ++ steamPackages.steam-runtime-wrapped.overridePkgs) ++ extraLibraries pkgs;
-
-  extraBuildCommands = if (!nativeOnly) then ''
-    mkdir -p steamrt
-    ln -s ../lib/steam-runtime steamrt/${steam-runtime-wrapped.arch}
-    ${lib.optionalString (steam-runtime-wrapped-i686 != null) ''
-      ln -s ../lib32/steam-runtime steamrt/${steam-runtime-wrapped-i686.arch}
-    ''}
-    ln -s ${runSh} steamrt/run.sh
-    ln -s ${setupSh} steamrt/setup.sh
-  '' else ''
-    ln -s /usr/lib/libbz2.so usr/lib/libbz2.so.1.0
-    ${lib.optionalString (steam-runtime-wrapped-i686 != null) ''
-      ln -s /usr/lib32/libbz2.so usr/lib32/libbz2.so.1.0
-    ''}
-  '';
+  ]
+  ++ steamPackages.steam-runtime-wrapped.overridePkgs
+  ++ extraLibraries pkgs;
 
   extraInstallCommands = ''
     mkdir -p $out/share/applications
@@ -250,7 +229,13 @@ in buildFHSUserEnv rec {
       fi
     fi
 
-    export STEAM_RUNTIME=${if nativeOnly then "0" else "/steamrt"}
+    # udev event notifications don't work reliably inside containers.
+    # SDL2 already tries to automatically detect flatpak and pressure-vessel
+    # and falls back to inotify-based discovery [1]. We make SDL2 do the
+    # same by telling it explicitly.
+    #
+    # [1] <https://github.com/libsdl-org/SDL/commit/8e2746cfb6e1f1a1da5088241a1440fd2535e321>
+    export SDL_JOYSTICK_DISABLE_UDEV=1
   '' + extraProfile;
 
   runScript = writeScript "steam-wrapper.sh" ''
@@ -271,24 +256,30 @@ in buildFHSUserEnv rec {
     EOF
       fi
     fi
-    ${lib.optionalString (!nativeOnly) exportLDPath}
+
+    ${exportLDPath}
     ${fixBootstrap}
-    exec steam "$@"
+    exec steam ${extraArgs} "$@"
   '';
 
-  meta = steam.meta // {
-    broken = nativeOnly;
-  };
+  inherit (steam) meta;
 
   # allows for some gui applications to share IPC
   # this fixes certain issues where they don't render correctly
   unshareIpc = false;
 
+  # Some applications such as Natron need access to MIT-SHM or other
+  # shared memory mechanisms. Unsharing the pid namespace
+  # breaks the ability for application to reference shared memory.
+  unsharePid = false;
+
   passthru.run = buildFHSUserEnv {
     name = "steam-run";
 
     targetPkgs = commonTargetPkgs;
-    inherit multiPkgs extraBuildCommands;
+    inherit multiPkgs profile extraInstallCommands;
+
+    inherit unshareIpc unsharePid;
 
     runScript = writeScript "steam-run" ''
       #!${runtimeShell}
@@ -298,9 +289,15 @@ in buildFHSUserEnv rec {
         exit 1
       fi
       shift
-      ${lib.optionalString (!nativeOnly) exportLDPath}
+
+      ${exportLDPath}
       ${fixBootstrap}
       exec -- "$run" "$@"
     '';
+
+    meta = steam.meta // {
+      description = "Run commands in the same FHS environment that is used for Steam";
+      name = "steam-run";
+    };
   };
 }

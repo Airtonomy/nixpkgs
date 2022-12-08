@@ -2,14 +2,15 @@
 , belle-sip
 , cmake
 , fetchFromGitLab
-, soci
+, lib
+, bc-soci
 , sqlite
 , stdenv
 }:
 
 stdenv.mkDerivation rec {
   pname = "lime";
-  version = "4.4.0";
+  version = "5.1.61";
 
   src = fetchFromGitLab {
     domain = "gitlab.linphone.org";
@@ -17,19 +18,30 @@ stdenv.mkDerivation rec {
     group = "BC";
     repo = pname;
     rev = version;
-    sha256 = "14jg1zisjbzflw3scfqdbwy48wq3cp93l867vigb8l40lkc6n26z";
+    sha256 = "sha256-cgc3123UvOzasBp/ImzXjt1JCkdqwPLnnk0PiStVcB8=";
   };
 
-  buildInputs = [ bctoolbox soci belle-sip sqlite ];
+  buildInputs = [
+    # Made by BC
+    bctoolbox
+    belle-sip
+
+    # Vendored by BC
+    bc-soci
+
+    sqlite
+  ];
   nativeBuildInputs = [ cmake ];
 
-  # Do not build static libraries
-  cmakeFlags = [ "-DENABLE_STATIC=NO" ];
+  cmakeFlags = [
+    "-DENABLE_STATIC=NO" # Do not build static libraries
+    "-DENABLE_UNIT_TESTS=NO" # Do not build test executables
+  ];
 
-  meta = with stdenv.lib; {
-    description = "End-to-end encryption library for instant messaging";
+  meta = with lib; {
+    description = "End-to-end encryption library for instant messaging. Part of the Linphone project.";
     homepage = "http://www.linphone.org/technical-corner/lime";
-    license = licenses.gpl3;
+    license = licenses.gpl3Only;
     platforms = platforms.all;
     maintainers = with maintainers; [ jluttine ];
   };

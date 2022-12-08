@@ -1,4 +1,4 @@
-{ stdenv, fetchurl, botan2, libobjc, Security }:
+{ lib, stdenv, fetchurl, botan2, libobjc, Security }:
 
 stdenv.mkDerivation rec {
 
@@ -7,7 +7,7 @@ stdenv.mkDerivation rec {
 
   src = fetchurl {
     url = "https://dist.opendnssec.org/source/${pname}-${version}.tar.gz";
-    hash = "sha256:1wkmyi6n3z2pak1cj5yk6v6bv9w0m24skycya48iikab0mrr8931";
+    hash = "sha256-YSSUcwVLzRgRUZ75qYmogKe9zDbTF8nCVFf8YU30dfI=";
   };
 
   configureFlags = [
@@ -18,13 +18,13 @@ stdenv.mkDerivation rec {
     ];
 
   propagatedBuildInputs =
-    stdenv.lib.optionals stdenv.isDarwin [ libobjc Security ];
+    lib.optionals stdenv.isDarwin [ libobjc Security ];
 
   buildInputs = [ botan2 ];
 
   postInstall = "rm -rf $out/var";
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     homepage = "https://www.opendnssec.org/softhsm";
     description = "Cryptographic store accessible through a PKCS #11 interface";
     longDescription = "

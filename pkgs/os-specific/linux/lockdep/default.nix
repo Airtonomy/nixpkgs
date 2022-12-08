@@ -1,4 +1,4 @@
-{ stdenv, fetchurl, bash, flex, bison, valgrind }:
+{ lib, stdenv, fetchurl, bash, flex, bison, valgrind }:
 
 stdenv.mkDerivation rec {
   pname = "lockdep";
@@ -22,6 +22,12 @@ stdenv.mkDerivation rec {
   '';
 
   nativeBuildInputs = [ flex bison ];
+
+  # Workaround build failure on -fno-common toolchains like upstream
+  # gcc-10. Otherwise build fails as:
+  #   ld: lockdep.o:/build/linux-5.0.21/tools/lib/lockdep/../../include/linux/rcu.h:5: multiple definition of
+  #     `rcu_scheduler_active'; common.o:/build/linux-5.0.21/tools/lib/lockdep/../../include/linux/rcu.h:5: first defined here
+  NIX_CFLAGS_COMPILE = "-fcommon";
 
   buildPhase = ''
     make defconfig
@@ -54,8 +60,8 @@ stdenv.mkDerivation rec {
   meta = {
     description = "Userspace locking validation tool built on the Linux kernel";
     homepage    = "https://kernel.org/";
-    license     = stdenv.lib.licenses.gpl2;
-    platforms   = stdenv.lib.platforms.linux;
-    maintainers = [ stdenv.lib.maintainers.thoughtpolice ];
+    license     = lib.licenses.gpl2;
+    platforms   = lib.platforms.linux;
+    maintainers = [ lib.maintainers.thoughtpolice ];
   };
 }

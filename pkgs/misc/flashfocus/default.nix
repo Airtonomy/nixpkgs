@@ -1,22 +1,44 @@
-{ lib, buildPythonApplication, fetchPypi, xcffib, pyyaml, click, i3ipc, marshmallow, cffi, xpybutil, pytestrunner }:
+{ lib, python3, netcat-openbsd, nix-update-script }:
 
-
-buildPythonApplication rec {
+python3.pkgs.buildPythonApplication rec {
   pname = "flashfocus";
-  version = "2.2.2";
+  version = "2.3.1";
 
-  src = fetchPypi {
+  src = python3.pkgs.fetchPypi {
     inherit pname version;
-    sha256 = "1z20d596rnc7cs0rrd221gjn14dmbr11djv94y9p4v7rr788sswv";
+    sha256 = "sha256-XT3CKJWn1uKnPPsJC+MWlEAd8sWdVTEXz5b3n0UUedY=";
   };
 
-  nativeBuildInputs = [ pytestrunner ];
-  propagatedBuildInputs = [ i3ipc xcffib click cffi xpybutil marshmallow pyyaml ];
+  postPatch = ''
+    substituteInPlace setup.py \
+      --replace "pyyaml>=5.1,<6.0" "pyyaml>=5.1"
+
+    substituteInPlace bin/nc_flash_window \
+      --replace "nc" "${lib.getExe netcat-openbsd}"
+  '';
+
+  nativeBuildInputs = with python3.pkgs; [
+    pytest-runner
+  ];
+
+  propagatedBuildInputs = with python3.pkgs; [
+    i3ipc
+    xcffib
+    click
+    cffi
+    xpybutil
+    marshmallow
+    pyyaml
+  ];
 
   # Tests require access to a X session
   doCheck = false;
 
   pythonImportsCheck = [ "flashfocus" ];
+
+  passthru.updateScript = nix-update-script {
+    attrPath = pname;
+  };
 
   meta = with lib; {
     homepage = "https://github.com/fennerm/flashfocus";

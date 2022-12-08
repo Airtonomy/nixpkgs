@@ -1,10 +1,10 @@
-{ lib, callPackage, CoreFoundation, fetchFromGitHub, pkgs, wrapCDDA
+{ stdenv, lib, callPackage, CoreFoundation, fetchFromGitHub, pkgs, wrapCDDA, attachPkgs
 , tiles ? true, Cocoa
 , debug ? false
 , useXdgDir ? false
-, version ? "2019-11-22"
-, rev ? "a6c8ece992bffeae3788425dd4b3b5871e66a9cd"
-, sha256 ? "0ww2q5gykxm802z1kffmnrfahjlx123j1gfszklpsv0b1fccm1ab"
+, version ? "2022-08-20"
+, rev ? "f65b2bc4c6dea24bd9a993b8df146e5698e7e36f"
+, sha256 ? "sha256-00Tp9OmsM39PYwAJXKKRS9zmn7KsGQ9s1eVmEqghkpw="
 }:
 
 let
@@ -22,14 +22,14 @@ let
       inherit rev sha256;
     };
 
+    patches = [
+      # Unconditionally look for translation files in $out/share/locale
+      ./locale-path-git.patch
+    ];
+
     makeFlags = common.makeFlags ++ [
       "VERSION=git-${version}-${lib.substring 0 8 src.rev}"
     ];
-
-    passthru = common.passthru // {
-      pkgs = pkgs.override { build = self; };
-      withMods = wrapCDDA self;
-    };
 
     meta = common.meta // {
       maintainers = with lib.maintainers;
@@ -38,4 +38,4 @@ let
   });
 in
 
-self
+attachPkgs pkgs self

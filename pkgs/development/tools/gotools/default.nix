@@ -1,14 +1,13 @@
-{ stdenv, go, buildGoModule, fetchgit }:
+{ lib, buildGoModule, fetchgit }:
 
 buildGoModule rec {
-  pname = "gotools-unstable";
-  version = "2020-10-27";
-  rev = "eafbe7b904eb2418efc832e36ac634dc09084f10";
+  pname = "gotools";
+  version = "0.1.10";
 
   src = fetchgit {
-    inherit rev;
+    rev = "v${version}";
     url = "https://go.googlesource.com/tools";
-    sha256 = "0884znfbm44f4ddjkm0g7qg2a257kwzv1ismd2m225f3c69n3mdg";
+    sha256 = "sha256-r71+//VhayW18uvMl/ls/8KYNbZ7uDZw3SWoqPL3Xqk=";
   };
 
   # The gopls folder contains a Go submodule which causes a build failure.
@@ -25,7 +24,7 @@ buildGoModule rec {
     rm -rf gopls
   '';
 
-  vendorSha256 = "18qpjmmjpk322fvf81cafkpl3spv7hpdpymhympmld9isgzggfyz";
+  vendorSha256 = "sha256-UJIXG8WKzazNTXoqEFlT/umC40F6z2Q5I8RfxnMbsPM=";
 
   doCheck = false;
 
@@ -39,18 +38,23 @@ buildGoModule rec {
     export GOTOOLDIR=$out/bin
   '';
 
-  excludedPackages = "\\("
-    + stdenv.lib.concatStringsSep "\\|" ([ "testdata" ] ++ stdenv.lib.optionals (stdenv.lib.versionAtLeast go.meta.branch "1.5") [ "vet" "cover" ])
-    + "\\)";
+  excludedPackages = [ "vet" "cover" ];
 
   # Set GOTOOLDIR for derivations adding this to buildInputs
   postInstall = ''
     mkdir -p $out/nix-support
-    substitute ${../../go-modules/tools/setup-hook.sh} $out/nix-support/setup-hook \
+    substitute ${./setup-hook.sh} $out/nix-support/setup-hook \
       --subst-var-by bin $out
   '';
 
   # Do not copy this without a good reason for enabling
   # In this case tools is heavily coupled with go itself and embeds paths.
   allowGoReference = true;
+
+  meta = with lib; {
+    description = "Additional tools for Go development";
+    homepage = "http://go.googlesource.com/tools";
+    license = licenses.bsd3;
+    maintainers = with maintainers; [ danderson ];
+  };
 }

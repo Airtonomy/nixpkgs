@@ -1,4 +1,4 @@
-{ stdenv
+{ lib, stdenv
 , meson
 , ninja
 , sysprof
@@ -15,16 +15,20 @@ stdenv.mkDerivation rec {
   ];
 
   mesonFlags = [
-    "-Dwith_sysprofd=none"
+    "-Dagent=false"
+    "-Dsysprofd=none"
+    "-Dgtk=false"
     "-Dlibsysprof=false"
+    "-Dlibunwind=false"
     "-Dhelp=false"
-    "-Denable_tools=false"
-    "-Denable_tests=false"
-    "-Denable_examples=false"
+    "-Dtools=false"
+    "-Dtests=false"
+    "-Dexamples=false"
   ];
 
   meta = sysprof.meta // {
     description = "Static library for Sysprof capture data generation";
-    platforms = stdenv.lib.platforms.all;
+    license = lib.licenses.bsd2Patent;
+    platforms = lib.platforms.all;
   };
 }

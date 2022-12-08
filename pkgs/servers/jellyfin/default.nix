@@ -1,5 +1,16 @@
-{ stdenv, lib, fetchurl, unzip, sqlite, makeWrapper, dotnetCorePackages, ffmpeg,
-  fontconfig, freetype, nixosTests }:
+{ lib
+, fetchFromGitHub
+, fetchurl
+, nixosTests
+, stdenv
+, dotnetCorePackages
+, buildDotnetModule
+, ffmpeg
+, fontconfig
+, freetype
+, jellyfin-web
+, sqlite
+}:
 
 let
   os = if stdenv.isDarwin then "osx" else "linux";
@@ -11,51 +22,63 @@ let
     else if isAarch64 then "arm64"
     else lib.warn "Unsupported architecture, some image processing features might be unavailable" "unknown";
   musl = lib.optionalString stdenv.hostPlatform.isMusl
-    (if (arch != "x64")
-      then lib.warn "Some image processing features might be unavailable for non x86-64 with Musl" "musl-"
-      else "musl-");
-  runtimeDir = "${os}-${musl}${arch}";
-
-in stdenv.mkDerivation rec {
+    (lib.warnIf (arch != "x64") "Some image processing features might be unavailable for non x86-64 with Musl"
+      "musl-");
+  # https://docs.microsoft.com/en-us/dotnet/core/rid-catalog#using-rids
+  runtimeId = "${os}-${musl}${arch}";
+in
+buildDotnetModule rec {
   pname = "jellyfin";
-  version = "10.6.4";
+  version = "10.8.7"; # ensure that jellyfin-web has matching version
 
-  # Impossible to build anything offline with dotnet
-  src = fetchurl {
-    url = "https://repo.jellyfin.org/releases/server/portable/versions/stable/combined/${version}/jellyfin_${version}.tar.gz";
-    sha256 = "OqN070aUKPk0dXAy8R/lKUnSWen+si/AJ6tkYh5ibqo=";
+  src = fetchFromGitHub {
+    owner = "jellyfin";
+    repo = "jellyfin";
+    rev = "v${version}";
+    sha256 = "GQPnQybDnWnqkA8mIBj3x69nfUkngJOJscjdZ/N08V4=";
   };
 
-  buildInputs = [
-    unzip
-    makeWrapper
+  patches = [
+    # when building some warnings are reported as error and fail the build.
+    ./disable-warnings.patch
   ];
 
   propagatedBuildInputs = [
-    dotnetCorePackages.aspnetcore_3_1
     sqlite
   ];
 
-  preferLocalBuild = true;
+  projectFile = "Jellyfin.Server/Jellyfin.Server.csproj";
+  executables = [ "jellyfin" ];
+  nugetDeps = ./nuget-deps.nix;
+  runtimeDeps = [
+    ffmpeg
+    fontconfig
+    freetype
+  ];
+  dotnet-sdk = dotnetCorePackages.sdk_6_0;
+  dotnet-runtime = dotnetCorePackages.aspnetcore_6_0;
+  dotnetFlags = [ "--runtime=${runtimeId}" ];
+  dotnetBuildFlags = [ "--no-self-contained" ];
 
-  installPhase = ''
-    install -dm 755 "$out/opt/jellyfin"
-    cp -r * "$out/opt/jellyfin"
-    makeWrapper "${dotnetCorePackages.aspnetcore_3_1}/bin/dotnet" $out/bin/jellyfin \
-      --prefix LD_LIBRARY_PATH : "${stdenv.lib.makeLibraryPath [
-        sqlite fontconfig freetype stdenv.cc.cc.lib
-      ]}:$out/opt/jellyfin/runtimes/${runtimeDir}/native/" \
-      --add-flags "$out/opt/jellyfin/jellyfin.dll --ffmpeg ${ffmpeg}/bin/ffmpeg"
+  preInstall = ''
+    makeWrapperArgs+=(
+      --add-flags "--ffmpeg ${ffmpeg}/bin/ffmpeg"
+      --add-flags "--webdir ${jellyfin-web}/share/jellyfin-web"
+    )
   '';
 
   passthru.tests = {
     smoke-test = nixosTests.jellyfin;
   };
 
-  meta =  with stdenv.lib; {
+  passthru.updateScript = ./update.sh;
+
+  meta = with lib; {
     description = "The Free Software Media System";
     homepage = "https://jellyfin.org/";
-    license = licenses.gpl2;
-    maintainers = with maintainers; [ nyanloutre minijackson purcell ];
+    # https://github.com/jellyfin/jellyfin/issues/610#issuecomment-537625510
+    license = licenses.gpl2Plus;
+    maintainers = with maintainers; [ nyanloutre minijackson purcell jojosch ];
+    platforms = dotnet-runtime.meta.platforms;
   };
 }

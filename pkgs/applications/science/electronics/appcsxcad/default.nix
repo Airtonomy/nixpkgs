@@ -7,7 +7,6 @@
 , hdf5
 , vtkWithQt5
 , qtbase
-, wrapQtAppsHook
 , fparser
 , tinyxml
 , cgal
@@ -44,8 +43,6 @@ mkDerivation {
   postFixup = ''
     rm $out/bin/AppCSXCAD.sh
   '';
-
-  enableParallelBuilding = true;
 
   meta = with lib; {
     description = "Minimal Application using the QCSXCAD library";

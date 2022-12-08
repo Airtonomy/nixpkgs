@@ -1,18 +1,16 @@
-{ stdenv
-, fetchFromGitHub
+{ lib
 , fetchurl
 , pkg-config
 , gettext
 , itstool
 , python3
 , wrapGAppsHook
-, python3Packages
 , gst_all_1
 , gtk3
 , gobject-introspection
 , libpeas
 , librsvg
-, gnome3
+, gnome
 , libnotify
 , gsound
 , meson
@@ -20,15 +18,15 @@
 , gsettings-desktop-schemas
 }:
 
-python3Packages.buildPythonApplication rec {
+python3.pkgs.buildPythonApplication rec {
   pname = "pitivi";
-  version = "2020.09.2";
+  version = "2022.06";
 
   format = "other";
 
   src = fetchurl {
-    url = "mirror://gnome/sources/pitivi/${stdenv.lib.versions.majorMinor version}/${pname}-${version}.tar.xz";
-    sha256 = "0hzvv4wia4rk0kvq16y27imq2qd4q5lg3vx99hdcjdb1x3zqqfg0";
+    url = "mirror://gnome/sources/pitivi/${lib.versions.major version}/${pname}-${version}.tar.xz";
+    sha256 = "Uz0448bSEcK9DpXiuWsPCDO98NXUd6zgffYRWDUGyDg=";
   };
 
   patches = [
@@ -53,9 +51,7 @@ python3Packages.buildPythonApplication rec {
     gtk3
     libpeas
     librsvg
-    gnome3.gnome-desktop
     gsound
-    gnome3.adwaita-icon-theme
     gsettings-desktop-schemas
     libnotify
   ] ++ (with gst_all_1; [
@@ -69,14 +65,13 @@ python3Packages.buildPythonApplication rec {
     gst-devtools
   ]);
 
-  pythonPath = with python3Packages; [
+  pythonPath = with python3.pkgs; [
     pygobject3
     gst-python
-    pyxdg
     numpy
     pycairo
     matplotlib
-    dbus-python
+    librosa
   ];
 
   postPatch = ''
@@ -90,13 +85,13 @@ python3Packages.buildPythonApplication rec {
   strictDeps = false;
 
   passthru = {
-    updateScript = gnome3.updateScript {
+    updateScript = gnome.updateScript {
       packageName = "pitivi";
       versionPolicy = "none"; # we are using dev version, since the stable one is too old
     };
   };
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Non-Linear video editor utilizing the power of GStreamer";
     homepage = "http://pitivi.org/";
     longDescription = ''

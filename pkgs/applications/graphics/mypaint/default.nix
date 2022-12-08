@@ -1,5 +1,6 @@
-{ stdenv
+{ lib
 , fetchFromGitHub
+, fetchpatch
 , gtk3
 , gettext
 , json_c
@@ -11,7 +12,7 @@
 , hicolor-icon-theme
 , mypaint-brushes
 , gdk-pixbuf
-, pkgconfig
+, pkg-config
 , python3
 , swig
 , wrapGAppsHook
@@ -22,6 +23,7 @@ let
 in buildPythonApplication rec {
   pname = "mypaint";
   version = "2.0.1";
+  format = "other";
 
   src = fetchFromGitHub {
     owner = "mypaint";
@@ -31,13 +33,23 @@ in buildPythonApplication rec {
     fetchSubmodules = true;
   };
 
+  patches = [
+    # Fix build due to setuptools issue.
+    # https://github.com/mypaint/mypaint/pull/1183
+    (fetchpatch {
+      url = "https://github.com/mypaint/mypaint/commit/423950bec96d6057eac70442de577364d784a847.patch";
+      sha256 = "OxJJOi20bFMRibL59zx6svtMrkgeMYyEvbdSXbZHqpc=";
+    })
+  ];
+
   nativeBuildInputs = [
     gettext
-    pkgconfig
+    pkg-config
     swig
     wrapGAppsHook
     gobject-introspection # for setup hook
     hicolor-icon-theme # fór setup hook
+    python3.pkgs.setuptools
   ];
 
   buildInputs = [
@@ -90,7 +102,7 @@ in buildPythonApplication rec {
     runHook postCheck
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "A graphics application for digital painters";
     homepage = "http://mypaint.org/";
     license = licenses.gpl2Plus;

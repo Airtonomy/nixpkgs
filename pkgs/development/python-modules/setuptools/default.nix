@@ -2,9 +2,6 @@
 , buildPythonPackage
 , fetchFromGitHub
 , python
-, wrapPython
-, unzip
-, callPackage
 , bootstrapped-pip
 , lib
 , pipInstallHook
@@ -13,7 +10,7 @@
 
 let
   pname = "setuptools";
-  version = "50.3.1";
+  version = "65.3.0";
 
   # Create an sdist of setuptools
   sdist = stdenv.mkDerivation rec {
@@ -22,17 +19,18 @@ let
     src = fetchFromGitHub {
       owner = "pypa";
       repo = pname;
-      rev = "v${version}";
-      sha256 = "Z4KHB3Pv4wZPou/Vbp1DFDgDp47OTDfVChGP55GtIJE=";
+      rev = "refs/tags/v${version}";
+      hash = "sha256-LPguGVWvwEMZpJFuXWLVFzIlzw+/QSMjVi2oYh0cI0s=";
       name = "${pname}-${version}-source";
     };
 
     patches = [
       ./tag-date.patch
+      ./setuptools-distutils-C++.patch
     ];
 
     buildPhase = ''
-      ${python.pythonForBuild.interpreter} bootstrap.py
+      ${python.pythonForBuild.interpreter} setup.py egg_info
       ${python.pythonForBuild.interpreter} setup.py sdist --formats=gztar
 
       # Here we untar the sdist and retar it in order to control the timestamps
@@ -61,7 +59,7 @@ in buildPythonPackage rec {
     (setuptoolsBuildHook.override{setuptools=null; wheel=null;})
   ];
 
-  preBuild = lib.strings.optionalString (!stdenv.hostPlatform.isWindows) ''
+  preBuild = lib.optionalString (!stdenv.hostPlatform.isWindows) ''
     export SETUPTOOLS_INSTALL_WINDOWS_SPECIFIC_FILES=0
   '';
 
@@ -73,11 +71,12 @@ in buildPythonPackage rec {
   # Requires pytest, causing infinite recursion.
   doCheck = false;
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Utilities to facilitate the installation of Python packages";
     homepage = "https://pypi.python.org/pypi/setuptools";
     license = with licenses; [ psfl zpl20 ];
     platforms = python.meta.platforms;
     priority = 10;
+    maintainers = teams.python.members;
   };
 }

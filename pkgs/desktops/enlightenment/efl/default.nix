@@ -1,10 +1,11 @@
-{ stdenv
+{ lib
+, stdenv
 , fetchurl
 , meson
 , ninja
 , pkg-config
 , SDL2
-, alsaLib
+, alsa-lib
 , bullet
 , check
 , curl
@@ -52,15 +53,16 @@
 , writeText
 , xorg
 , zlib
+, directoryListingUpdater
 }:
 
 stdenv.mkDerivation rec {
   pname = "efl";
-  version = "1.25.1";
+  version = "1.26.3";
 
   src = fetchurl {
     url = "http://download.enlightenment.org/rel/libs/${pname}/${pname}-${version}.tar.xz";
-    sha256 = "0svybbrvpf6q955y6fclxh3md64z0dgmh0x54x2j60503hhs071m";
+    sha256 = "sha256-2fg6oP2TNPRN7rTklS3A5RRGg6+seG/uvOYDCVFhfRU=";
   };
 
   nativeBuildInputs = [
@@ -101,7 +103,7 @@ stdenv.mkDerivation rec {
 
   propagatedBuildInputs = [
     SDL2
-    alsaLib
+    alsa-lib
     bullet
     curl
     dbus
@@ -203,11 +205,13 @@ stdenv.mkDerivation rec {
     patchelf --add-needed ${libsndfile.out}/lib/libsndfile.so $out/lib/libecore_audio.so
   '';
 
-  meta = with stdenv.lib; {
+  passthru.updateScript = directoryListingUpdater { };
+
+  meta = with lib; {
     description = "Enlightenment foundation libraries";
     homepage = "https://enlightenment.org/";
     license = with licenses; [ bsd2 lgpl2Only licenses.zlib ];
     platforms = platforms.linux;
-    maintainers = with maintainers; [ matejc tstrobel ftrvxmtrx romildo ];
+    maintainers = with maintainers; [ matejc ftrvxmtrx ] ++ teams.enlightenment.members;
   };
 }

@@ -1,4 +1,5 @@
-{ stdenv
+{ lib
+, stdenv
 , autoconf
 , automake
 , c-ares
@@ -6,8 +7,8 @@
 , curl
 , doxygen
 , fetchFromGitHub
-, fetchpatch
-, ffmpeg_3
+, ffmpeg
+, freeimage
 , libmediainfo
 , libraw
 , libsodium
@@ -16,7 +17,7 @@
 , libzen
 , lsb-release
 , mkDerivation
-, pkgconfig
+, pkg-config
 , qtbase
 , qttools
 , qtx11extras
@@ -25,36 +26,43 @@
 , unzip
 , wget
 }:
-
 mkDerivation rec {
   pname = "megasync";
-  version = "4.3.5.0";
+  version = "4.6.7.0";
 
   src = fetchFromGitHub {
     owner = "meganz";
     repo = "MEGAsync";
     rev = "v${version}_Linux";
-    sha256 = "0rr1jjy0n5bj1lh6xi3nbbcikvq69j3r9qnajp4mhywr5izpccvs";
+    sha256 = "sha256-vJSXvSTYEhxuG3KUQ+lBcppC8M70UnYlBLPHhYJSNOE=";
     fetchSubmodules = true;
   };
 
-  nativeBuildInputs =
-    [ autoconf automake doxygen lsb-release pkgconfig qttools swig ];
+  nativeBuildInputs = [
+    autoconf
+    automake
+    doxygen
+    libtool
+    lsb-release
+    pkg-config
+    qttools
+    swig
+    unzip
+  ];
   buildInputs = [
     c-ares
     cryptopp
     curl
-    ffmpeg_3
+    ffmpeg
+    freeimage
     libmediainfo
     libraw
     libsodium
-    libtool
     libuv
     libzen
     qtbase
     qtx11extras
     sqlite
-    unzip
     wget
   ];
 
@@ -64,10 +72,11 @@ mkDerivation rec {
     ./noinstall-distro-version.patch
     # megasync target is not part of the install rule thanks to a commented block
     ./install-megasync.patch
+    ./ffmpeg_44.patch
   ];
 
   postPatch = ''
-    for file in $(find src/ -type f \( -iname configure -o -iname \*.sh  \) ); do
+    for file in $(find src/ -type f \( -iname configure -o -iname \*.sh \) ); do
       substituteInPlace "$file" --replace "/bin/bash" "${stdenv.shell}"
     done
   '';
@@ -89,7 +98,7 @@ mkDerivation rec {
     "--with-cryptopp"
     "--with-curl"
     "--with-ffmpeg"
-    "--without-freeimage" # unreferenced even when found
+    "--with-freeimage"
     "--without-readline"
     "--without-termcap"
     "--with-sodium"
@@ -109,7 +118,7 @@ mkDerivation rec {
     popd
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description =
       "Easy automated syncing between your computers and your MEGA Cloud Drive";
     homepage = "https://mega.nz/";

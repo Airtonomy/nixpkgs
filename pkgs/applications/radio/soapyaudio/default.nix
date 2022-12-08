@@ -1,5 +1,6 @@
-{ stdenv, fetchFromGitHub, cmake, pkg-config
-, hamlib, rtaudio, alsaLib, libpulseaudio, libjack2, libusb1, soapysdr
+{ lib, stdenv, fetchFromGitHub, cmake, pkg-config
+, hamlib, rtaudio, alsa-lib, libpulseaudio, libjack2, libusb1, soapysdr
+, Accelerate, CoreAudio
 } :
 
 stdenv.mkDerivation rec {
@@ -14,18 +15,20 @@ stdenv.mkDerivation rec {
   };
 
   nativeBuildInputs = [ cmake pkg-config ];
-  buildInputs = [ hamlib rtaudio alsaLib libpulseaudio libjack2 libusb1 soapysdr ];
+  buildInputs = [ hamlib rtaudio libjack2 libusb1 soapysdr ]
+    ++ lib.optionals stdenv.isLinux [ alsa-lib libpulseaudio ]
+    ++ lib.optionals stdenv.isDarwin [ Accelerate CoreAudio ];
 
   cmakeFlags = [
     "-DSoapySDR_DIR=${soapysdr}/share/cmake/SoapySDR/"
     "-DUSE_HAMLIB=ON"
   ];
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     homepage = "https://github.com/pothosware/SoapyAudio";
     description = "SoapySDR plugin for amateur radio and audio devices";
     license = licenses.mit;
     maintainers = with maintainers; [ numinit ];
-    platforms = platforms.linux;
+    platforms = platforms.unix;
   };
 }

@@ -1,4 +1,5 @@
-{ stdenv
+{ lib
+, stdenv
 , buildGoModule
 , fetchFromGitHub
 , go-md2man
@@ -14,13 +15,13 @@
 
 buildGoModule rec {
   pname = "buildah";
-  version = "1.18.0";
+  version = "1.28.0";
 
   src = fetchFromGitHub {
     owner = "containers";
     repo = "buildah";
     rev = "v${version}";
-    sha256 = "0kn31y5g7269mjaw5ddfsiaan93s62i8zzxg4xl01dg3dkkadwc4";
+    sha256 = "sha256-Q8IqyI6okTaXKDoYvaTcIv+wy4aiHXOjFkKBxTn4wwk=";
   };
 
   outputs = [ "out" "man" ];
@@ -32,8 +33,9 @@ buildGoModule rec {
   nativeBuildInputs = [ go-md2man installShellFiles pkg-config ];
 
   buildInputs = [
-    btrfs-progs
     gpgme
+  ] ++ lib.optionals stdenv.isLinux [
+    btrfs-progs
     libapparmor
     libseccomp
     libselinux
@@ -41,23 +43,26 @@ buildGoModule rec {
   ];
 
   buildPhase = ''
+    runHook preBuild
     patchShebangs .
-    make bin/buildah GIT_COMMIT="unknown"
-    make -C docs GOMD2MAN="${go-md2man}/bin/go-md2man"
+    make bin/buildah
+    make -C docs GOMD2MAN="go-md2man"
+    runHook postBuild
   '';
 
   installPhase = ''
+    runHook preInstall
     install -Dm755 bin/buildah $out/bin/buildah
     installShellCompletion --bash contrib/completions/bash/buildah
     make -C docs install PREFIX="$man"
+    runHook postInstall
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "A tool which facilitates building OCI images";
     homepage = "https://buildah.io/";
     changelog = "https://github.com/containers/buildah/releases/tag/v${version}";
     license = licenses.asl20;
     maintainers = with maintainers; [ Profpatsch ] ++ teams.podman.members;
-    platforms = platforms.linux;
   };
 }

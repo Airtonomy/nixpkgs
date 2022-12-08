@@ -1,28 +1,43 @@
-{ stdenv, fetchurl
-, perl, flex, bison
+{ lib, stdenv, fetchFromGitHub
+, perl, flex, bison, python3, autoconf
+, which, cmake
 }:
 
 stdenv.mkDerivation rec {
   pname = "verilator";
-  version = "4.100";
+  version = "5.002";
 
-  src = fetchurl {
-    url    = "https://www.veripool.org/ftp/${pname}-${version}.tgz";
-    sha256 = "0vg1gk1hqlnz74gfpf57588758myxvhqzi37yl4vqjcq40r83nr2";
+  src = fetchFromGitHub {
+    owner = pname;
+    repo = pname;
+    rev = "v${version}";
+    hash = "sha256-RNoKAEF7zl+WqqbxGP/VvdQqQP8VI3hoQku3b/g0XpU=";
   };
 
   enableParallelBuilding = true;
   buildInputs = [ perl ];
-  nativeBuildInputs = [ flex bison ];
+  nativeBuildInputs = [ flex bison python3 autoconf ];
+  checkInputs = [ which ];
 
-  # these tests need some interpreter paths patched early on...
-  doCheck = false;
+  doCheck = stdenv.isLinux; # darwin tests are broken for now...
   checkTarget = "test";
 
-  meta = with stdenv.lib; {
+  preConfigure = "autoconf";
+
+  preCheck = ''
+    patchShebangs \
+      src/flexfix \
+      src/vlcovgen \
+      bin/verilator \
+      bin/verilator_coverage \
+      test_regress/driver.pl \
+      test_regress/t/*.pl
+  '';
+
+  meta = with lib; {
     description = "Fast and robust (System)Verilog simulator/compiler";
     homepage    = "https://www.veripool.org/wiki/verilator";
-    license     = licenses.lgpl3;
+    license     = with licenses; [ lgpl3Only artistic2 ];
     platforms   = platforms.unix;
     maintainers = with maintainers; [ thoughtpolice ];
   };

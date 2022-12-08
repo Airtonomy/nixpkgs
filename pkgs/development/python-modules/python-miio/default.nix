@@ -1,52 +1,84 @@
-{ stdenv
-, buildPythonPackage
-, fetchPypi
+{ lib
+, android-backup
 , appdirs
+, attrs
+, buildPythonPackage
 , click
 , construct
 , croniter
 , cryptography
+, defusedxml
+, fetchPypi
 , importlib-metadata
-, pytest
-, pytest-mock
-, zeroconf
-, attrs
-, pytz
-, tqdm
+, micloud
 , netifaces
+, poetry-core
+, pytest-mock
+, pytestCheckHook
+, pythonOlder
+, pytz
+, pyyaml
+, tqdm
+, zeroconf
 }:
 
 
 buildPythonPackage rec {
   pname = "python-miio";
-  version = "0.5.4";
+  version = "0.5.12";
+  format = "pyproject";
+
+  disabled = pythonOlder "3.7";
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "5a6fd3bb2cc2f75cdfe5673f36a5a418144d08add6e53b384cb146e99f27bd39";
+    hash = "sha256-BJw1Gg3FO2R6WWKjkrpxDN4fTMTug5AIj0SNq1gEbBY=";
   };
 
+  nativeBuildInputs = [
+    poetry-core
+  ];
+
+  propagatedBuildInputs = [
+    android-backup
+    appdirs
+    attrs
+    click
+    construct
+    croniter
+    cryptography
+    defusedxml
+    micloud
+    netifaces
+    pytz
+    pyyaml
+    tqdm
+    zeroconf
+  ] ++ lib.optionals (pythonOlder "3.8") [
+    importlib-metadata
+  ];
+
+  checkInputs = [
+    pytest-mock
+    pytestCheckHook
+  ];
+
   postPatch = ''
-    substituteInPlace setup.py \
-      --replace  "zeroconf>=0.25.1,<0.26.0" "zeroconf"
-    substituteInPlace setup.py \
-      --replace  "pytz>=2019.3,<2020.0" "pytz"
-    substituteInPlace setup.py \
-      --replace  "cryptography>=2.9,<3.0" "cryptography"
-    '';
-
-  checkInputs = [ pytest pytest-mock];
-  propagatedBuildInputs = [ appdirs click construct croniter cryptography importlib-metadata zeroconf attrs pytz tqdm netifaces ];
-
-  checkPhase = ''
-    pytest
+    substituteInPlace pyproject.toml \
+      --replace 'defusedxml = "^0"' 'defusedxml = "*"'
+    # Will be fixed with the next release, https://github.com/rytilahti/python-miio/pull/1378
+    substituteInPlace miio/integrations/vacuum/roborock/vacuum_cli.py \
+      --replace "resultcallback" "result_callback"
   '';
 
-  meta = with stdenv.lib; {
+  pythonImportsCheck = [
+    "miio"
+  ];
+
+  meta = with lib; {
     description = "Python library for interfacing with Xiaomi smart appliances";
     homepage = "https://github.com/rytilahti/python-miio";
-    license = licenses.gpl3;
+    license = licenses.gpl3Only;
     maintainers = with maintainers; [ flyfloh ];
   };
 }
-

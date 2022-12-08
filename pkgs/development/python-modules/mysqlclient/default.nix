@@ -1,8 +1,8 @@
-{ stdenv, buildPythonPackage, fetchPypi, libmysqlclient }:
+{ lib, buildPythonPackage, fetchPypi, libmysqlclient }:
 
 buildPythonPackage rec {
   pname = "mysqlclient";
-  version = "2.0.2";
+  version = "2.1.1";
 
   nativeBuildInputs = [
     libmysqlclient
@@ -17,13 +17,13 @@ buildPythonPackage rec {
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "8df057b08fc27d8f7106bfa997d0a21e2acef017f905f06d6fb0aa6a20d4d2b2";
+    sha256 = "sha256-godX5Bn7Ed1sXtJXbsksPvqpOg98OeJjWG0e53nD14I=";
   };
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Python interface to MySQL";
     homepage = "https://github.com/PyMySQL/mysqlclient-python";
-    license = licenses.gpl1;
+    license = licenses.gpl2Only;
     maintainers = with maintainers; [ y0no ];
   };
 }

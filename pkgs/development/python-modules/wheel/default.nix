@@ -7,15 +7,21 @@
 
 buildPythonPackage rec {
   pname = "wheel";
-  version = "0.35.1";
+  version = "0.37.1";
   format = "other";
 
   src = fetchFromGitHub {
     owner = "pypa";
     repo = pname;
     rev = version;
-    sha256 = "uS+9a47ZopI0yGlEnJi421WyzS//8BxUvH25hX4BBL8=";
+    sha256 = "sha256-JlTmUPY3yo/uROyd3nW1dJa23zbLhgQTwcmqZkPOrHs=";
     name = "${pname}-${version}-source";
+    postFetch = ''
+      cd $out
+      mv tests/testdata/unicode.dist/unicodedist/åäö_日本語.py \
+        tests/testdata/unicode.dist/unicodedist/æɐø_日本價.py
+      patch -p1 < ${./0001-tests-Rename-a-a-o-_-.py-_-.py.patch}
+    '';
   };
 
   nativeBuildInputs = [
@@ -31,7 +37,7 @@ buildPythonPackage rec {
   pipInstallFlags = [ "--ignore-installed" ];
 
   meta = with lib; {
-    homepage = "https://bitbucket.org/pypa/wheel/";
+    homepage = "https://github.com/pypa/wheel";
     description = "A built-package format for Python";
     longDescription = ''
       This library is the reference implementation of the Python wheel packaging standard,

@@ -1,11 +1,11 @@
-{ stdenv
+{ lib, stdenv
 , fetchFromGitHub
 , ninja
 , meson
 , pkg-config
 , gthree
 , gsound
-, epoxy
+, libepoxy
 , gtk3
 }:
 
@@ -29,11 +29,11 @@ stdenv.mkDerivation rec {
   buildInputs = [
     gthree
     gsound
-    epoxy
+    libepoxy
     gtk3
   ];
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Gthree port of HexGL";
     homepage = "https://github.com/alexlarsson/gnome-hexgl";
     license = licenses.mit;

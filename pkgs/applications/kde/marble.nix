@@ -6,8 +6,12 @@
 }:
 
 mkDerivation {
-  name = "marble";
-  meta.license = with lib.licenses; [ lgpl21 gpl3 ];
+  pname = "marble";
+  meta = {
+    homepage = "https://apps.kde.org/marble/";
+    description = "Virtual globe";
+    license = with lib.licenses; [ lgpl21 gpl3 ];
+  };
   outputs = [ "out" "dev" ];
   nativeBuildInputs = [ extra-cmake-modules kdoctools perl ];
   propagatedBuildInputs = [

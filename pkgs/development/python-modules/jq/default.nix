@@ -2,15 +2,23 @@
 
 buildPythonPackage rec {
   pname = "jq";
-  version = "1.1.1";
+  version = "1.2.3";
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "62d649c4f6f26ed91810c8db075f5fe05319c3dc99dbebcd2d31b0b697a4592e";
+    sha256 = "sha256-15bXqaa6c6RMoHKqUAcOhPrhMBbqYHrDdnZAaFaHElc=";
   };
-  patches = [ ./jq-py-setup.patch ];
+
+  patches = [
+    # Removes vendoring
+    ./jq-py-setup.patch
+  ];
 
   buildInputs = [ jq ];
+
+  # no tests executed
+  doCheck = false;
+  pythonImportsCheck = [ "jq" ];
 
   meta = {
     description = "Python bindings for jq, the flexible JSON processor";

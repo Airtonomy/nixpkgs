@@ -1,4 +1,4 @@
-{ lib, python3, fetchFromGitHub, git, pkgconfig }:
+{ lib, stdenv, python3, fetchFromGitHub, git, pkg-config }:
 
 # Note:
 # Conan has specific dependency demands; check
@@ -14,13 +14,6 @@
 
 let newPython = python3.override {
   packageOverrides = self: super: {
-    distro = super.distro.overridePythonAttrs (oldAttrs: rec {
-      version = "1.1.0";
-      src = oldAttrs.src.override {
-        inherit version;
-        sha256 = "1vn1db2akw98ybnpns92qi11v94hydwp130s8753k6ikby95883j";
-      };
-    });
     node-semver = super.node-semver.overridePythonAttrs (oldAttrs: rec {
       version = "0.6.1";
       src = oldAttrs.src.override {
@@ -28,31 +21,31 @@ let newPython = python3.override {
         sha256 = "1dv6mjsm67l1razcgmq66riqmsb36wns17mnipqr610v0z0zf5j0";
       };
     });
-    pluginbase = super.pluginbase.overridePythonAttrs (oldAttrs: rec {
-      version = "0.7";
+    distro = super.distro.overridePythonAttrs (oldAttrs: rec {
+      version = "1.5.0";
       src = oldAttrs.src.override {
         inherit version;
-        sha256 = "c0abe3218b86533cca287e7057a37481883c07acef7814b70583406938214cc8";
+        sha256 = "14nz51cqlnxmgfqqilxyvjwwa5xfivdvlm0d0b1qzgcgwdm7an0f";
       };
     });
   };
 };
 
 in newPython.pkgs.buildPythonApplication rec {
-  version = "1.27.0";
+  version = "1.49.0";
   pname = "conan";
 
   src = fetchFromGitHub {
     owner = "conan-io";
     repo = "conan";
     rev = version;
-    sha256 = "0ncqs1p4g23fmzgdmwppgxr8w275h38hgjdzs456cgivz8xs9rjl";
+    hash = "sha256-BJGstNAnAZtpwagsCY+4quTd0/79zL+v4ifKikS3vaw=";
   };
 
   propagatedBuildInputs = with newPython.pkgs; [
     bottle
     colorama
-    dateutil
+    python-dateutil
     deprecation
     distro
     fasteners
@@ -69,10 +62,10 @@ in newPython.pkgs.buildPythonApplication rec {
     six
     tqdm
     urllib3
-  ];
+  ] ++ lib.optionals stdenv.isDarwin [ idna cryptography pyopenssl ];
 
   checkInputs = [
-    pkgconfig
+    pkg-config
     git
   ] ++ (with newPython.pkgs; [
     codecov
@@ -87,10 +80,7 @@ in newPython.pkgs.buildPythonApplication rec {
   doCheck = false;
 
   postPatch = ''
-    substituteInPlace conans/requirements.txt \
-      --replace "PyYAML>=3.11, <3.14.0" "PyYAML" \
-      --replace "deprecation>=2.0, <2.1" "deprecation" \
-      --replace "six>=1.10.0,<=1.14.0" "six"
+    substituteInPlace conans/requirements.txt --replace 'PyYAML>=3.11, <6.0' 'PyYAML>=3.11'
   '';
 
   meta = with lib; {
@@ -98,6 +88,5 @@ in newPython.pkgs.buildPythonApplication rec {
     description = "Decentralized and portable C/C++ package manager";
     license = licenses.mit;
     maintainers = with maintainers; [ HaoZeke ];
-    platforms = platforms.linux;
   };
 }

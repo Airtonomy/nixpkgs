@@ -1,5 +1,11 @@
-{ lib, stdenv, fetchPypi, buildPythonPackage
-, boto3, requests, datadog, configparser, python
+{ lib
+, fetchPypi
+, buildPythonPackage
+, chardet
+, configparser
+, datadog
+, requests
+, python
 }:
 
 buildPythonPackage rec {
@@ -11,15 +17,19 @@ buildPythonPackage rec {
     sha256 = "iWlNX43ZtvU73wz4+8DgDulQNOnssJGxTBkvAaLj530=";
   };
 
-  propagatedBuildInputs = [ requests datadog ]
-    ++ lib.optional python.isPy2 configparser;
+  propagatedBuildInputs = [
+    chardet
+    datadog
+    requests
+  ]
+  ++ lib.optional python.isPy2 configparser;
 
   pythonImportsCheck = [ "gradient_statsd" ];
 
   # Pypi does not contain tests
   doCheck = false;
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Wrapper around the DogStatsd client";
     homepage    = "https://paperspace.com";
     license     = licenses.mit;

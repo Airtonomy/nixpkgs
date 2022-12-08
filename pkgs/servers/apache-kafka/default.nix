@@ -1,21 +1,40 @@
-{ stdenv, fetchurl, jre8, makeWrapper, bash, coreutils, gnugrep, gnused, ps,
+{ lib, stdenv, fetchurl, jdk17_headless, jdk11_headless, makeWrapper, bash, coreutils, gnugrep, gnused, ps,
   majorVersion ? "1.0" }:
 
 let
   versionMap = {
-    "2.4" = {
-      kafkaVersion = "2.4.1";
-      scalaVersion = "2.12";
-      sha256 = "0ahsprmpjz026mhbr79187wfdrxcg352iipyfqfrx68q878wnxr1";
-    };
-    "2.5" = {
-      kafkaVersion = "2.5.0";
+    "3.3" = {
+      kafkaVersion = "3.3.1";
       scalaVersion = "2.13";
-      sha256 = "0w3g7ii8x63m2blv2a8c491d0diczpliaqm9f7w5yn98hikh0aqi";
+      sha256 = "sha256-GK2KNl+xEd4knTu4vzyWzRrwYOyPs+PR/Ep64Q2QQt4=";
+      jre = jdk17_headless;
     };
-  };
+    "3.2" = {
+      kafkaVersion = "3.2.3";
+      scalaVersion = "2.13";
+      sha256 = "sha256-tvkbwBP83M1zl31J4g6uu4/LEhqJoIA9Eam48fyT24A=";
+      jre = jdk17_headless;
+    };
+    "3.1" = {
+      kafkaVersion = "3.1.2";
+      scalaVersion = "2.13";
+      sha256 = "sha256-SO1bTQkG3YQSv657QjwBeBCWbDlDqS3E5eUp7ciojnI=";
+      jre = jdk17_headless;
+    };
+    "3.0" = {
+      kafkaVersion = "3.0.2";
+      scalaVersion = "2.13";
+      sha256 = "sha256-G8b6STGlwow+iDqMCeZkF3HTKd94TKccmyfZ7AT/7yE=";
+      jre = jdk17_headless;
+    };
+    "2.8" = {
+      kafkaVersion = "2.8.2";
+      scalaVersion = "2.13";
+      sha256 = "sha256-inZXZJSs8ivtEqF6E/ApoyUHn8vg38wUG3KhowP8mfQ=";
+      jre = jdk11_headless;
+    };
 
-  jre = jre8; # TODO: remove override https://github.com/NixOS/nixpkgs/pull/89731
+  };
 in
 
 with versionMap.${majorVersion};
@@ -29,7 +48,8 @@ stdenv.mkDerivation rec {
     inherit sha256;
   };
 
-  buildInputs = [ jre makeWrapper bash gnugrep gnused coreutils ps ];
+  nativeBuildInputs = [ makeWrapper ];
+  buildInputs = [ jre bash gnugrep gnused coreutils ps ];
 
   installPhase = ''
     mkdir -p $out
@@ -55,12 +75,16 @@ stdenv.mkDerivation rec {
     chmod +x $out/bin\/*
   '';
 
-  meta = with stdenv.lib; {
-    homepage = "http://kafka.apache.org";
+  passthru = {
+    inherit jre; # Used by the NixOS module to select the supported jre
+  };
+
+  meta = with lib; {
+    homepage = "https://kafka.apache.org";
     description = "A high-throughput distributed messaging system";
     license = licenses.asl20;
+    sourceProvenance = with sourceTypes; [ binaryBytecode ];
     maintainers = [ maintainers.ragge ];
     platforms = platforms.unix;
   };
-
 }

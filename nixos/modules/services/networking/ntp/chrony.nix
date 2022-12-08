@@ -4,13 +4,14 @@ with lib;
 
 let
   cfg = config.services.chrony;
+  chronyPkg = cfg.package;
 
-  stateDir = "/var/lib/chrony";
+  stateDir = cfg.directory;
   driftFile = "${stateDir}/chrony.drift";
   keyFile = "${stateDir}/chrony.keys";
 
   configFile = pkgs.writeText "chrony.conf" ''
-    ${concatMapStringsSep "\n" (server: "server " + server + " iburst") cfg.servers}
+    ${concatMapStringsSep "\n" (server: "server " + server + " " + cfg.serverOption + optionalString (cfg.enableNTS) " nts") cfg.servers}
 
     ${optionalString
       (cfg.initstepslew.enabled && (cfg.servers != []))
@@ -19,13 +20,14 @@ let
 
     driftfile ${driftFile}
     keyfile ${keyFile}
+    ${optionalString (cfg.enableNTS) "ntsdumpdir ${stateDir}"}
 
     ${optionalString (!config.time.hardwareClockInLocalTime) "rtconutc"}
 
     ${cfg.extraConfig}
   '';
 
-  chronyFlags = "-n -m -u chrony -f ${configFile} ${toString cfg.extraFlags}";
+  chronyFlags = [ "-n" "-m" "-u" "chrony" "-f" "${configFile}" ] ++ cfg.extraFlags;
 in
 {
   options = {
@@ -33,37 +35,87 @@ in
       enable = mkOption {
         type = types.bool;
         default = false;
-        description = ''
+        description = lib.mdDoc ''
           Whether to synchronise your machine's time using chrony.
           Make sure you disable NTP if you enable this service.
         '';
       };
 
+      package = mkOption {
+        type = types.package;
+        default = pkgs.chrony;
+        defaultText = literalExpression "pkgs.chrony";
+        description = lib.mdDoc ''
+          Which chrony package to use.
+        '';
+      };
+
       servers = mkOption {
         default = config.networking.timeServers;
-        description = ''
+        defaultText = literalExpression "config.networking.timeServers";
+        type = types.listOf types.str;
+        description = lib.mdDoc ''
           The set of NTP servers from which to synchronise.
         '';
       };
 
-      initstepslew = mkOption {
-        default = {
-          enabled = true;
-          threshold = 1000; # by default, same threshold as 'ntpd -g' (1000s)
-        };
-        description = ''
-          Allow chronyd to make a rapid measurement of the system clock error at
-          boot time, and to correct the system clock by stepping before normal
-          operation begins.
+      serverOption = mkOption {
+        default = "iburst";
+        type = types.enum [ "iburst" "offline" ];
+        description = lib.mdDoc ''
+          Set option for server directives.
+
+          Use "iburst" to rapidly poll on startup. Recommended if your machine
+          is consistently online.
+
+          Use "offline" to prevent polling on startup. Recommended if your
+          machine boots offline or is otherwise frequently offline.
         '';
+      };
+
+      enableNTS = mkOption {
+        type = types.bool;
+        default = false;
+        description = lib.mdDoc ''
+          Whether to enable Network Time Security authentication.
+          Make sure it is supported by your selected NTP server(s).
+        '';
+      };
+
+      initstepslew = {
+        enabled = mkOption {
+          type = types.bool;
+          default = true;
+          description = lib.mdDoc ''
+            Allow chronyd to make a rapid measurement of the system clock error
+            at boot time, and to correct the system clock by stepping before
+            normal operation begins.
+          '';
+        };
+
+        threshold = mkOption {
+          type = types.either types.float types.int;
+          default = 1000; # by default, same threshold as 'ntpd -g' (1000s)
+          description = lib.mdDoc ''
+            The threshold of system clock error (in seconds) above which the
+            clock will be stepped. If the correction required is less than the
+            threshold, a slew is used instead.
+          '';
+        };
+      };
+
+      directory = mkOption {
+        type = types.str;
+        default = "/var/lib/chrony";
+        description = lib.mdDoc "Directory where chrony state is stored.";
       };
 
       extraConfig = mkOption {
         type = types.lines;
         default = "";
-        description = ''
+        description = lib.mdDoc ''
           Extra configuration directives that should be added to
-          <literal>chrony.conf</literal>
+          `chrony.conf`
         '';
       };
 
@@ -71,7 +123,7 @@ in
         default = [];
         example = [ "-s" ];
         type = types.listOf types.str;
-        description = "Extra flags passed to the chronyd command.";
+        description = lib.mdDoc "Extra flags passed to the chronyd command.";
       };
     };
   };
@@ -79,7 +131,7 @@ in
   config = mkIf cfg.enable {
     meta.maintainers = with lib.maintainers; [ thoughtpolice ];
 
-    environment.systemPackages = [ pkgs.chrony ];
+    environment.systemPackages = [ chronyPkg ];
 
     users.groups.chrony.gid = config.ids.gids.chrony;
 
@@ -106,15 +158,15 @@ in
         wantedBy = [ "multi-user.target" ];
         wants    = [ "time-sync.target" ];
         before   = [ "time-sync.target" ];
-        after    = [ "network.target" ];
+        after    = [ "network.target" "nss-lookup.target" ];
         conflicts = [ "ntpd.service" "systemd-timesyncd.service" ];
 
-        path = [ pkgs.chrony ];
+        path = [ chronyPkg ];
 
         unitConfig.ConditionCapability = "CAP_SYS_TIME";
         serviceConfig =
           { Type = "simple";
-            ExecStart = "${pkgs.chrony}/bin/chronyd ${chronyFlags}";
+            ExecStart = "${chronyPkg}/bin/chronyd ${builtins.toString chronyFlags}";
 
             ProtectHome = "yes";
             ProtectSystem = "full";

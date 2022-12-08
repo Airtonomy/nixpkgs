@@ -1,51 +1,75 @@
-{ stdenv, fetchzip, autoPatchelfHook, fetchurl, xar, cpio }:
+{ lib, stdenv, fetchurl, fetchzip, autoPatchelfHook, installShellFiles, cpio, xar }:
 
-stdenv.mkDerivation rec {
-  pname = "1password";
-  version = "1.7.0";
+let
+  inherit (stdenv.hostPlatform) system;
+  fetch = srcPlatform: sha256: extension:
+    let
+      args = {
+        url = "https://cache.agilebits.com/dist/1P/op2/pkg/v${version}/op_${srcPlatform}_v${version}.${extension}";
+        inherit sha256;
+      } // lib.optionalAttrs (extension == "zip") { stripRoot = false; };
+    in
+    if extension == "zip" then fetchzip args else fetchurl args;
+
+  pname = "1password-cli";
+  version = "2.7.2";
+  sources = rec {
+    aarch64-linux = fetch "linux_arm64" "sha256-lYY69zbJqE9KuP1Yihfz444GFazHgR9zHVDq9RzZdTA=" "zip";
+    i686-linux = fetch "linux_386" "sha256-IgTusLxgeOS9u4G1M7JqqxJw2D3hy5L9wl77crgfHjM=" "zip";
+    x86_64-linux = fetch "linux_amd64" "sha256-OL/URp5eU3K1ObTlC4nXELa7NkrZDW5tFwhgVdrmPdQ=" "zip";
+    aarch64-darwin = fetch "apple_universal" "sha256-pL39V9AO2DjCcWlecteTMCcBBZVb3RXmJ8wk5gyFojg=" "pkg";
+    x86_64-darwin = aarch64-darwin;
+  };
+  platforms = builtins.attrNames sources;
+  mainProgram = "op";
+in
+
+stdenv.mkDerivation {
+  inherit pname version;
   src =
-    if stdenv.isLinux then fetchzip {
-      url = {
-        "i686-linux" = "https://cache.agilebits.com/dist/1P/op/pkg/v${version}/op_linux_386_v${version}.zip";
-        "x86_64-linux" = "https://cache.agilebits.com/dist/1P/op/pkg/v${version}/op_linux_amd64_v${version}.zip";
-      }.${stdenv.hostPlatform.system};
-      sha256 = {
-        "i686-linux" = "0fvi9pfcm6pfy628q2lg62bkikrgsisynrk3kkjisb9ldcyjgabw";
-        "x86_64-linux" = "1iskhls8g8w2zhk79gprz4vzrmm7r7fq87gwgd4xmj5md4nkzran";
-      }.${stdenv.hostPlatform.system};
-      stripRoot = false;
-    } else fetchurl {
-      url = "https://cache.agilebits.com/dist/1P/op/pkg/v${version}/op_darwin_amd64_v${version}.pkg";
-      sha256 = "0x6s26zgjryzmcg9qxmv5s2vml06q96yqbapasjfxqc3l205lnnn";
-    };
+    if (builtins.elem system platforms) then
+      sources.${system}
+    else
+      throw "Source for ${pname} is not available for ${system}";
 
-  buildInputs = stdenv.lib.optionals stdenv.isDarwin [ xar cpio ];
+  nativeBuildInputs = [ installShellFiles ] ++ lib.optional stdenv.isLinux autoPatchelfHook;
 
-  unpackPhase = stdenv.lib.optionalString stdenv.isDarwin ''
+  buildInputs = lib.optionals stdenv.isDarwin [ xar cpio ];
+
+  unpackPhase = lib.optionalString stdenv.isDarwin ''
     xar -xf $src
-    zcat Payload | cpio -i
+    zcat op.pkg/Payload | cpio -i
   '';
 
   installPhase = ''
-    install -D op $out/bin/op
+    runHook preInstall
+    install -D ${mainProgram} $out/bin/${mainProgram}
+    runHook postInstall
+  '';
+
+  postInstall = ''
+    HOME=$TMPDIR
+    installShellCompletion --cmd ${mainProgram} \
+      --bash <($out/bin/${mainProgram} completion bash) \
+      --fish <($out/bin/${mainProgram} completion fish) \
+      --zsh <($out/bin/${mainProgram} completion zsh)
   '';
 
   dontStrip = stdenv.isDarwin;
 
-  nativeBuildInputs = stdenv.lib.optionals stdenv.isLinux [ autoPatchelfHook ];
-
   doInstallCheck = true;
 
   installCheckPhase = ''
-    $out/bin/op --version
+    $out/bin/${mainProgram} --version
   '';
 
-  meta = with stdenv.lib; {
-    description  = "1Password command-line tool";
-    homepage     = "https://support.1password.com/command-line/";
-    downloadPage = "https://app-updates.agilebits.com/product_history/CLI";
-    maintainers  = with maintainers; [ joelburget marsam ];
-    license      = licenses.unfree;
-    platforms    = [ "i686-linux" "x86_64-linux" "x86_64-darwin" ];
+  meta = with lib; {
+    description = "1Password command-line tool";
+    homepage = "https://developer.1password.com/docs/cli/";
+    downloadPage = "https://app-updates.agilebits.com/product_history/CLI2";
+    maintainers = with maintainers; [ joelburget marsam ];
+    sourceProvenance = with sourceTypes; [ binaryNativeCode ];
+    license = licenses.unfree;
+    inherit mainProgram platforms;
   };
 }

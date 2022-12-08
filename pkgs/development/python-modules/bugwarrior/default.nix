@@ -1,6 +1,6 @@
-{ stdenv, buildPythonPackage, fetchPypi, pythonOlder, setuptools
-, twiggy, requests, offtrac, bugzilla, taskw, dateutil, pytz, keyring, six
-, jinja2, pycurl, dogpile_cache, lockfile, click, pyxdg, future, jira }:
+{ lib, buildPythonPackage, fetchPypi, pythonOlder, setuptools
+, twiggy, requests, offtrac, bugzilla, taskw, python-dateutil, pytz, keyring, six
+, jinja2, pycurl, dogpile-cache, lockfile, click, pyxdg, future, jira }:
 
 buildPythonPackage rec {
   pname = "bugwarrior";
@@ -14,14 +14,14 @@ buildPythonPackage rec {
 
   propagatedBuildInputs = [
     setuptools
-    twiggy requests offtrac bugzilla taskw dateutil pytz keyring six
-    jinja2 pycurl dogpile_cache lockfile click pyxdg future jira
+    twiggy requests offtrac bugzilla taskw python-dateutil pytz keyring six
+    jinja2 pycurl dogpile-cache lockfile click pyxdg future jira
   ];
 
   # for the moment oauth2client <4.0.0 and megaplan>=1.4 are missing for running the test suite.
   doCheck = false;
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     homepage = "https://github.com/ralphbean/bugwarrior";
     description = "Sync github, bitbucket, bugzilla, and trac issues with taskwarrior";
     license = licenses.gpl3Plus;

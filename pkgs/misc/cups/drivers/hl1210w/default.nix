@@ -1,4 +1,4 @@
-{stdenv, pkgsi686Linux, fetchurl, cups, dpkg, gnused, makeWrapper, ghostscript, file, a2ps, coreutils, gawk}:
+{lib, stdenv, pkgsi686Linux, fetchurl, cups, dpkg, gnused, makeWrapper, ghostscript, file, a2ps, coreutils, gawk}:
 
 let
   version = "3.0.1-1";
@@ -12,7 +12,8 @@ let
   };
 in
 stdenv.mkDerivation {
-  name = "cups-brother-hl1210W";
+  pname = "cups-brother-hl1210W";
+  inherit version;
 
   srcs = [ lprdeb cupsdeb ];
   nativeBuildInputs = [ makeWrapper ];
@@ -33,9 +34,9 @@ stdenv.mkDerivation {
     patchelf --set-interpreter ${pkgsi686Linux.glibc.out}/lib/ld-linux.so.2 $out/opt/brother/Printers/HL1210W/inf/braddprinter
 
     wrapProgram $out/opt/brother/Printers/HL1210W/lpd/psconvert2 \
-      --prefix PATH ":" ${ stdenv.lib.makeBinPath [ gnused coreutils gawk ] }
+      --prefix PATH ":" ${ lib.makeBinPath [ gnused coreutils gawk ] }
     wrapProgram $out/opt/brother/Printers/HL1210W/lpd/filter_HL1210W \
-      --prefix PATH ":" ${ stdenv.lib.makeBinPath [ ghostscript a2ps file gnused coreutils ] }
+      --prefix PATH ":" ${ lib.makeBinPath [ ghostscript a2ps file gnused coreutils ] }
 
     # install cups
     dpkg-deb -x ${cupsdeb} $out
@@ -49,14 +50,15 @@ stdenv.mkDerivation {
     ln -s $out/opt/brother/Printers/HL1210W/cupswrapper/brcupsconfig4 $out/lib/cups/filter/brcupsconfig4
 
     wrapProgram $out/opt/brother/Printers/HL1210W/cupswrapper/brother_lpdwrapper_HL1210W \
-      --prefix PATH ":" ${ stdenv.lib.makeBinPath [ gnused coreutils gawk ] }
+      --prefix PATH ":" ${ lib.makeBinPath [ gnused coreutils gawk ] }
     '';
 
   meta = {
     homepage = "http://www.brother.com/";
     description = "Brother HL1210W printer driver";
-    license = stdenv.lib.licenses.unfree;
-    platforms = stdenv.lib.platforms.linux;
+    sourceProvenance = with lib.sourceTypes; [ binaryNativeCode ];
+    license = lib.licenses.unfree;
+    platforms = lib.platforms.linux;
     downloadPage = "https://support.brother.com/g/b/downloadlist.aspx?c=nz&lang=en&prod=hl1210w_eu_as&os=128";
   };
 }

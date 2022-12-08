@@ -1,25 +1,52 @@
-{ stdenv, buildPythonPackage, fetchFromGitHub, pythonOlder
-, pytest, pytestrunner, pyyaml, six, pathlib2, isPy27 }:
+{ lib
+, antlr4_9-python3-runtime
+, buildPythonPackage
+, fetchFromGitHub
+, jre_minimal
+, pydevd
+, pytest-mock
+, pytestCheckHook
+, pythonOlder
+, pyyaml
+}:
 
 buildPythonPackage rec {
   pname = "omegaconf";
-  version = "1.4.1";
+  version = "2.2.3";
+  format = "setuptools";
+
+  disabled = pythonOlder "3.6";
 
   src = fetchFromGitHub {
     owner = "omry";
     repo = pname;
-    rev = version;
-    sha256 = "1vpcdjlq54pm8xmkv2hqm2n1ysvz2a9iqgf55x0w6slrb4595cwb";
+    rev = "refs/tags/v${version}";
+    hash = "sha256-sJUYi0M/6SBSeKVSJoNY7IbVmzRZVTlek8AyL2cOPAM=";
   };
 
-  checkInputs = [ pytest ];
-  buildInputs = [ pytestrunner ];
-  propagatedBuildInputs = [ pyyaml six ] ++ stdenv.lib.optional isPy27 pathlib2;
+  nativeBuildInputs = [
+    jre_minimal
+  ];
 
-  meta = with stdenv.lib; {
-    description = "A framework for configuring complex applications";
+  propagatedBuildInputs = [
+    antlr4_9-python3-runtime
+    pyyaml
+  ];
+
+  checkInputs = [
+    pydevd
+    pytest-mock
+    pytestCheckHook
+  ];
+
+  pythonImportsCheck = [
+    "omegaconf"
+  ];
+
+  meta = with lib; {
+    description = "Framework for configuring complex applications";
     homepage = "https://github.com/omry/omegaconf";
-    license = licenses.free;  # prior bsd license (1988)
+    license = licenses.bsd3;
     maintainers = with maintainers; [ bcdarwin ];
   };
 }

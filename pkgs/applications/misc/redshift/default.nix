@@ -1,6 +1,6 @@
-{ stdenv, fetchFromGitHub, fetchFromGitLab
+{ lib, stdenv, fetchFromGitHub, fetchFromGitLab
 , autoconf, automake, gettext, intltool
-, libtool, pkgconfig, wrapGAppsHook, wrapPython, gobject-introspection
+, libtool, pkg-config, wrapGAppsHook, wrapPython, gobject-introspection
 , gtk3, python, pygobject3, pyxdg
 
 , withQuartz ? stdenv.isDarwin, ApplicationServices
@@ -10,7 +10,7 @@
 , withGeolocation ? true
 , withCoreLocation ? withGeolocation && stdenv.isDarwin, CoreLocation, Foundation, Cocoa
 , withGeoclue ? withGeolocation && stdenv.isLinux, geoclue
-, withAppIndicator ? true, libappindicator, libayatana-appindicator
+, withAppIndicator ? stdenv.isLinux, libappindicator, libayatana-appindicator
 }:
 
 let
@@ -19,7 +19,7 @@ let
     stdenv.mkDerivation rec {
       inherit pname version src meta;
 
-      patches = stdenv.lib.optionals (pname != "gammastep") [
+      patches = lib.optionals (pname != "gammastep") [
         # https://github.com/jonls/redshift/pull/575
         ./575.patch
       ];
@@ -30,7 +30,7 @@ let
         gettext
         intltool
         libtool
-        pkgconfig
+        pkg-config
         wrapGAppsHook
         wrapPython
       ];
@@ -41,7 +41,7 @@ let
         "--enable-drm=${if withDrm then "yes" else "no"}"
         "--enable-quartz=${if withQuartz then "yes" else "no"}"
         "--enable-corelocation=${if withCoreLocation then "yes" else "no"}"
-      ] ++ stdenv.lib.optionals (pname == "gammastep") [
+      ] ++ lib.optionals (pname == "gammastep") [
         "--with-systemduserunitdir=${placeholder "out"}/share/systemd/user/"
         "--enable-apparmor"
       ];
@@ -50,12 +50,12 @@ let
         gobject-introspection
         gtk3
         python
-      ] ++ stdenv.lib.optional  withRandr        libxcb
-        ++ stdenv.lib.optional  withGeoclue      geoclue
-        ++ stdenv.lib.optional  withDrm          libdrm
-        ++ stdenv.lib.optional  withQuartz       ApplicationServices
-        ++ stdenv.lib.optionals withCoreLocation [ CoreLocation Foundation Cocoa ]
-        ++ stdenv.lib.optional  withAppIndicator (if (pname != "gammastep")
+      ] ++ lib.optional  withRandr        libxcb
+        ++ lib.optional  withGeoclue      geoclue
+        ++ lib.optional  withDrm          libdrm
+        ++ lib.optional  withQuartz       ApplicationServices
+        ++ lib.optionals withCoreLocation [ CoreLocation Foundation Cocoa ]
+        ++ lib.optional  withAppIndicator (if (pname != "gammastep")
              then libappindicator
              else libayatana-appindicator)
         ;
@@ -64,7 +64,16 @@ let
 
       preConfigure = "./bootstrap";
 
-      postFixup = "wrapPythonPrograms";
+      dontWrapGApps = true;
+
+      preFixup = ''
+        makeWrapperArgs+=("''${gappsWrapperArgs[@]}")
+      '';
+
+      postFixup = ''
+        wrapPythonPrograms
+        wrapGApp $out/bin/${pname}
+      '';
 
       # the geoclue agent may inspect these paths and expect them to be
       # valid without having the correct $PATH set
@@ -95,7 +104,7 @@ rec {
       sha256 = "12cb4gaqkybp4bkkns8pam378izr2mwhr2iy04wkprs2v92j7bz6";
     };
 
-    meta = with stdenv.lib; {
+    meta = with lib; {
       description = "Screen color temperature manager";
       longDescription = ''
         Redshift adjusts the color temperature according to the position
@@ -108,45 +117,27 @@ rec {
       license = licenses.gpl3Plus;
       homepage = "http://jonls.dk/redshift";
       platforms = platforms.unix;
-      maintainers = with maintainers; [ yegortimoshenko globin ];
-    };
-  };
-
-  redshift-wlr = mkRedshift {
-    pname = "redshift-wlr";
-    # upstream rebases so this is the push date
-    version = "2019-08-24";
-
-    src = fetchFromGitHub {
-      owner = "minus7";
-      repo = "redshift";
-      rev = "7da875d34854a6a34612d5ce4bd8718c32bec804";
-      sha256 = "0rs9bxxrw4wscf4a8yl776a8g880m5gcm75q06yx2cn3lw2b7v22";
-    };
-
-    meta = redshift.meta // {
-      description = redshift.meta.description + "(with wlroots patches)";
-      homepage = "https://github.com/minus7/redshift";
+      maintainers = with maintainers; [ globin yana ];
     };
   };
 
   gammastep = mkRedshift rec {
     pname = "gammastep";
-    version = "2.0.6";
+    version = "2.0.8";
 
     src = fetchFromGitLab {
       owner = "chinstrap";
       repo = pname;
       rev = "v${version}";
-      sha256 = "00s457yajnm7vq6jfanyri52pq000jbyjiy6wz2i3f0rq7cc01ya";
+      sha256 = "071f3iqdbblb3awnx48j19kspk6l2g3658za80i2mf4gacgq9fm1";
     };
 
     meta = redshift.meta // {
       name = "${pname}-${version}";
       longDescription = "Gammastep"
-        + stdenv.lib.removePrefix "Redshift" redshift.meta.longDescription;
+        + lib.removePrefix "Redshift" redshift.meta.longDescription;
       homepage = "https://gitlab.com/chinstrap/gammastep";
-      maintainers = [ stdenv.lib.maintainers.primeos ] ++ redshift.meta.maintainers;
+      maintainers = [ lib.maintainers.primeos ] ++ redshift.meta.maintainers;
     };
   };
 }

@@ -1,4 +1,5 @@
-{ stdenv
+{ lib
+, stdenv
 , fetchurl
 , cmake
 , flex
@@ -10,51 +11,67 @@
 , curl
 , libmaxminddb
 , gperftools
-, python
+, python3
 , swig
 , gettext
-, fetchpatch
 , coreutils
+, ncurses
+, caf
 }:
-let
-  preConfigure = (import ./script.nix {inherit coreutils;});
-in
+
 stdenv.mkDerivation rec {
   pname = "zeek";
-  version = "3.2.3";
+  version = "4.2.2";
 
   src = fetchurl {
     url = "https://download.zeek.org/zeek-${version}.tar.gz";
-    sha256 = "1in25clpbb2vdhms3iypj6r5sp8d1dxjcfn85c272sh7shnmqagr";
+    sha256 = "sha256-9Q3X24uAmnSnLUAklK+gC0Mu8eh81ZE2h/7uIVc8cAw=";
   };
 
-  nativeBuildInputs = [ cmake flex bison file ];
-  buildInputs = [ openssl libpcap zlib curl libmaxminddb gperftools python swig ]
-    ++ stdenv.lib.optionals stdenv.isDarwin [ gettext ];
-
-  #see issue https://github.com/zeek/zeek/issues/804 to modify hardlinking duplicate files.
-  inherit preConfigure;
-
-  enableParallelBuilding = true;
-
-  patches = stdenv.lib.optionals stdenv.cc.isClang [
-    # Fix pybind c++17 build with Clang. See: https://github.com/pybind/pybind11/issues/1604
-    (fetchpatch {
-      url = "https://github.com/pybind/pybind11/commit/759221f5c56939f59d8f342a41f8e2d2cacbc8cf.patch";
-      sha256 = "17qznp8yavnv84fjsbghv3d59z6k6rx74j49w0izakmgw5a95w84";
-      extraPrefix = "auxil/broker/bindings/python/3rdparty/pybind11/";
-      stripLen = 1;
-    })
+  nativeBuildInputs = [
+    bison
+    cmake
+    file
+    flex
   ];
 
+  buildInputs = [
+    curl
+    gperftools
+    libmaxminddb
+    libpcap
+    ncurses
+    openssl
+    python3
+    swig
+    zlib
+  ] ++ lib.optionals stdenv.isDarwin [
+    gettext
+  ];
+
+  outputs = [ "out" "lib" "py" ];
+
   cmakeFlags = [
-    "-DPY_MOD_INSTALL_DIR=${placeholder "out"}/${python.sitePackages}"
+    "-DCAF_ROOT=${caf}"
+    "-DZEEK_PYTHON_DIR=${placeholder "py"}/lib/${python3.libPrefix}/site-packages"
     "-DENABLE_PERFTOOLS=true"
     "-DINSTALL_AUX_TOOLS=true"
   ];
 
-  meta = with stdenv.lib; {
-    description = "Powerful network analysis framework much different from a typical IDS";
+  postInstall = ''
+    for file in $out/share/zeek/base/frameworks/notice/actions/pp-alarms.zeek $out/share/zeek/base/frameworks/notice/main.zeek; do
+      substituteInPlace $file \
+         --replace "/bin/rm" "${coreutils}/bin/rm" \
+         --replace "/bin/cat" "${coreutils}/bin/cat"
+    done
+
+    for file in $out/share/zeek/policy/misc/trim-trace-file.zeek $out/share/zeek/base/frameworks/logging/postprocessors/scp.zeek $out/share/zeek/base/frameworks/logging/postprocessors/sftp.zeek; do
+      substituteInPlace $file --replace "/bin/rm" "${coreutils}/bin/rm"
+    done
+  '';
+
+  meta = with lib; {
+    description = "Network analysis framework much different from a typical IDS";
     homepage = "https://www.zeek.org";
     changelog = "https://github.com/zeek/zeek/blob/v${version}/CHANGES";
     license = licenses.bsd3;

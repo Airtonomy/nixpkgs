@@ -1,11 +1,10 @@
-{ stdenv
+{ lib, stdenv
 , darwin
 , fetchurl
 , makeWrapper
 , pkg-config
-, autoconf
-, automake
 , poppler_utils
+, gitMinimal
 , harfbuzz
 , icu
 , fontconfig
@@ -18,9 +17,11 @@
 let
   luaEnv = lua.withPackages(ps: with ps; [
     cassowary
+    cldr
     cosmo
-    compat53
+    fluent
     linenoise
+    loadkit
     lpeg
     lua-zlib
     lua_cliargs
@@ -30,19 +31,23 @@ let
     luarepl
     luasec
     luasocket
+    luautf8
     penlight
-    stdlib
     vstruct
+  ] ++ lib.optionals (lib.versionOlder lua.luaversion "5.2") [
+    bit32
+  ] ++ lib.optionals (lib.versionOlder lua.luaversion "5.3") [
+    compat53
   ]);
 in
 
 stdenv.mkDerivation rec {
   pname = "sile";
-  version = "0.10.12";
+  version = "0.14.3";
 
   src = fetchurl {
     url = "https://github.com/sile-typesetter/sile/releases/download/v${version}/${pname}-${version}.tar.xz";
-    sha256 = "0bxm3vhba289vcgpzbs1hz5fjamf0zgxkr7h8vcsiijjjavmv64a";
+    sha256 = "1n7nlrvhdp6ilpx6agb5w6flss5vbflbldv0495h19fy5fxkb5vz";
   };
 
   configureFlags = [
@@ -51,29 +56,34 @@ stdenv.mkDerivation rec {
   ];
 
   nativeBuildInputs = [
-    autoconf
-    automake
+    gitMinimal
     pkg-config
     makeWrapper
   ];
   buildInputs = [
+    luaEnv
     harfbuzz
     icu
     fontconfig
     libiconv
-    luaEnv
   ]
-  ++ stdenv.lib.optional stdenv.isDarwin darwin.apple_sdk.frameworks.AppKit
+  ++ lib.optional stdenv.isDarwin darwin.apple_sdk.frameworks.AppKit
   ;
   checkInputs = [
     poppler_utils
   ];
+  passthru = {
+    # So it will be easier to inspect this environment, in comparison to others
+    inherit luaEnv;
+  };
 
-  preConfigure = stdenv.lib.optionalString stdenv.isDarwin ''
+  postPatch = ''
+    patchShebangs build-aux/*.sh
+  '' + lib.optionalString stdenv.isDarwin ''
     sed -i -e 's|@import AppKit;|#import <AppKit/AppKit.h>|' src/macfonts.m
   '';
 
-  NIX_LDFLAGS = stdenv.lib.optionalString stdenv.isDarwin "-framework AppKit";
+  NIX_LDFLAGS = lib.optionalString stdenv.isDarwin "-framework AppKit";
 
   FONTCONFIG_FILE = makeFontsConf {
     fontDirectories = [
@@ -85,7 +95,7 @@ stdenv.mkDerivation rec {
 
   enableParallelBuilding = true;
 
-  preBuild = stdenv.lib.optionalString stdenv.cc.isClang ''
+  preBuild = lib.optionalString stdenv.cc.isClang ''
     substituteInPlace libtexpdf/dpxutil.c \
       --replace "ASSERT(ht && ht->table && iter);" "ASSERT(ht && iter);"
   '';
@@ -95,7 +105,8 @@ stdenv.mkDerivation rec {
 
   outputs = [ "out" "doc" "man" "dev" ];
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
+    broken = stdenv.isDarwin;
     description = "A typesetting system";
     longDescription = ''
       SILE is a typesetting system; its job is to produce beautiful
@@ -107,7 +118,8 @@ stdenv.mkDerivation rec {
       technologies and borrowing some ideas from graphical systems
       such as InDesign.
     '';
-    homepage = "https://sile-typesetter.org/";
+    homepage = "https://sile-typesetter.org";
+    changelog = "https://github.com/sile-typesetter/sile/raw/v${version}/CHANGELOG.md";
     platforms = platforms.unix;
     maintainers = with maintainers; [ doronbehar alerque ];
     license = licenses.mit;

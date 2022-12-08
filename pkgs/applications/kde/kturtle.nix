@@ -1,9 +1,9 @@
 { mkDerivation, lib, extra-cmake-modules, kdoctools, ki18n, kio, knewstuff }:
 
 mkDerivation {
-  name = "kturtle";
+  pname = "kturtle";
   meta = with lib; {
-    homepage = "https://kde.org/applications/en/utilities/org.kde.kturtle";
+    homepage = "https://invent.kde.org/education/kturtle";
     description = "An educational programming environment for learning how to program";
     maintainers = with maintainers; [ freezeboy ];
     license = licenses.gpl2Plus;

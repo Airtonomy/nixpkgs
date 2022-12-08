@@ -1,36 +1,41 @@
-{ lib, fetchFromGitHub, python3Packages, openvpn, dialog, iptables }:
+{ lib
+, buildPythonApplication
+, pythonOlder
+, fetchFromGitHub
+, protonvpn-nm-lib
+, pythondialog
+, dialog
+}:
 
-python3Packages.buildPythonApplication rec {
-  pname = "protonvpn-linux-cli";
-  version = "2.2.4";
+buildPythonApplication rec {
+  pname = "protonvpn-cli";
+  version = "3.13.0";
+  format = "setuptools";
+
+  disabled = pythonOlder "3.5";
 
   src = fetchFromGitHub {
     owner = "protonvpn";
     repo = "linux-cli";
-    rev = "v${version}";
-    sha256 = "08yca0a0prrnrc7ir7ajd56yxvxpcs4m1k8f5kf273f5whgr7wzw";
+    rev = "refs/tags/${version}";
+    sha256 = "sha256-KhfogC23i7THe6YZJ6Sy1+q83vZupHsS69NurHCeo8I=";
   };
 
-  propagatedBuildInputs = (with python3Packages; [
-      requests
-      docopt
-      setuptools
-      jinja2
-      pythondialog
-    ]) ++ [
-      dialog
-      openvpn
-      iptables
-    ];
+  propagatedBuildInputs = [
+    protonvpn-nm-lib
+    pythondialog
+    dialog
+  ];
 
-  # No tests
+  # Project has a dummy test
   doCheck = false;
 
   meta = with lib; {
     description = "Linux command-line client for ProtonVPN";
     homepage = "https://github.com/protonvpn/linux-cli";
-    maintainers = with maintainers; [ jtcoolen jefflabonte ];
-    license = licenses.gpl3;
-    platforms = platforms.unix;
+    maintainers = with maintainers; [ wolfangaukang ];
+    license = licenses.gpl3Plus;
+    platforms = platforms.linux;
+    mainProgram = "protonvpn-cli";
   };
 }

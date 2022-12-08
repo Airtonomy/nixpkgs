@@ -1,21 +1,35 @@
-{ stdenv, buildGoModule, fetchFromGitHub }:
+{ lib
+, stdenv
+, buildGoModule
+, fetchFromGitHub
+}:
 
 buildGoModule rec {
   pname = "coredns";
-  version = "1.8.0";
+  version = "1.10.0";
 
   src = fetchFromGitHub {
     owner = "coredns";
     repo = "coredns";
     rev = "v${version}";
-    sha256 = "04hkz70s5i7ndwyg39za3k83amvmi90rkjm8qp3w3a8fbmq4q4y6";
+    sha256 = "sha256-Kb4nkxuyZHJT5dqFSkqReFkN8q1uYm7wbhSIiLd8Hck=";
   };
 
-  vendorSha256 = "1zwrf2pshb9r3yvp7mqali47163nqhvs9ghflczfpigqswd1m0p0";
+  vendorSha256 = "sha256-nyMeKmGoypDrpZHYHGjhRnjgC3tbOX/dlj96pnXrdLE=";
 
-  doCheck = false;
+  postPatch = ''
+    substituteInPlace test/file_cname_proxy_test.go \
+      --replace "TestZoneExternalCNAMELookupWithProxy" \
+                "SkipZoneExternalCNAMELookupWithProxy"
 
-  meta = with stdenv.lib; {
+    substituteInPlace test/readme_test.go \
+      --replace "TestReadme" "SkipReadme"
+  '' + lib.optionalString stdenv.isDarwin ''
+    # loopback interface is lo0 on macos
+    sed -E -i 's/\blo\b/lo0/' plugin/bind/setup_test.go
+  '';
+
+  meta = with lib; {
     homepage = "https://coredns.io";
     description = "A DNS server that runs middleware";
     license = licenses.asl20;

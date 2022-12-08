@@ -1,40 +1,44 @@
-{ fetchurl, lib, which, ocamlPackages }:
+{ fetchFromGitHub, fetchpatch, lib, which, ocamlPackages }:
 
 let
   pname = "alt-ergo";
-  version = "2.3.3";
+  version = "2.4.2";
 
-  src = fetchurl {
-    url = "https://alt-ergo.ocamlpro.com/http/alt-ergo-${version}/alt-ergo-${version}.tar.gz";
-    sha256 = "124k2a4ikk4wdpmvgjpgl97x9skvr9qznk8m68dzsynzpv6yksaj";
+  configureScript = "ocaml unix.cma configure.ml";
+
+  src = fetchFromGitHub {
+    owner = "OCamlPro";
+    repo = pname;
+    rev = version;
+    sha256 = "sha256-8pJ/1UAbheQaLFs5Uubmmf5D0oFJiPxF6e2WTZgRyAc=";
   };
-
-  nativeBuildInputs = [ which ];
-
 in
 
 let alt-ergo-lib = ocamlPackages.buildDunePackage rec {
   pname = "alt-ergo-lib";
-  inherit version src nativeBuildInputs;
-  configureFlags = pname;
-  propagatedBuildInputs = with ocamlPackages; [ num ocplib-simplex stdlib-shims zarith ];
+  inherit version src configureScript;
+  configureFlags = [ pname ];
+  nativeBuildInputs = [ which ];
+  buildInputs = with ocamlPackages; [ dune-configurator ];
+  propagatedBuildInputs = with ocamlPackages; [ num ocplib-simplex seq stdlib-shims zarith ];
 }; in
 
 let alt-ergo-parsers = ocamlPackages.buildDunePackage rec {
   pname = "alt-ergo-parsers";
-  inherit version src nativeBuildInputs;
-  configureFlags = pname;
-  buildInputs = with ocamlPackages; [ menhir ];
+  inherit version src configureScript;
+  configureFlags = [ pname ];
+  nativeBuildInputs = [ which ocamlPackages.menhir ];
   propagatedBuildInputs = [ alt-ergo-lib ] ++ (with ocamlPackages; [ camlzip psmt2-frontend ]);
 }; in
 
 ocamlPackages.buildDunePackage {
 
-  inherit pname version src nativeBuildInputs;
+  inherit pname version src configureScript;
 
-  configureFlags = pname;
+  configureFlags = [ pname ];
 
-  buildInputs = [ alt-ergo-parsers ocamlPackages.menhir ];
+  nativeBuildInputs = [ which ocamlPackages.menhir ];
+  buildInputs = [ alt-ergo-parsers ocamlPackages.cmdliner ];
 
   meta = {
     description = "High-performance theorem prover and SMT solver";

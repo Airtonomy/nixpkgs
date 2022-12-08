@@ -1,7 +1,6 @@
-{ stdenv
-, fetchurl
-, fetchFromGitHub
+{ lib, stdenv
 , fetchpatch
+, fetchFromGitHub
 , ncurses
 , python3
 , cunit
@@ -11,30 +10,38 @@
 , libuuid
 , numactl
 , openssl
+, fetchurl
 }:
 
 let
-  dpdk-compat-patch = fetchurl {
-    url = "https://review.spdk.io/gerrit/plugins/gitiles/spdk/spdk/+/6acb9a58755856fb9316baf9dbbb7239dc6b9446%5E%21/?format=TEXT";
-    sha256 = "18q0956fkjw19r29hp16x4pygkfv01alj9cld2wlqqyfgp41nhn0";
-  };
+  # The old version has some CVEs howver they should not affect SPDK's usage of the framework: https://github.com/NixOS/nixpkgs/pull/171648#issuecomment-1121964568
+  dpdk' = dpdk.overrideAttrs (old: rec {
+    name = "dpdk-21.11";
+    src = fetchurl {
+      url = "https://fast.dpdk.org/rel/${name}.tar.xz";
+      sha256 = "sha256-Mkbj7WjuKzaaXYviwGzxCKZp4Vf01Bxby7sha/Wr06E=";
+    };
+  });
 in stdenv.mkDerivation rec {
   pname = "spdk";
-  version = "20.04.1";
+  version = "21.10";
 
   src = fetchFromGitHub {
     owner = "spdk";
     repo = "spdk";
     rev = "v${version}";
-    sha256 = "ApMyGamPrMalzZLbVkJlcwatiB8dOJmoxesdjkWZElk=";
+    sha256 = "sha256-pFynTbbSF1g58VD9bOhe3c4oCozeqE+35kECTQwDBDM=";
   };
 
   patches = [
-    ./spdk-dpdk-meson.patch
-    # https://review.spdk.io/gerrit/c/spdk/spdk/+/3134
+    # Backport of upstream patch for ncurses-6.3 support.
+    # Will be in next release after 21.10.
+    ./ncurses-6.3.patch
+
+    # DPDK 21.11 compatibility.
     (fetchpatch {
-      url = "https://github.com/spdk/spdk/commit/c954b5b722c5c163774d3598458ff726c48852ab.patch";
-      sha256 = "1n149hva5qxmpr0nmav10nya7zklafxi136f809clv8pag84g698";
+      url = "https://github.com/spdk/spdk/commit/f72cab94dd35d7b45ec5a4f35967adf3184ca616.patch";
+      sha256 = "sha256-sSetvyNjlM/hSOUsUO3/dmPzAliVcteNDvy34yM5d4A=";
     })
   ];
 
@@ -43,21 +50,22 @@ in stdenv.mkDerivation rec {
   ];
 
   buildInputs = [
-    cunit dpdk libaio libbsd libuuid numactl openssl ncurses
+    cunit dpdk' libaio libbsd libuuid numactl openssl ncurses
   ];
 
   postPatch = ''
     patchShebangs .
-    base64 -d ${dpdk-compat-patch} | patch -p1
   '';
-
-  configureFlags = [ "--with-dpdk=${dpdk}" ];
-
-  NIX_CFLAGS_COMPILE = "-mssse3"; # Necessary to compile.
 
   enableParallelBuilding = true;
 
-  meta = with stdenv.lib; {
+  configureFlags = [ "--with-dpdk=${dpdk'}" ];
+
+  NIX_CFLAGS_COMPILE = "-mssse3"; # Necessary to compile.
+  # otherwise does not find strncpy when compiling
+  NIX_LDFLAGS = "-lbsd";
+
+  meta = with lib; {
     description = "Set of libraries for fast user-mode storage";
     homepage = "https://spdk.io/";
     license = licenses.bsd3;

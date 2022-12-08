@@ -1,19 +1,32 @@
-{ lib, buildGoPackage, fetchFromGitHub, nixosTests }:
+{ lib, buildGoModule, fetchFromGitHub, nixosTests }:
 
-buildGoPackage rec {
+buildGoModule rec {
   pname = "VictoriaMetrics";
-  version = "1.42.0";
+  version = "1.83.0";
 
   src = fetchFromGitHub {
     owner = pname;
     repo = pname;
     rev = "v${version}";
-    sha256 = "10da15i3rn11dxnh82czaa2f9a4c3vf1d8kgfayp0dl7xs1xqhsd";
+    sha256 = "sha256-bc13aIo2gCHZfBRbi5CoPLcCGoNJgTuWJbCwqX/QgtU=";
   };
 
-  goPackagePath = "github.com/VictoriaMetrics/VictoriaMetrics";
+  vendorSha256 = null;
 
-  buildFlagsArray = [ "-ldflags=-s -w -X ${goPackagePath}/lib/buildinfo.Version=${version}" ];
+  postPatch = ''
+    # main module (github.com/VictoriaMetrics/VictoriaMetrics) does not contain package
+    # github.com/VictoriaMetrics/VictoriaMetrics/app/vmui/packages/vmui/web
+    #
+    # This appears to be some kind of test server for development purposes only.
+    rm -f app/vmui/packages/vmui/web/{go.mod,main.go}
+
+    # Increase timeouts in tests to prevent failure on heavily loaded builders
+    substituteInPlace lib/storage/storage_test.go \
+      --replace "time.After(10 " "time.After(120 " \
+      --replace "time.After(30 " "time.After(120 "
+  '';
+
+  ldflags = [ "-s" "-w" "-X github.com/VictoriaMetrics/VictoriaMetrics/lib/buildinfo.Version=${version}" ];
 
   passthru.tests = { inherit (nixosTests) victoriametrics; };
 
@@ -21,6 +34,7 @@ buildGoPackage rec {
     homepage = "https://victoriametrics.com/";
     description = "fast, cost-effective and scalable time series database, long-term remote storage for Prometheus";
     license = licenses.asl20;
-    maintainers = [ maintainers.yorickvp ];
+    maintainers = with maintainers; [ yorickvp ivan ];
+    changelog = "https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v${version}";
   };
 }

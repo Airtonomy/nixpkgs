@@ -1,4 +1,4 @@
-{ stdenv
+{ lib
 , fetchFromGitHub
 , python3
 , glibcLocales
@@ -9,20 +9,21 @@
 , libnotify
 , libutempter
 , vte
-, libwnck3
+, libwnck
+, nixosTests
 }:
 
 python3.pkgs.buildPythonApplication rec {
   pname = "guake";
-  version = "3.6.3";
+  version = "3.9.0";
 
   format = "other";
 
   src = fetchFromGitHub {
     owner = "Guake";
     repo = "guake";
-    rev = version;
-    sha256 = "13ipnmqcyixpa6qv83m0f91za4kar14s5jpib68b32z65x1h0j3b";
+    rev = "refs/tags/${version}";
+    sha256 = "sha256-BW13fBH26UqMPMjV8JC4QkpgzyoPfCpAfSkJD68uOZU=";
   };
 
   # Strict deps breaks guake
@@ -41,7 +42,7 @@ python3.pkgs.buildPythonApplication rec {
     gtk3
     keybinder3
     libnotify
-    libwnck3
+    libwnck
     python3
     vte
   ];
@@ -50,23 +51,25 @@ python3.pkgs.buildPythonApplication rec {
 
   propagatedBuildInputs = with python3.pkgs; [
     dbus-python
-    pbr
     pycairo
     pygobject3
-    setuptools
+    setuptools-scm
+    pyyaml
   ];
 
-  PBR_VERSION = version; # pbr needs either .git directory, sdist, or env var
+  SETUPTOOLS_SCM_PRETEND_VERSION = version;
 
   makeFlags = [
-    "prefix=${placeholder ''out''}"
+    "PREFIX=${placeholder "out"}"
   ];
 
   preFixup = ''
-    gappsWrapperArgs+=(--prefix LD_LIBRARY_PATH : "${stdenv.lib.makeLibraryPath [ libutempter ]}")
+    gappsWrapperArgs+=(--prefix LD_LIBRARY_PATH : "${lib.makeLibraryPath [ libutempter ]}")
   '';
 
-  meta = with stdenv.lib; {
+  passthru.tests.test = nixosTests.terminal-emulators.guake;
+
+  meta = with lib; {
     description = "Drop-down terminal for GNOME";
     homepage = "http://guake-project.org";
     license = licenses.gpl2;

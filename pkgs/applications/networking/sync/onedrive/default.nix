@@ -1,22 +1,34 @@
-{ stdenv, lib, fetchFromGitHub, autoreconfHook, ldc, installShellFiles, pkgconfig
-, curl, sqlite, libnotify
-, withSystemd ? stdenv.isLinux, systemd ? null }:
+{ stdenv
+, lib
+, fetchFromGitHub
+, autoreconfHook
+, ldc
+, installShellFiles
+, pkg-config
+, curl
+, sqlite
+, libnotify
+, withSystemd ? stdenv.isLinux
+, systemd
+}:
 
 stdenv.mkDerivation rec {
   pname = "onedrive";
-  version = "2.4.7";
+  version = "2.4.21";
 
   src = fetchFromGitHub {
     owner = "abraunegg";
     repo = pname;
     rev = "v${version}";
-    sha256 = "12g2z6c4f65y8cc7vyhk9nlg1mpbsmlsj7ghlny452qhr13m7qpn";
+    hash = "sha256-KZVRLXXaJYMqHzjxTfQaD0u7n3ACBEk3fLOmqwybNhM=";
   };
 
-  nativeBuildInputs = [ autoreconfHook ldc installShellFiles pkgconfig ];
+  nativeBuildInputs = [ autoreconfHook ldc installShellFiles pkg-config ];
 
   buildInputs = [
-    curl sqlite libnotify
+    curl
+    sqlite
+    libnotify
   ] ++ lib.optional withSystemd systemd;
 
   configureFlags = [
@@ -31,13 +43,14 @@ stdenv.mkDerivation rec {
   postInstall = ''
     installShellCompletion --bash --name ${pname}  contrib/completions/complete.bash
     installShellCompletion --zsh  --name _${pname} contrib/completions/complete.zsh
+    installShellCompletion --fish --name ${pname}  contrib/completions/complete.fish
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "A complete tool to interact with OneDrive on Linux";
     homepage = "https://github.com/abraunegg/onedrive";
-    license = licenses.gpl3;
-    maintainers = with maintainers; [ srgom ianmjones ];
+    license = licenses.gpl3Only;
+    maintainers = with maintainers; [ srgom peterhoeg bertof ];
     platforms = platforms.linux;
   };
 }

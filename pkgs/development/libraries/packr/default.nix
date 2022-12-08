@@ -1,7 +1,7 @@
-{ buildGoModule
+{ stdenv
+, buildGoModule
 , fetchFromGitHub
 , lib
-, stdenv
 , symlinkJoin
 }:
 
@@ -22,11 +22,19 @@ let p2 = buildGoModule rec {
 
   doCheck = false;
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "The simple and easy way to embed static files into Go binaries";
     homepage = "https://github.com/gobuffalo/packr";
     license = licenses.mit;
     maintainers = with maintainers; [ mmahut ];
+
+    # golang.org/x/sys needs to be updated due to:
+    #
+    #   https://github.com/golang/go/issues/49219
+    #
+    # but this package is no longer maintained.
+    #
+    broken = stdenv.isDarwin;
   };
 };
 p1 = buildGoModule rec {
@@ -51,6 +59,14 @@ p1 = buildGoModule rec {
     homepage = "https://github.com/gobuffalo/packr";
     license = licenses.mit;
     maintainers = with maintainers; [ mmahut ];
+
+    # golang.org/x/sys needs to be updated due to:
+    #
+    #   https://github.com/golang/go/issues/49219
+    #
+    # but this package is no longer maintained.
+    #
+    broken = stdenv.isDarwin;
   };
 };
 in

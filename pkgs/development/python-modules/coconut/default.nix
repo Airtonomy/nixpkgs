@@ -1,47 +1,38 @@
-{
-  lib,
-  buildPythonApplication,
-  fetchFromGitHub,
-  fetchpatch,
-
-  cpyparsing,
-  ipykernel,
-  mypy,
-  pygments,
-  pytest,
-  prompt_toolkit,
-  tkinter,
-  watchdog
+{ lib
+, buildPythonPackage
+, fetchFromGitHub
+, cpyparsing
+, ipykernel
+, mypy
+, pexpect
+, pygments
+, pytestCheckHook
+, prompt-toolkit
+, tkinter
+, watchdog
 }:
 
-buildPythonApplication rec {
+buildPythonPackage rec {
   pname = "coconut";
-  version = "1.4.3";
+  version = "1.6.0";
 
   src = fetchFromGitHub {
     owner = "evhub";
     repo = "coconut";
     rev = "v${version}";
-    sha256 = "1pz13vza3yy95dbylnq89fzc3mwgcqr7ds096wy25k6vxd9dp9c3";
+    sha256 = "/397YGV6QWWmKfqr5hSvqRoPOu7Hx1Pak6rVPR3etzw=";
   };
 
-  propagatedBuildInputs = [ cpyparsing pygments prompt_toolkit ipykernel mypy watchdog ];
+  propagatedBuildInputs = [ cpyparsing ipykernel mypy pygments prompt-toolkit watchdog ];
 
-  patches = [
-    (fetchpatch {
-      name = "fix-setuptools-version-check.patch";
-      url = "https://github.com/LibreCybernetics/coconut/commit/2916a087da1e063cc4438b68d4077347fd1ea4a2.patch";
-      sha256 = "136jbd2rvnifw30y73vv667002nf7sbkm5qyihshj4db7ngysr6q";
-    })
+  checkInputs = [ pexpect pytestCheckHook tkinter ];
+
+  # Currently most tests have performance issues
+  pytestFlagsArray = [
+    "tests/constants_test.py"
   ];
 
-  checkInputs = [ pytest tkinter ];
-  # Currently most tests do not work on Hydra due to external fetches.
-  checkPhase = ''
-    pytest tests/constants_test.py
-    pytest tests/main_test.py::TestShell::test_compile_to_file
-    pytest tests/main_test.py::TestShell::test_convenience
-  '';
+  pythonImportsCheck = [ "coconut" ];
 
   meta = with lib; {
     homepage = "http://coconut-lang.org/";

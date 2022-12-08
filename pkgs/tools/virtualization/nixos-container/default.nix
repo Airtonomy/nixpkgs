@@ -1,13 +1,33 @@
-{ substituteAll, perlPackages, shadow, util-linux }:
+{ substituteAll
+, perl
+, shadow
+, util-linux
+, configurationDirectory ? "/etc/nixos-containers"
+, stateDirectory ? "/var/lib/nixos-containers"
+, nixosTests
+}:
 
 substituteAll {
     name = "nixos-container";
     dir = "bin";
     isExecutable = true;
     src = ./nixos-container.pl;
-    perl = "${perlPackages.perl}/bin/perl -I${perlPackages.FileSlurp}/${perlPackages.perl.libPrefix}";
+    perl = perl.withPackages (p: [ p.FileSlurp ]);
     su = "${shadow.su}/bin/su";
     utillinux = util-linux;
+
+    inherit configurationDirectory stateDirectory;
+
+    passthru = {
+      tests = {
+        inherit (nixosTests)
+          containers-imperative
+          containers-ip
+          containers-tmpfs
+          containers-ephemeral
+          ;
+      };
+    };
 
     postInstall = ''
       t=$out/share/bash-completion/completions

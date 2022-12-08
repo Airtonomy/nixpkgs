@@ -1,42 +1,41 @@
-{ stdenv
-, go
-, fetchurl
-, curl
-, perl
-, genericUpdater
-, writeShellScript
-}:
+{ lib, stdenv, go, fetchurl, redo-apenwarr, curl, perl, genericUpdater
+, writeShellScript, nixosTests, cfgPath ? "/etc/nncp.hjson" }:
 
 stdenv.mkDerivation rec {
   pname = "nncp";
-  version = "5.3.3";
+  version = "8.8.0";
+  outputs = [ "out" "doc" "info" ];
 
   src = fetchurl {
     url = "http://www.nncpgo.org/download/${pname}-${version}.tar.xz";
-    sha256 = "1l35ndzrvpfim29jn1p0bwmc8w892z44nsrdnay28k229r9dhz3h";
+    sha256 = "829E2FB2F1EED8AF7ACE4554405E56F0341BE2A01C234A34D01122382AA0794C";
   };
 
-  nativeBuildInputs = [ go ];
+  nativeBuildInputs = [ go redo-apenwarr ];
 
-  preConfigure = ''
-    export GOCACHE=$PWD/.cache
+  # Build parameters
+  CFGPATH = cfgPath;
+  SENDMAIL = "sendmail";
+
+  preConfigure = "export GOCACHE=$NIX_BUILD_TOP/gocache";
+
+  installPhase = ''
+    runHook preInstall
+    export PREFIX=$out
+    rm -f INSTALL # work around case insensitivity
+    redo install
+    runHook postInstall
   '';
 
-  makeFlags = [
-    "PREFIX=${placeholder "out"}"
-    "CFGPATH=/etc/nncp.hjson"
-    "SENDMAIL=/run/wrappers/bin/sendmail"
-  ];
+  enableParallelBuilding = true;
 
   passthru.updateScript = genericUpdater {
-    inherit pname version;
     versionLister = writeShellScript "nncp-versionLister" ''
-      echo "# Versions for $1:" >> "$2"
-      ${curl}/bin/curl -s http://www.nncpgo.org/Tarballs.html | ${perl}/bin/perl -lne 'print $1 if /Release.*>([0-9.]+)</'
+      ${curl}/bin/curl -s ${meta.downloadPage} | ${perl}/bin/perl -lne 'print $1 if /Release.*>([0-9.]+)</'
     '';
   };
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Secure UUCP-like store-and-forward exchanging";
     longDescription = ''
       This utilities are intended to help build up small size (dozens of
@@ -54,8 +53,9 @@ stdenv.mkDerivation rec {
       transmission exists.
     '';
     homepage = "http://www.nncpgo.org/";
-    license = licenses.gpl3;
+    downloadPage = "http://www.nncpgo.org/Tarballs.html";
+    license = licenses.gpl3Only;
     platforms = platforms.all;
-    maintainers = [ maintainers.woffs ];
+    maintainers = with maintainers; [ ehmry woffs ];
   };
 }

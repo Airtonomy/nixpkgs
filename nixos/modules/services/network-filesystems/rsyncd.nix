@@ -10,12 +10,12 @@ in {
   options = {
     services.rsyncd = {
 
-      enable = mkEnableOption "the rsync daemon";
+      enable = mkEnableOption (lib.mdDoc "the rsync daemon");
 
       port = mkOption {
         default = 873;
         type = types.port;
-        description = "TCP port the daemon will listen on.";
+        description = lib.mdDoc "TCP port the daemon will listen on.";
       };
 
       settings = mkOption {
@@ -39,11 +39,17 @@ in {
             "secrets file" = "/etc/rsyncd.secrets";
           };
         };
-        description = ''
+        description = lib.mdDoc ''
           Configuration for rsyncd. See
-          <citerefentry><refentrytitle>rsyncd.conf</refentrytitle>
-          <manvolnum>5</manvolnum></citerefentry>.
+          {manpage}`rsyncd.conf(5)`.
         '';
+      };
+
+      socketActivated = mkOption {
+        default = false;
+        type = types.bool;
+        description =
+          lib.mdDoc "If enabled Rsync will be socket-activated rather than run persistently.";
       };
 
     };
@@ -63,12 +69,55 @@ in {
 
     services.rsyncd.settings.global.port = toString cfg.port;
 
-    systemd.services.rsyncd = {
-      description = "Rsync daemon";
-      wantedBy = [ "multi-user.target" ];
-      serviceConfig.ExecStart =
-        "${pkgs.rsync}/bin/rsync --daemon --no-detach --config=${configFile}";
+    systemd = let
+      serviceConfigSecurity = {
+        ProtectSystem = "full";
+        PrivateDevices = "on";
+        NoNewPrivileges = "on";
+      };
+    in {
+      services.rsync = {
+        enable = !cfg.socketActivated;
+        aliases = [ "rsyncd.service" ];
+
+        description = "fast remote file copy program daemon";
+        after = [ "network.target" ];
+        documentation = [ "man:rsync(1)" "man:rsyncd.conf(5)" ];
+
+        serviceConfig = serviceConfigSecurity // {
+          ExecStart =
+            "${pkgs.rsync}/bin/rsync --daemon --no-detach --config=${configFile}";
+          RestartSec = 1;
+        };
+
+        wantedBy = [ "multi-user.target" ];
+      };
+
+      services."rsync@" = {
+        description = "fast remote file copy program daemon";
+        after = [ "network.target" ];
+
+        serviceConfig = serviceConfigSecurity // {
+          ExecStart = "${pkgs.rsync}/bin/rsync --daemon --config=${configFile}";
+          StandardInput = "socket";
+          StandardOutput = "inherit";
+          StandardError = "journal";
+        };
+      };
+
+      sockets.rsync = {
+        enable = cfg.socketActivated;
+
+        description = "socket for fast remote file copy program daemon";
+        conflicts = [ "rsync.service" ];
+
+        listenStreams = [ (toString cfg.port) ];
+        socketConfig.Accept = true;
+
+        wantedBy = [ "sockets.target" ];
+      };
     };
+
   };
 
   meta.maintainers = with lib.maintainers; [ ehmry ];

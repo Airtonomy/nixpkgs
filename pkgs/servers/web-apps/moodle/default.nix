@@ -1,17 +1,21 @@
 { lib, stdenv, fetchurl, writeText, plugins ? [ ] }:
 
 let
-  version = "3.10";
-  stableVersion = lib.concatStrings (lib.take 2 (lib.splitVersion version));
+  version = "4.0.4";
+
+  versionParts = lib.take 2 (lib.splitVersion version);
+  # 4.2 -> 402, 3.11 -> 311
+  stableVersion = lib.removePrefix "0" (lib.concatMapStrings
+    (p: if (lib.toInt p) < 10 then (lib.concatStrings ["0" p]) else p)
+    versionParts);
 
 in stdenv.mkDerivation rec {
   pname = "moodle";
   inherit version;
 
   src = fetchurl {
-    url =
-      "https://download.moodle.org/stable${stableVersion}/${pname}-${version}.tgz";
-    sha256 = "4aYKZmXym1Tq/462PIgJb4sHGUclEkU0Ok1iQJ6u0aw=";
+    url = "https://download.moodle.org/stable${stableVersion}/${pname}-${version}.tgz";
+    sha256 = "sha256-mwfUTMjNj9BKqIFezaekUtR9lwAMmsHaAUt6rkqfW8k=";
   };
 
   phpConfig = writeText "config.php" ''
@@ -52,7 +56,7 @@ in stdenv.mkDerivation rec {
     runHook postInstall
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description =
       "Free and open-source learning management system (LMS) written in PHP";
     license = licenses.gpl3Plus;

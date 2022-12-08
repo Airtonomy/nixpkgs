@@ -33,25 +33,32 @@
 , withGui ? true
 }:
 
-assert stdenv.hostPlatform.system != "powerpc-linux";
-
 mkDerivation rec {
   pname = "recoll";
-  version = "1.27.12";
+  version = "1.32.7";
 
   src = fetchurl {
     url = "https://www.lesbonscomptes.com/${pname}/${pname}-${version}.tar.gz";
-    sha256 = "0bgadm8p319fws66ca4rpv9fx2bllbphgn892rh78db81lz20i5v";
+    sha256 = "sha256-ygim9LsLUZv5FaBiqbeq3E80NHPMHweJVwggjWYzfbo=";
   };
 
-  configureFlags = [ "--enable-recollq" "--disable-webkit" ]
+  configureFlags = [ "--enable-recollq" "--disable-webkit" "--without-systemd" ]
     ++ lib.optionals (!withGui) [ "--disable-qtgui" "--disable-x11mon" ]
     ++ (if stdenv.isLinux then [ "--with-inotify" ] else [ "--without-inotify" ]);
 
-  nativeBuildInputs = [ pkg-config ];
+  NIX_CFLAGS_COMPILE = [ "-DNIXPKGS" ];
 
-  buildInputs = with python3Packages; [
-    bison chmlib file python setuptools which xapian zlib
+  patches = [
+    # fix "No/bad main configuration file" error
+    ./fix-datadir.patch
+  ];
+
+  nativeBuildInputs = [
+    file pkg-config python3Packages.setuptools which
+  ];
+
+  buildInputs = [
+    bison chmlib python3Packages.python xapian zlib
   ] ++ lib.optional withGui qtbase
     ++ lib.optional stdenv.isDarwin libiconv;
 
@@ -85,13 +92,16 @@ mkDerivation rec {
         substituteInPlace $f --replace /usr/bin/perl   ${lib.getBin perl}/bin/perl
       fi
     done
-  '' + stdenv.lib.optionalString stdenv.isLinux ''
+  '' + lib.optionalString stdenv.isLinux ''
     substituteInPlace  $f --replace '"lyx"' '"${lib.getBin lyx}/bin/lyx"'
+  '' + lib.optionalString (stdenv.isDarwin && withGui) ''
+    mkdir $out/Applications
+    mv $out/bin/recoll.app $out/Applications
   '';
 
   enableParallelBuilding = true;
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "A full-text search tool";
     longDescription = ''
       Recoll is an Xapian frontend that can search through files, archive
@@ -100,6 +110,6 @@ mkDerivation rec {
     homepage = "https://www.lesbonscomptes.com/recoll/";
     license = licenses.gpl2;
     platforms = platforms.unix;
-    maintainers = [ maintainers.jcumming ];
+    maintainers = with maintainers; [ jcumming ];
   };
 }

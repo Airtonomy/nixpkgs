@@ -1,40 +1,64 @@
 { lib
 , buildPythonPackage
-, fetchPypi
-, mock
-, jsonpickle
-, mmh3
+, fetchFromGitHub
+, click
 , ordered-set
+, clevercsv
+, jsonpickle
 , numpy
 , pytestCheckHook
+, pyyaml
+, toml
+, pythonOlder
 }:
 
 buildPythonPackage rec {
   pname = "deepdiff";
-  version = "5.0.2";
+  version = "6.2.1";
+  format = "setuptools";
 
-  src = fetchPypi {
-    inherit pname version;
-    sha256 = "e2b74af4da0ef9cd338bb6e8c97242c1ec9d81fcb28298d7bb24acdc19ea79d7";
+  disabled = pythonOlder "3.7";
+
+  src = fetchFromGitHub {
+    owner = "seperman";
+    repo = "deepdiff";
+    rev = "refs/tags/${version}";
+    hash = "sha256-AKah3A9srKm/cFWM7IiZ7JxQ8s0KTuh8VLKOymsDgnA=";
   };
 
-  # # Extra packages (may not be necessary)
-  checkInputs = [
-    mock
-    numpy
-    pytestCheckHook
-  ];
+  postPatch = ''
+    substituteInPlace tests/test_command.py \
+      --replace '/tmp/' "$TMPDIR/"
+  '';
 
   propagatedBuildInputs = [
-    jsonpickle
-    mmh3
     ordered-set
+  ];
+
+  passthru.optional-dependencies = {
+    cli = [
+      clevercsv
+      click
+      pyyaml
+      toml
+    ];
+  };
+
+  checkInputs = [
+    jsonpickle
+    numpy
+    pytestCheckHook
+  ] ++ passthru.optional-dependencies.cli;
+
+  pythonImportsCheck = [
+    "deepdiff"
   ];
 
   meta = with lib; {
     description = "Deep Difference and Search of any Python object/data";
     homepage = "https://github.com/seperman/deepdiff";
+    changelog = "https://github.com/seperman/deepdiff/releases/tag/${version}";
     license = licenses.mit;
-    maintainers = [ maintainers.mic92 ];
+    maintainers = with maintainers; [ mic92 ];
   };
 }

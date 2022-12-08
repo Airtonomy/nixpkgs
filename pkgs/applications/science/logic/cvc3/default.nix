@@ -1,4 +1,4 @@
-{ stdenv, fetchurl, flex, bison, gmp, perl }:
+{ lib, stdenv, fetchurl, flex, bison, gmp, perl }:
 
 stdenv.mkDerivation rec {
     pname = "cvc3";
@@ -13,6 +13,9 @@ stdenv.mkDerivation rec {
 
   patches = [ ./cvc3-2.4.1-gccv6-fix.patch ];
 
+  # fails to configure on darwin due to gmp not found
+  configureFlags = [ "LIBS=-L${gmp}/lib" "CXXFLAGS=-I${gmp.dev}/include" ];
+
   postPatch = ''
     sed -e "s@ /bin/bash@bash@g" -i Makefile.std
     find . -exec sed -e "s@/usr/bin/perl@${perl}/bin/perl@g" -i '{}' ';'
@@ -23,7 +26,7 @@ stdenv.mkDerivation rec {
     done
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "A prover for satisfiability modulo theory (SMT)";
     maintainers = with maintainers;
       [ raskin ];

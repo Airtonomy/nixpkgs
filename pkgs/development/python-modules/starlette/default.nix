@@ -2,57 +2,84 @@
 , stdenv
 , buildPythonPackage
 , fetchFromGitHub
+, fetchpatch
 , aiofiles
-, graphene
+, anyio
+, contextlib2
 , itsdangerous
 , jinja2
+, python-multipart
 , pyyaml
 , requests
-, ujson
-, python-multipart
-, pytest
-, uvicorn
-, isPy27
-, darwin
-, databases
 , aiosqlite
+, databases
+, pytestCheckHook
+, pythonOlder
+, trio
+, typing-extensions
+, ApplicationServices
 }:
 
 buildPythonPackage rec {
   pname = "starlette";
+  version = "0.20.4";
+  format = "setuptools";
 
-  version = "0.13.8";
-  disabled = isPy27;
+  disabled = pythonOlder "3.6";
 
   src = fetchFromGitHub {
     owner = "encode";
     repo = pname;
-    rev = version;
-    sha256 = "11i0yd8cqwscixajl734g11vf8pghki11c81chzfh8ifmj6mf9jk";
+    rev = "refs/tags/${version}";
+    hash = "sha256-vP2TJPn9lRGnLGkO8lUmnsoT6rSnhuWDD3WqNk76SM0=";
   };
+
+  patches = [
+    (fetchpatch {
+      url = "https://github.com/encode/starlette/commit/ab70211f0e1fb7390668bf4891eeceda8d9723a0.diff";
+      excludes = [ "requirements.txt" ]; # conflicts
+      hash = "sha256-UHf4c4YUWp/1I1vD8J0hMewdlfkmluA+FyGf9ZsSv3Y=";
+    })
+  ];
+
+  postPatch = ''
+    # remove coverage arguments to pytest
+    sed -i '/--cov/d' setup.cfg
+  '';
 
   propagatedBuildInputs = [
     aiofiles
-    graphene
+    anyio
     itsdangerous
     jinja2
+    python-multipart
     pyyaml
     requests
-    ujson
-    uvicorn
-    python-multipart
-    databases
-  ] ++ stdenv.lib.optional stdenv.isDarwin [ darwin.apple_sdk.frameworks.ApplicationServices ];
-
-  checkInputs = [
-    pytest
-    aiosqlite
+  ] ++ lib.optionals (pythonOlder "3.8") [
+    typing-extensions
+  ] ++ lib.optionals (pythonOlder "3.7") [
+    contextlib2
+  ] ++ lib.optionals stdenv.isDarwin [
+    ApplicationServices
   ];
 
-  checkPhase = ''
-    pytest --ignore=tests/test_graphql.py
-  '';
-  pythonImportsCheck = [ "starlette" ];
+  checkInputs = [
+    aiosqlite
+    databases
+    pytestCheckHook
+    trio
+    typing-extensions
+  ];
+
+  disabledTests = [
+    # asserts fail due to inclusion of br in Accept-Encoding
+    "test_websocket_headers"
+    "test_request_headers"
+  ];
+
+  pythonImportsCheck = [
+    "starlette"
+  ];
 
   meta = with lib; {
     homepage = "https://www.starlette.io/";

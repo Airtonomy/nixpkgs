@@ -1,21 +1,23 @@
-{ stdenv, fetchurl
-, meson, pkg-config, ninja
-, wayland, wayland-protocols
+{ lib, stdenv, fetchurl
+, meson, pkg-config, ninja, wayland-scanner
+, libdrm, wayland, wayland-protocols
 }:
 
 stdenv.mkDerivation rec {
   pname = "wayland-utils";
-  version = "1.0.0";
+  version = "1.1.0";
 
   src = fetchurl {
-    url = "https://wayland.freedesktop.org/releases/${pname}-${version}.tar.xz";
-    sha256 = "1h38l850ww6hxjb1l8iwa33nkbz8q88bw6lh0aryjyp8b16crzk4";
+    url = "https://gitlab.freedesktop.org/wayland/wayland-utils/-/releases/${version}/downloads/wayland-utils-${version}.tar.xz";
+    sha256 = "sha256-nmhYYwJbT+reNtU7vI4xtD4mSYvnQ96oTHqEkSlZQQo=";
   };
 
-  nativeBuildInputs = [ meson pkg-config ninja wayland ];
-  buildInputs = [ wayland wayland-protocols ];
+  strictDeps = true;
+  depsBuildBuild = [ pkg-config ];
+  nativeBuildInputs = [ meson pkg-config ninja wayland-scanner ];
+  buildInputs = [ libdrm wayland wayland-protocols ];
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Wayland utilities (wayland-info)";
     longDescription = ''
       A collection of Wayland related utilities:

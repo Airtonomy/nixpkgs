@@ -1,4 +1,4 @@
-{ stdenv, fetchFromGitHub, zip, love_11, lua, makeWrapper, makeDesktopItem }:
+{ lib, stdenv, fetchFromGitHub, zip, love_11, lua, makeWrapper, makeDesktopItem }:
 
 let
   pname = "mari0";
@@ -10,7 +10,7 @@ let
     comment = "Crossover between Super Mario Bros. and Portal";
     desktopName = "mari0";
     genericName = "mari0";
-    categories = "Game";
+    categories = [ "Game" ];
   };
 
 in
@@ -28,8 +28,6 @@ stdenv.mkDerivation {
   nativeBuildInputs = [ makeWrapper ];
   buildInputs = [ lua love_11 zip ];
 
-  phases = [ "unpackPhase" "installPhase" ];
-
   installPhase =
   ''
     mkdir -p $out/bin $out/share/games/lovegames $out/share/applications
@@ -40,7 +38,7 @@ stdenv.mkDerivation {
     chmod +x $out/bin/${pname}
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Crossover between Super Mario Bros. and Portal";
     platforms = platforms.linux;
     license = licenses.mit;

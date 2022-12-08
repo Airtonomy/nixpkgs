@@ -1,6 +1,5 @@
 { mkDerivation
 , extra-cmake-modules
-, fetchpatch
 , kcmutils
 , kconfigwidgets
 , kdbusaddons
@@ -19,22 +18,20 @@
 , makeWrapper
 , pulseaudio-qt
 , qca-qt5
+, qqc2-desktop-style
 , qtgraphicaleffects
 , qtmultimedia
+, qtquickcontrols2
 , qtx11extras
+, breeze-icons
 , sshfs
+, wayland
+, wayland-scanner
+, plasma-wayland-protocols
 }:
 
 mkDerivation {
-  name = "kdeconnect-kde";
-
-  patches = [
-    # https://invent.kde.org/network/kdeconnect-kde/-/merge_requests/328
-    (fetchpatch {
-      url = "https://invent.kde.org/network/kdeconnect-kde/-/commit/6101ef3ad07d865958d58a3d2736f5536f1c5719.diff";
-      sha256 = "17mr7k13226vzcgxlmfs6q2mdc5j7vwp4iri9apmh6xlf6r591ac";
-    })
-  ];
+  pname = "kdeconnect-kde";
 
   buildInputs = [
     kcmutils
@@ -52,9 +49,16 @@ mkDerivation {
     libfakekey
     pulseaudio-qt
     qca-qt5
+    qqc2-desktop-style
     qtgraphicaleffects
     qtmultimedia
+    qtquickcontrols2
     qtx11extras
+    wayland
+    wayland-scanner
+    plasma-wayland-protocols
+    # otherwise buttons are blank on non-kde
+    breeze-icons
   ];
 
   nativeBuildInputs = [ extra-cmake-modules kdoctools makeWrapper ];

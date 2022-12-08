@@ -46,11 +46,16 @@ stdenv.mkDerivation rec {
     cp -r lib/ $out/lib/cedille/
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "An interactive theorem-prover and dependently typed programming language, based on extrinsic (aka Curry-style) type theory";
     homepage = "https://cedille.github.io/";
     license = licenses.mit;
     maintainers = with maintainers; [ marsam mpickering ];
     platforms = platforms.unix;
+
+    # Broken due to Agda update.  See
+    # https://github.com/NixOS/nixpkgs/pull/129606#issuecomment-881107449.
+    broken = true;
+    hydraPlatforms = platforms.none;
   };
 }

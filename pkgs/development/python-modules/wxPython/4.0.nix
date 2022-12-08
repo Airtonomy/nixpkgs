@@ -2,22 +2,31 @@
 , stdenv
 , buildPythonPackage
 , fetchPypi
-, pkgconfig
+, setuptools
+, pkg-config
 , which
 , cairo
 , pango
 , python
 , doxygen
 , ncurses
+, libintl
 , wxGTK
-, numpy
+, IOKit
+, Carbon
+, Cocoa
+, AudioToolbox
+, OpenGL
+, CoreFoundation
 , pillow
+, numpy
 , six
 }:
 
 buildPythonPackage rec {
   pname = "wxPython";
   version = "4.0.7.post2";
+  format = "other";
 
   src = fetchPypi {
     inherit pname version;
@@ -26,8 +35,21 @@ buildPythonPackage rec {
 
   doCheck = false;
 
-  nativeBuildInputs = [ pkgconfig which doxygen wxGTK ];
-  buildInputs = [ ncurses wxGTK.gtk ];
+  nativeBuildInputs = [ pkg-config which doxygen setuptools wxGTK ];
+
+  buildInputs = [ ncurses libintl ]
+  ++ (if stdenv.isDarwin
+  then
+    [ AudioToolbox Carbon Cocoa CoreFoundation IOKit OpenGL ]
+  else
+    [ wxGTK.gtk ]
+  );
+
+  propagatedBuildInputs = [
+    numpy
+    pillow
+    six
+  ];
 
   DOXYGEN = "${doxygen}/bin/doxygen";
 
@@ -40,6 +62,9 @@ buildPythonPackage rec {
         ("pangocairo", "${pango.out}/lib/libpangocairo-1.0.so"),
         ("appsvc",     None)
       ]}'
+  '' + lib.optionalString (stdenv.isDarwin && stdenv.isAarch64) ''
+    # Remove the OSX-Only wx.webkit module
+    sed -i "s/makeETGRule(.*'WXWEBKIT')/pass/" wscript
   '';
 
   buildPhase = ''
@@ -50,7 +75,7 @@ buildPythonPackage rec {
     ${python.interpreter} setup.py install --skip-build --prefix=$out
   '';
 
-  passthru = { inherit wxGTK; };
+  passthru = { wxWidgets = wxGTK; };
 
 
   meta = {

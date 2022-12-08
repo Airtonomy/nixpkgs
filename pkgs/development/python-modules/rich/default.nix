@@ -1,46 +1,65 @@
-{ stdenv
+{ lib
+, stdenv
 , buildPythonPackage
 , fetchFromGitHub
 , pythonOlder
 , CommonMark
-, colorama
 , dataclasses
-, ipywidgets
-, poetry
+, poetry-core
 , pygments
 , typing-extensions
 , pytestCheckHook
+
+# for passthru.tests
+, enrich
+, httpie
+, rich-rst
+, textual
 }:
 
 buildPythonPackage rec {
   pname = "rich";
-  version = "9.1.0";
+  version = "12.5.1";
+  format = "pyproject";
+  disabled = pythonOlder "3.6";
 
-  # tests not included in pypi tarball
   src = fetchFromGitHub {
-    owner = "willmcgugan";
+    owner = "Textualize";
     repo = pname;
     rev = "v${version}";
-    sha256 = "18iha0fs8vm0j11k39yxj26h8qxrp27ijhx6h1yyizbygmr5b5nk";
+    sha256 = "sha256-FjzvFx+A4DS2XeKBZ2DGRqudvH22AUSQJnIxKs2O0AU=";
   };
-  format = "pyproject";
 
-  nativeBuildInputs = [ poetry ];
+  nativeBuildInputs = [ poetry-core ];
+
   propagatedBuildInputs = [
     CommonMark
-    colorama
-    ipywidgets
     pygments
+  ] ++ lib.optionals (pythonOlder "3.7") [
+    dataclasses
+  ] ++ lib.optionals (pythonOlder "3.9") [
     typing-extensions
-  ] ++ stdenv.lib.optional (pythonOlder "3.7") dataclasses;
+  ];
 
-  checkInputs = [ pytestCheckHook ];
+  checkInputs = [
+    pytestCheckHook
+  ];
+
+  disabledTests = lib.optionals stdenv.isDarwin [
+    # darwin console duplicates 3 of 4 lines
+    "test_rich_console_ex"
+  ];
+
   pythonImportsCheck = [ "rich" ];
 
-  meta = with stdenv.lib; {
+  passthru.tests = {
+    inherit enrich httpie rich-rst textual;
+  };
+
+  meta = with lib; {
     description = "Render rich text, tables, progress bars, syntax highlighting, markdown and more to the terminal";
-    homepage = "https://github.com/willmcgugan/rich";
+    homepage = "https://github.com/Textualize/rich";
     license = licenses.mit;
-    maintainers = with maintainers; [ ris ];
+    maintainers = with maintainers; [ ris jyooru ];
   };
 }

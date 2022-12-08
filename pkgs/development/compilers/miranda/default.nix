@@ -52,8 +52,13 @@ stdenv.mkDerivation rec {
     })
   ];
 
+  # Workaround build failure on -fno-common toolchains like upstream
+  # gcc-10. Otherwise build fails as:
+  #   ld: types.o:(.bss+0x11b0): multiple definition of `current_file'; y.tab.o:(.bss+0x70): first defined here
+  NIX_CFLAGS_COMPILE = "-fcommon";
+
   makeFlags = [
-    "CC=cc"
+    "CC=${stdenv.cc.targetPrefix}cc"
     "CFLAGS=-O2"
     "PREFIX=${placeholder "out"}"
   ];
@@ -62,12 +67,15 @@ stdenv.mkDerivation rec {
 
   postPatch = ''
     patchShebangs quotehostinfo
+    substituteInPlace Makefile --replace strip '${stdenv.cc.targetPrefix}strip'
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Compiler for Miranda -- a pure, non-strict, polymorphic, higher order functional programming language";
     homepage = "https://www.cs.kent.ac.uk/people/staff/dat/miranda/";
     license = licenses.bsd2;
     maintainers = with maintainers; [ siraben ];
+    platforms = platforms.all;
+    mainProgram = "mira";
   };
 }

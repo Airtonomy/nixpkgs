@@ -1,31 +1,34 @@
-{ stdenv
+{ lib, stdenv
 , fetchFromGitHub
-, cmake
 , boost
-, libevent
+, cmake
 , double-conversion
-, glog
+, fetchpatch
+, fmt_8
 , gflags
+, glog
+, libevent
 , libiberty
+, libunwind
 , lz4
-, lzma
-, zlib
-, jemalloc
 , openssl
 , pkg-config
-, libunwind
-, fmt
+, xz
+, zlib
+, zstd
+, jemalloc
+, follyMobile ? false
 }:
 
-stdenv.mkDerivation (rec {
+stdenv.mkDerivation rec {
   pname = "folly";
-  version = "2020.09.28.00";
+  version = "2022.09.05.00";
 
   src = fetchFromGitHub {
     owner = "facebook";
     repo = "folly";
     rev = "v${version}";
-    sha256 = "1ry2nqfavcbz0jvsqw71105gbxm5hpmdi2k1w155m957jrv3n5vg";
+    sha256 = "sha256-V+CmsHPq+nIJrn7jPnwRls3ICW6JSqwOeDUQMvSyyrQ=";
   };
 
   nativeBuildInputs = [
@@ -43,23 +46,38 @@ stdenv.mkDerivation (rec {
     libiberty
     openssl
     lz4
-    lzma
+    xz
     zlib
-    jemalloc
     libunwind
-    fmt
-  ];
+    fmt_8
+    zstd
+  ] ++ lib.optional stdenv.isLinux jemalloc;
 
+  # jemalloc headers are required in include/folly/portability/Malloc.h
+  propagatedBuildInputs = lib.optional stdenv.isLinux jemalloc;
+
+  NIX_CFLAGS_COMPILE = [ "-DFOLLY_MOBILE=${if follyMobile then "1" else "0"}" "-fpermissive" ];
   cmakeFlags = [ "-DBUILD_SHARED_LIBS=ON" ];
 
-  meta = with stdenv.lib; {
+  postFixup = ''
+    substituteInPlace "$out"/lib/pkgconfig/libfolly.pc \
+      --replace '=''${prefix}//' '=/' \
+      --replace '=''${exec_prefix}//' '=/'
+  '';
+
+  # folly-config.cmake, will `find_package` these, thus there should be
+  # a way to ensure abi compatibility.
+  passthru = {
+    inherit boost;
+    fmt = fmt_8;
+  };
+
+  meta = with lib; {
     description = "An open-source C++ library developed and used at Facebook";
     homepage = "https://github.com/facebook/folly";
     license = licenses.asl20;
     # 32bit is not supported: https://github.com/facebook/folly/issues/103
-    platforms = [ "x86_64-linux" "x86_64-darwin" ];
+    platforms = [ "x86_64-linux" "x86_64-darwin" "aarch64-darwin" "aarch64-linux" ];
     maintainers = with maintainers; [ abbradar pierreis ];
   };
-} // stdenv.lib.optionalAttrs stdenv.isDarwin {
-  LDFLAGS = "-ljemalloc";
-})
+}

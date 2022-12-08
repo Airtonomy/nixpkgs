@@ -1,25 +1,26 @@
-{ stdenv
+{ lib
 , fetchFromGitHub
 , rustPlatform
 }:
 
 rustPlatform.buildRustPackage rec {
   pname = "angle-grinder";
-  version = "0.15.0";
+  version = "0.18.0";
 
   src = fetchFromGitHub {
     owner = "rcoh";
     repo = pname;
     rev = "v${version}";
-    sha256 = "1m5yj9412kjlnqi1nwh44i627ip0kqcbhvwgh87gl5vgd2a0m091";
+    sha256 = "sha256-kohw95pvcBLviPgTDGWIbvZuz1cJmKh4eB0Bx4AEk1E=";
   };
 
-  cargoSha256 = "0y4c1gja0i3h2whjpm74yf3z1y85pkwmpmrl2fjsyy0mn493hzv8";
+  cargoSha256 = "sha256-m44hFYcyQ1yRf1O5OlomF7rEpkdnnX3FNhB8kUdriKg=";
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Slice and dice logs on the command line";
     homepage = "https://github.com/rcoh/angle-grinder";
     license = licenses.mit;
     maintainers = with maintainers; [ bbigras ];
+    mainProgram = "agrind";
   };
 }

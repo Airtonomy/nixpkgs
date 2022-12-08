@@ -2,16 +2,16 @@
 
 buildGoModule rec {
   pname = "fzf";
-  version = "0.24.4";
+  version = "0.34.0";
 
   src = fetchFromGitHub {
     owner = "junegunn";
     repo = pname;
     rev = version;
-    sha256 = "17k32wr70sp7ag69xww2q9mrgnzakgkjw6la04n3jlhfa5z37dzj";
+    sha256 = "sha256-xM2X+X4qR5H1MqtsQK34Omyt35kEUntn3TqlJ2vWcwg=";
   };
 
-  vendorSha256 = "0dd0qm1fxp3jnlrhfaas8fw87cj7rygaac35a9nk3xh2xsk7q35p";
+  vendorSha256 = "sha256-EjcOcrADHdwTCGimv2BRvbjqSZxz4isWhGmPbWQ7YDE=";
 
   outputs = [ "out" "man" ];
 
@@ -19,12 +19,12 @@ buildGoModule rec {
 
   buildInputs = [ ncurses ];
 
-  buildFlagsArray = [
-    "-ldflags=-s -w -X main.version=${version} -X main.revision=${src.rev}"
+  ldflags = [
+    "-s" "-w" "-X main.version=${version} -X main.revision=${src.rev}"
   ];
 
   # The vim plugin expects a relative path to the binary; patch it to abspath.
-  patchPhase = ''
+  postPatch = ''
     sed -i -e "s|expand('<sfile>:h:h')|'$out'|" plugin/fzf.vim
 
     if ! grep -q $out plugin/fzf.vim; then
@@ -34,8 +34,6 @@ buildGoModule rec {
 
     # Has a sneaky dependency on perl
     # Include first args to make sure we're patching the right thing
-    substituteInPlace shell/key-bindings.zsh \
-      --replace " perl -ne " " ${perl}/bin/perl -ne "
     substituteInPlace shell/key-bindings.bash \
       --replace " perl -n " " ${perl}/bin/perl -n "
   '';
@@ -71,5 +69,6 @@ buildGoModule rec {
     license = licenses.mit;
     maintainers = with maintainers; [ Br1ght0ne ma27 zowoq ];
     platforms = platforms.unix;
+    changelog = "https://github.com/junegunn/fzf/blob/${version}/CHANGELOG.md";
   };
 }

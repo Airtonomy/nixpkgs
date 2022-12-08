@@ -1,55 +1,25 @@
-{ bcg729
-, bctoolbox
-, bcunit
+{ bctoolbox
 , belcard
 , belle-sip
 , belr
-, bzrtp
-, cairo
 , cmake
-, cyrus_sasl
 , doxygen
 , fetchFromGitLab
-, fetchurl
-, ffmpeg_3
-, gdk-pixbuf
-, git
-, glib
-, graphviz
-, gtk2
-, intltool
-, libexosip
-, libmatroska
-, libnotify
-, libosip
-, libsoup
-, libupnp
-, libX11
+, jsoncpp
 , libxml2
 , lime
-, makeWrapper
-, mbedtls
 , mediastreamer
-, mediastreamer-openh264
-, openldap
-, ortp
-, pango
-, pkgconfig
-, python
-, readline
-, soci
-, speex
+, python3
+, bc-soci
 , sqlite
+, lib
 , stdenv
-, udev
 , xercesc
-, xsd
-, zlib
 }:
 
 stdenv.mkDerivation rec {
   pname = "liblinphone";
-  version = "4.4.15";
+  version = "5.1.22";
 
   src = fetchFromGitLab {
     domain = "gitlab.linphone.org";
@@ -57,62 +27,39 @@ stdenv.mkDerivation rec {
     group = "BC";
     repo = pname;
     rev = version;
-    sha256 = "16a31c0n5lix4r5xk7p447xlxbrhdlmj11kb4y1krb5fx8hf65cl";
+    sha256 = "sha256-hTyp/fUA1+7J1MtqX33kH8Vn1XNjx51Wy5REvrpdJTY=";
   };
 
-  # Do not build static libraries
-  cmakeFlags = [ "-DENABLE_STATIC=NO" ];
+  patches = [ ./use-normal-jsoncpp.patch ];
 
-  # TODO: Not sure if all these inputs are actually needed. Most of them were
-  # defined when liblinphone and linphone-desktop weren't separated yet, so some
-  # of them might not be needed for liblinphone alone.
+  cmakeFlags = [
+    "-DENABLE_STATIC=NO" # Do not build static libraries
+    "-DENABLE_UNIT_TESTS=NO" # Do not build test executables
+  ];
+
   buildInputs = [
-    (python.withPackages (ps: [ ps.pystache ps.six ]))
-    bcg729
-    bctoolbox
+    # Made by BC
     belcard
     belle-sip
-    belr
-    bzrtp
-    cairo
-    cyrus_sasl
-    ffmpeg_3
-    gdk-pixbuf
-    glib
-    gtk2
-    libX11
-    libexosip
-    libmatroska
-    libnotify
-    libosip
-    libsoup
-    libupnp
-    libxml2
     lime
-    mbedtls
     mediastreamer
-    openldap
-    ortp
-    pango
-    readline
-    soci
-    speex
+
+    # Vendored by BC
+    bc-soci
+
+    jsoncpp
+    libxml2
+    (python3.withPackages (ps: [ ps.pystache ps.six ]))
     sqlite
-    udev
     xercesc
-    xsd
-    zlib
   ];
 
   nativeBuildInputs = [
-    bcunit
     cmake
     doxygen
-    graphviz
-    intltool
-    makeWrapper
-    pkgconfig
   ];
+
+  strictDeps = true;
 
   # Some grammar files needed to be copied too from some dependencies. I suppose
   # if one define a dependency in such a way that its share directory is found,
@@ -123,10 +70,10 @@ stdenv.mkDerivation rec {
     ln -s ${belcard}/share/belr/grammars/* $out/share/belr/grammars/
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     homepage = "https://www.linphone.org/technical-corner/liblinphone";
     description = "Library for SIP calls and instant messaging";
-    license = licenses.gpl3;
+    license = licenses.gpl3Plus;
     platforms = platforms.linux;
     maintainers = with maintainers; [ jluttine ];
   };

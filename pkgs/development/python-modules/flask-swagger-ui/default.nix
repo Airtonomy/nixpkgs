@@ -1,12 +1,12 @@
-{ stdenv, buildPythonPackage, fetchPypi, flask }:
+{ lib, buildPythonPackage, fetchPypi, flask }:
 
 buildPythonPackage rec {
   pname = "flask-swagger-ui";
-  version = "3.36.0";
+  version = "4.11.1";
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "f329752a65b2940ada8eeb57bce613f7c0a12856a9c31063bb9e33798554c9ed";
+    sha256 = "sha256-o3AZmngNZ4sy448b4Q1Nge+g7mPp/i+3Zv8aS2w32sg=";
   };
 
   doCheck = false;  # there are no tests
@@ -15,7 +15,7 @@ buildPythonPackage rec {
     flask
   ];
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     homepage = "https://github.com/sveint/flask-swagger-ui";
     license = licenses.mit;
     description = "Swagger UI blueprint for Flask";

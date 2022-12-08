@@ -1,21 +1,26 @@
-{ stdenv, buildGoModule, fetchFromGitHub }:
+{ lib, buildGoModule, fetchFromGitHub }:
 
 buildGoModule rec {
   pname = "wormhole-william";
-  version = "1.0.4";
+  version = "1.0.6";
 
   src = fetchFromGitHub {
     owner = "psanford";
     repo = "wormhole-william";
     rev = "v${version}";
-    sha256 = "1v6kw10gqhyd1adj0wwrr5bmpjqbshdnywsrjpqgg9bl61m5j3wr";
+    sha256 = "sha256-L/0zgQkwADElpIzOJAROa3CN/YNl76Af2pAhX8y2Wxs=";
   };
 
-  vendorSha256 = "1niky252gcxai6vz0cx7pvflg530bc1lmcd2wm2hqg6446r1yxsq";
+  vendorSha256 = "sha256-J6iht3cagcwFekydShgaYJtkNLfEvSDqonkC7+frldM=";
 
-  doCheck = false;
+  preCheck = ''
+    # wormhole_test.go:692: failed to establish connection
+    substituteInPlace wormhole/wormhole_test.go \
+      --replace "TestWormholeDirectoryTransportSendRecvDirect" \
+                "SkipWormholeDirectoryTransportSendRecvDirect"
+  '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     homepage = "https://github.com/psanford/wormhole-william";
     description = "End-to-end encrypted file transfers";
     changelog = "https://github.com/psanford/wormhole-william/releases/tag/v${version}";

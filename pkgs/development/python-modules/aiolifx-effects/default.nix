@@ -1,31 +1,38 @@
 { lib
 , fetchPypi
 , buildPythonPackage
-, isPy3k
+, pythonOlder
 , aiolifx
 }:
 
 buildPythonPackage rec {
   pname = "aiolifx-effects";
-  version = "0.2.1";
+  version = "0.3.0";
+  format = "setuptools";
+
+  disabled = pythonOlder "3.7";
 
   src = fetchPypi {
     inherit version;
     pname = "aiolifx_effects";
-    sha256 = "cb4ac52deeb220783fc6449251cf40833fcffa28648270be64b1b3e83e06b503";
+    hash = "sha256-6mFsQMrsEMhO9drsMMRhv8QY+eDPuskpJyazx3vG7Ko=";
   };
+
+  propagatedBuildInputs = [
+    aiolifx
+  ];
 
   # tests are not implemented
   doCheck = false;
 
-  disabled = !isPy3k;
-
-  propagatedBuildInputs = [ aiolifx ];
+  pythonImportsCheck = [
+    "aiolifx_effects"
+  ];
 
   meta = with lib; {
+    description = "Light effects (pulse, colorloop ...) for LIFX lights running on aiolifx";
     homepage = "https://github.com/amelchio/aiolifx_effects";
     license = licenses.mit;
-    description = "Light effects (pulse, colorloop ...) for LIFX lights running on aiolifx";
     maintainers = with maintainers; [ netixx ];
   };
 }

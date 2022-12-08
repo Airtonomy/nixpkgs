@@ -1,31 +1,35 @@
 { lib
 , buildPythonPackage
 , fetchPypi
+, fetchpatch
 , pytest
-, pytestcov
+, pytest-cov
 , pytestCheckHook
 , numpy
-, astropy
+, setuptools-scm
 }:
 
 buildPythonPackage rec {
   pname = "pytest-astropy-header";
-  version = "0.1.2";
+  version = "0.2.2";
+  format = "pyproject";
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "1y87agr324p6x5gvhziymxjlw54pyn4gqnd49papbl941djpkp5g";
+    sha256 = "77891101c94b75a8ca305453b879b318ab6001b370df02be2c0b6d1bb322db10";
   };
 
-  propagatedBuildInputs = [
+  nativeBuildInputs = [
+    setuptools-scm
+  ];
+
+  buildInputs = [
     pytest
   ];
 
   checkInputs = [
     pytestCheckHook
-    pytestcov
     numpy
-    astropy
   ];
 
   meta = with lib; {

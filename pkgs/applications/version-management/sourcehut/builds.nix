@@ -1,28 +1,48 @@
-{ stdenv, fetchgit, buildPythonPackage
-, python
+{ lib
+, fetchFromSourcehut
 , buildGoModule
-, srht, redis, celery, pyyaml, markdown }:
-
+, buildPythonPackage
+, srht
+, redis
+, celery
+, pyyaml
+, markdown
+, ansi2html
+, python
+, unzip
+}:
 let
-  version = "0.63.4";
+  version = "0.83.0";
 
-  buildWorker = src: buildGoModule {
-    inherit src version;
-    pname = "builds-sr-ht-worker";
-
-    vendorSha256 = "1sbcjp93gb0c4p7dd1gjhmhwr1pygxvrrzp954j2fvxvi38w6571";
+  src = fetchFromSourcehut {
+    owner = "~sircmpwn";
+    repo = "builds.sr.ht";
+    rev = version;
+    hash = "sha256-u/y+sYu/09LypWI/ngghbge5SvkuLQpray10j0SjlOo=";
   };
-in buildPythonPackage rec {
-  inherit version;
+
+  buildsrht-api = buildGoModule ({
+    inherit src version;
+    pname = "buildsrht-api";
+    modRoot = "api";
+    vendorHash = "sha256-DfVWr/4J4ZrhHpy9CXPaAQcbag/9FmDgiexcNo0lEsk=";
+  } // import ./fix-gqlgen-trimpath.nix { inherit unzip; gqlgenVersion= "0.17.20"; });
+
+  buildsrht-worker = buildGoModule {
+    inherit src version;
+    sourceRoot = "source/worker";
+    pname = "buildsrht-worker";
+    vendorHash = "sha256-y5RFPbtaGmgPpiV2Q3njeWORGZF1TJRjAbY6VgC1hek=";
+  };
+in
+buildPythonPackage rec {
+  inherit src version;
   pname = "buildsrht";
 
-  src = fetchgit {
-    url = "https://git.sr.ht/~sircmpwn/builds.sr.ht";
-    rev = version;
-    sha256 = "1w3rb685nqg2h0k3ag681svc400si9r1gy0sdim3wa2qh8glbqni";
-  };
-
-  nativeBuildInputs = srht.nativeBuildInputs;
+  postPatch = ''
+    substituteInPlace Makefile \
+      --replace "all: api worker" ""
+  '';
 
   propagatedBuildInputs = [
     srht
@@ -30,10 +50,12 @@ in buildPythonPackage rec {
     celery
     pyyaml
     markdown
+    ansi2html
   ];
 
   preBuild = ''
     export PKGVER=${version}
+    export SRHT_PATH=${srht}/${python.sitePackages}/srht
   '';
 
   postInstall = ''
@@ -42,13 +64,16 @@ in buildPythonPackage rec {
 
     cp -r images $out/lib
     cp contrib/submit_image_build $out/bin/builds.sr.ht
-    cp ${buildWorker "${src}/worker"}/bin/worker $out/bin/builds.sr.ht-worker
+    ln -s ${buildsrht-api}/bin/api $out/bin/buildsrht-api
+    ln -s ${buildsrht-worker}/bin/worker $out/bin/buildsrht-worker
   '';
 
-  meta = with stdenv.lib; {
+  pythonImportsCheck = [ "buildsrht" ];
+
+  meta = with lib; {
     homepage = "https://git.sr.ht/~sircmpwn/builds.sr.ht";
     description = "Continuous integration service for the sr.ht network";
-    license = licenses.agpl3;
+    license = licenses.agpl3Only;
     maintainers = with maintainers; [ eadwu ];
   };
 }

@@ -1,12 +1,12 @@
-{ stdenv, fetchurl, which }:
+{ lib, stdenv, fetchurl, which, enableHO ? false }:
 
 stdenv.mkDerivation rec {
   pname = "eprover";
-  version = "2.5";
+  version = "2.6";
 
   src = fetchurl {
     url = "https://wwwlehre.dhbw-stuttgart.de/~sschulz/WORK/E_DOWNLOAD/V_${version}/E.tgz";
-    sha256 = "0jj0zkiqpcx9xp16spkskrv3jycprz7jg1g97i67j43c4yvxylwa";
+    sha256 = "sha256-qh896qIpFR5g1gdWAwGkbNJLBqUQCeCpuoYHHkDXPt0=";
   };
 
   buildInputs = [ which ];
@@ -17,9 +17,11 @@ stdenv.mkDerivation rec {
   configureFlags = [
     "--exec-prefix=$(out)"
     "--man-prefix=$(out)/share/man"
+  ] ++ lib.optionals enableHO [
+    "--enable-ho"
   ];
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Automated theorem prover for full first-order logic with equality";
     homepage = "http://www.eprover.org/";
     license = licenses.gpl2;

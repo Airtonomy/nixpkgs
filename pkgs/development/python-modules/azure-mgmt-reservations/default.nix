@@ -4,26 +4,28 @@
 , msrest
 , msrestazure
 , azure-common
-, azure-mgmt-nspkg
-, isPy3k
+, azure-mgmt-core
+, pythonOlder
 }:
 
 buildPythonPackage rec {
   pname = "azure-mgmt-reservations";
-  version = "0.8.0";
+  version = "2.1.0";
+  format = "setuptools";
+
+  disabled = pythonOlder "3.6";
 
   src = fetchPypi {
     inherit pname version;
     extension = "zip";
-    sha256 = "b12318392e6f5100246c60de88879e24b15db104d00f9704a4ff51e7344594f1";
+    hash = "sha256-CtTOw6cC9fkL+2XgfG/r/LXpzhQoYXLjrwlI6Q5XpP4=";
   };
 
   propagatedBuildInputs = [
     msrest
     msrestazure
     azure-common
-  ] ++ lib.optionals (!isPy3k) [
-    azure-mgmt-nspkg
+    azure-mgmt-core
   ];
 
   # has no tests

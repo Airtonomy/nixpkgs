@@ -1,7 +1,6 @@
-{ stdenv
+{ lib
 , buildPythonApplication
 , fetchFromGitHub
-, fetchPypi
 , bibtool
 , pybtex
 , pymupdf
@@ -39,7 +38,7 @@ buildPythonApplication {
   # upstream doesn't contain tests
   doCheck = false;
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = ''
       A graphical pdf (and epub, cbz, ...) reader that works
       inside the kitty terminal.

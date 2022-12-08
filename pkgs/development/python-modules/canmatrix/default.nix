@@ -7,25 +7,25 @@
 , click
 , future
 , pathlib2
-, typing
+, typing ? null
 , lxml
 , xlwt
 , xlrd
 , XlsxWriter
 , pyyaml
-, pytest
+, pytestCheckHook
 }:
 
 buildPythonPackage rec {
   pname = "canmatrix";
-  version = "0.9.1";
+  version = "0.9.5";
 
   # uses fetchFromGitHub as PyPi release misses test/ dir
   src = fetchFromGitHub {
     owner = "ebroecker";
     repo = pname;
     rev = version;
-    sha256 = "129lcchq45h8wqjvvn0rwpbmih4m0igass2cx7a21z94li97hcia";
+    sha256 = "0x8x8kbg4gyzi0ia9657xygp0mqfii76b67fsx76d31bqsdvlda5";
   };
 
   propagatedBuildInputs = [
@@ -48,14 +48,11 @@ buildPythonPackage rec {
       --replace "version = versioneer.get_version()" "version = \"${version}\""
   '';
 
-  checkInputs = [
-    pytest
-  ];
-
+  checkInputs = [ pytestCheckHook ];
   # long_envvar_name_imports requires stable key value pair ordering
-  checkPhase = ''
-    pytest -s src/canmatrix -k 'not long_envvar_name_imports'
-  '';
+  pytestFlagsArray = [ "-s src/canmatrix" ];
+  disabledTests = [ "long_envvar_name_imports" ];
+  pythonImportsCheck = [ "canmatrix" ];
 
   meta = with lib; {
     homepage = "https://github.com/ebroecker/canmatrix";

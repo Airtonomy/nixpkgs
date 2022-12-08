@@ -1,8 +1,7 @@
-{ stdenv, fetchurl, findutils, fixDarwinDylibNames
-, sslSupport? true, openssl
+{ lib, stdenv, fetchurl, findutils, fixDarwinDylibNames
+, sslSupport ? true, openssl
+, fetchpatch
 }:
-
-assert sslSupport -> openssl != null;
 
 stdenv.mkDerivation rec {
   pname = "libevent";
@@ -13,28 +12,36 @@ stdenv.mkDerivation rec {
     sha256 = "1fq30imk8zd26x8066di3kpc5zyfc5z6frr3zll685zcx4dxxrlj";
   };
 
+  patches = [
+    # Don't define BIO_get_init() for LibreSSL 3.5+
+    (fetchpatch {
+      url = "https://github.com/libevent/libevent/commit/883630f76cbf512003b81de25cd96cb75c6cf0f9.patch";
+      sha256 = "sha256-VPJqJUAovw6V92jpqIXkIR1xYGbxIWxaHr8cePWI2SU=";
+    })
+  ];
+
+  preConfigure = lib.optionalString (lib.versionAtLeast stdenv.hostPlatform.darwinMinVersion "11") ''
+    MACOSX_DEPLOYMENT_TARGET=10.16
+  '';
+
   # libevent_openssl is moved into its own output, so that openssl isn't present
   # in the default closure.
   outputs = [ "out" "dev" ]
-    ++ stdenv.lib.optional sslSupport "openssl"
+    ++ lib.optional sslSupport "openssl"
     ;
   outputBin = "dev";
   propagatedBuildOutputs = [ "out" ]
-    ++ stdenv.lib.optional sslSupport "openssl"
+    ++ lib.optional sslSupport "openssl"
     ;
 
-  nativeBuildInputs = []
-    ++ stdenv.lib.optional stdenv.hostPlatform.isDarwin fixDarwinDylibNames
-    ;
+  nativeBuildInputs = lib.optional stdenv.hostPlatform.isDarwin fixDarwinDylibNames;
 
-  buildInputs = []
-    ++ stdenv.lib.optional sslSupport openssl
-    ++ stdenv.lib.optional stdenv.isCygwin findutils
-    ;
+  buildInputs = lib.optional sslSupport openssl
+    ++ lib.optional stdenv.isCygwin findutils;
 
   doCheck = false; # needs the net
 
-  postInstall = stdenv.lib.optionalString sslSupport ''
+  postInstall = lib.optionalString sslSupport ''
     moveToOutput "lib/libevent_openssl*" "$openssl"
     substituteInPlace "$dev/lib/pkgconfig/libevent_openssl.pc" \
       --replace "$out" "$openssl"
@@ -43,7 +50,7 @@ stdenv.mkDerivation rec {
 
   enableParallelBuilding = true;
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Event notification library";
     longDescription = ''
       The libevent API provides a mechanism to execute a callback function

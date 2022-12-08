@@ -1,4 +1,4 @@
-{ stdenv, fetchurl, openssl, m4, expat
+{ lib, stdenv, fetchurl, m4, expat
 , libX11, libXt, libXaw, libXmu, bdftopcf, mkfontdir
 , fontadobe100dpi, fontadobeutopia100dpi, fontbh100dpi
 , fontbhlucidatypewriter100dpi, fontbitstream100dpi
@@ -18,7 +18,7 @@ in stdenv.mkDerivation rec {
     sha256 = "0km24rgll0s4ji6iz8lvy5ra76ds162s95y33w5px6697cwqkp9j";
   };
 
-  buildFlags = "unix";
+  buildFlags = [ "unix" ];
 
   postConfigure = ''
     pushd c3270 ; ./configure ; popd
@@ -35,7 +35,7 @@ in stdenv.mkDerivation rec {
     expat
   ];
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "IBM 3270 terminal emulator for the X Window System";
     homepage = "http://x3270.bgp.nu/index.html";
     license = licenses.bsd3;

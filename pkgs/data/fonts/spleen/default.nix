@@ -1,8 +1,8 @@
-{ lib, fetchurl, mkfontscale }:
+{ lib, fetchurl, xorg }:
 
 let
   pname = "spleen";
-  version = "1.8.2";
+  version = "1.9.1";
 in fetchurl {
   name = "${pname}-${version}";
   url = "https://github.com/fcambus/spleen/releases/download/${version}/spleen-${version}.tar.gz";
@@ -17,9 +17,9 @@ in fetchurl {
     install -m644 fonts.alias-spleen $d/fonts.alias
 
     # create fonts.dir so NixOS xorg module adds to fp
-    ${mkfontscale}/bin/mkfontdir "$d"
+    ${xorg.mkfontscale}/bin/mkfontdir "$d"
   '';
-  sha256 = "0195d8ssmd8hc0q941z6zwnccffxajv4vylypsndxf28f3ikawby";
+  sha256 = "sha256-6Imsa0ku8On63di0DOo0QxBa0t+tbtPRxM531EIiG94=";
 
   meta = with lib; {
     description = "Monospaced bitmap fonts";

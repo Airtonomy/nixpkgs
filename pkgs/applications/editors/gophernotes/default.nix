@@ -5,22 +5,21 @@
 
 buildGoModule rec {
   pname = "gophernotes";
-  version = "0.7.1";
+  version = "0.7.5";
 
   src = fetchFromGitHub {
     owner = "gopherdata";
     repo = "gophernotes";
     rev = "v${version}";
-    sha256 = "0hs92bdrsjqafdkhg2fk3z16h307i32mvbm9f6bb80bgsciysh27";
+    sha256 = "sha256-cGlYgay/t6XIl0U9XvrHkqNxZ6BXtXi0TIANY1WdZ3Y=";
   };
 
-  vendorSha256 = "1ylqf1sx0h2kixnq9f3prn3sha43q3ybd5ay57yy5z79qr8zqvxs";
+  vendorSha256 = "sha256-iIBqx52fD12R+7MSjQNihMYYtZ9vPAdJndOG4YJVhy4=";
 
   meta = with lib; {
     description = "Go kernel for Jupyter notebooks";
     homepage = "https://github.com/gopherdata/gophernotes";
     license = licenses.mit;
     maintainers = [ maintainers.costrouc ];
-    platforms = platforms.all;
   };
 }

@@ -1,6 +1,7 @@
-{ stdenv
+{ lib
 , buildPythonPackage
 , fetchFromGitHub
+, python
 , pythonImportsCheckHook
 , makeWrapper
 }:
@@ -23,10 +24,12 @@ buildPythonPackage rec {
 
   postInstall = ''
     rm $out/bin/hjson.cmd
-    wrapProgram $out/bin/hjson --set PYTHONPATH "$PYTHONPATH"
+    wrapProgram $out/bin/hjson  \
+      --set PYTHONPATH "$PYTHONPATH" \
+      --prefix PATH : ${lib.makeBinPath [ python ]}
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "A user interface for JSON";
     homepage = "https://github.com/hjson/hjson-py";
     license = licenses.mit;

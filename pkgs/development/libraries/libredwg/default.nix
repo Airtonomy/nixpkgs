@@ -1,22 +1,22 @@
 { lib, stdenv, fetchFromGitHub, autoreconfHook, pkg-config, texinfo, pcre2
-, enablePython ? false, python, swig, libxml2, ncurses
+, enablePython ? false, python ? null, swig, libxml2, ncurses
 }:
 let
   isPython3 = enablePython && python.pythonAtLeast "3";
 in
 stdenv.mkDerivation rec {
   pname = "libredwg";
-  version = "0.10.1.3707";
+  version = "0.12.4";
 
   src = fetchFromGitHub {
     owner = "LibreDWG";
     repo = pname;
     rev = version;
-    sha256 = "009n96lx4ahf05ryvm09z0l9956vz94r8pliyb88j0jficl0pxkf";
+    sha256 = "sha256-CZZ5/uCls2tY3PKmD+hBBvp7d7KX8nZuCPf03sa4iXc=";
     fetchSubmodules = true;
   };
 
-  nativeBuildInputs = [ autoreconfHook pkg-config texinfo ] 
+  nativeBuildInputs = [ autoreconfHook pkg-config texinfo ]
     ++ lib.optional enablePython swig;
 
   buildInputs = [ pcre2 ]
@@ -34,6 +34,7 @@ stdenv.mkDerivation rec {
   checkInputs = lib.optionals enablePython [ libxml2 libxml2.dev ];
 
   meta = with lib; {
+    broken = stdenv.isDarwin && stdenv.isAarch64;
     description = "Free implementation of the DWG file format";
     homepage = "https://savannah.gnu.org/projects/libredwg/";
     maintainers = with maintainers; [ tweber ];

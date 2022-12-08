@@ -1,6 +1,7 @@
 { buildPythonPackage
 , fetchPypi
 , lib
+, stdenv
 , serpent
 , pythonOlder
 , pytestCheckHook
@@ -8,13 +9,13 @@
 
 buildPythonPackage rec {
   pname = "Pyro5";
-  version = "5.11";
+  version = "5.14";
 
   disabled = pythonOlder "3.6";
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "867cdd291d85560373e0c468da7fd18754f2568ef60e0bc504af42f391d7a3e5";
+    sha256 = "sha256-ZP3OE3sP5TLohhTSRrfJi74KT0JnhsUkU5rNxeaUCGo=";
   };
 
   propagatedBuildInputs = [ serpent ];
@@ -22,7 +23,10 @@ buildPythonPackage rec {
   checkInputs = [ pytestCheckHook ];
 
   # ignore network related tests, which fail in sandbox
-  disabledTests = [ "StartNSfunc" "Broadcast" "GetIP" "TestNameServer" "TestBCSetup" ];
+  disabledTests = [ "StartNSfunc" "Broadcast" "GetIP" "TestNameServer" "TestBCSetup" ]
+  ++ lib.optionals stdenv.hostPlatform.isDarwin [
+    "Socket"
+  ];
 
   meta = with lib; {
     description = "Distributed object middleware for Python (RPC)";

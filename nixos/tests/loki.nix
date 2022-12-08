@@ -7,7 +7,7 @@ import ./make-test-python.nix ({ lib, pkgs, ... }:
     maintainers = [ willibutz ];
   };
 
-  machine = { ... }: {
+  nodes.machine = { ... }: {
     services.loki = {
       enable = true;
       configFile = "${pkgs.grafana-loki.src}/cmd/loki/loki-local-config.yaml";
@@ -46,7 +46,9 @@ import ./make-test-python.nix ({ lib, pkgs, ... }:
     machine.wait_for_open_port(9080)
     machine.succeed("echo 'Loki Ingestion Test' > /var/log/testlog")
     # should not have access to journal unless specified
-    machine.fail("systemctl show --property=SupplementaryGroups promtail | grep -q systemd-journal")
+    machine.fail(
+        "systemctl show --property=SupplementaryGroups promtail | grep -q systemd-journal"
+    )
     machine.wait_until_succeeds(
         "${pkgs.grafana-loki}/bin/logcli --addr='http://localhost:3100' query --no-labels '{job=\"varlogs\",filename=\"/var/log/testlog\"}' | grep -q 'Loki Ingestion Test'"
     )

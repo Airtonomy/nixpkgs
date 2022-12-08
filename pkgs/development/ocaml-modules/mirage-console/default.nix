@@ -1,19 +1,19 @@
 { lib, fetchurl, buildDunePackage
-, lwt, mirage-device, mirage-flow
+, lwt, mirage-flow
 }:
 
 buildDunePackage rec {
   pname = "mirage-console";
-  version = "3.0.2";
+  version = "5.1.0";
 
-  useDune2 = true;
+  minimalOCamlVersion = "4.08";
 
   src = fetchurl {
-    url = "https://github.com/mirage/mirage-console/releases/download/v${version}/mirage-console-v${version}.tbz";
-    sha256 = "1fygk7pvlmwx6vd0h4cv9935xxhi64k2dgym41wf6qfkxgpp31lm";
+    url = "https://github.com/mirage/mirage-console/releases/download/v${version}/mirage-console-${version}.tbz";
+    sha256 = "sha256-mjYRisbNOJbYoSuWaGoPueXakmqAwmWh0ATvLLsvpNM=";
   };
 
-  propagatedBuildInputs = [ lwt mirage-device mirage-flow ];
+  propagatedBuildInputs = [ lwt mirage-flow ];
 
   meta = {
     description = "Implementations of Mirage console devices";

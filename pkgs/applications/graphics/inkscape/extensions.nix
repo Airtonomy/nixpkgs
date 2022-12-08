@@ -1,13 +1,16 @@
-{ stdenv
+{ lib, stdenv
 , fetchFromGitHub
 , runCommand
 , inkcut
+, callPackage
 }:
 
 {
+  applytransforms = callPackage ./extensions/applytransforms { };
+
   hexmap = stdenv.mkDerivation {
-    name = "hexmap";
-    version = "2020-06-06";
+    pname = "hexmap";
+    version = "unstable-2020-06-06";
 
     src = fetchFromGitHub {
       owner = "lifelike";
@@ -28,7 +31,7 @@
       runHook postInstall
     '';
 
-    meta = with stdenv.lib; {
+    meta = with lib; {
       description = "This is an extension for creating hex grids in Inkscape. It can also be used to make brick patterns of staggered rectangles";
       homepage = "https://github.com/lifelike/hexmapextension";
       license = licenses.gpl2Plus;

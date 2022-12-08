@@ -1,4 +1,4 @@
-{ stdenv
+{ lib, stdenv
 , installShellFiles
 , tcl
 , libiconv
@@ -6,6 +6,7 @@
 , zlib
 , openssl
 , readline
+, withInternalSqlite ? true
 , sqlite
 , ed
 , which
@@ -15,30 +16,26 @@
 
 stdenv.mkDerivation rec {
   pname = "fossil";
-  version = "2.13";
+  version = "2.19";
 
   src = fetchurl {
-    urls =
-      [
-        "https://www.fossil-scm.org/index.html/uv/fossil-src-${version}.tar.gz"
-      ];
-    name = "${pname}-${version}.tar.gz";
-    sha256 = "1xbk7bb7340x2vvn22ykii54v721fwk8vgr3xvjkvv8ff7hd6cyr";
+    url = "https://www.fossil-scm.org/home/tarball/version-${version}/fossil-${version}.tar.gz";
+    sha256 = "sha256-RZ9/7b4lRJqFVyfXwzutO8C/Pa6XPyxtvpp7gmEGoj4=";
   };
 
-  nativeBuildInputs = [ installShellFiles tcl ];
+  nativeBuildInputs = [ installShellFiles tcl tcllib ];
 
-  buildInputs = [ zlib openssl readline sqlite which ed ]
-    ++ stdenv.lib.optional stdenv.isDarwin libiconv;
+  buildInputs = [ zlib openssl readline which ed ]
+    ++ lib.optional stdenv.isDarwin libiconv
+    ++ lib.optional (!withInternalSqlite) sqlite;
+
+  enableParallelBuilding = true;
 
   doCheck = stdenv.hostPlatform == stdenv.buildPlatform;
 
-  configureFlags = [ "--disable-internal-sqlite" ]
-    ++ stdenv.lib.optional withJson "--json";
-
-  preCheck = ''
-    export TCLLIBPATH="${tcllib}/lib/tcllib${tcllib.version}"
-  '';
+  configureFlags =
+    lib.optional (!withInternalSqlite) "--disable-internal-sqlite"
+    ++ lib.optional withJson "--json";
 
   preBuild = ''
     export USER=nonexistent-but-specified-user
@@ -52,7 +49,7 @@ stdenv.mkDerivation rec {
     installShellCompletion --name fossil.bash tools/fossil-autocomplete.bash
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Simple, high-reliability, distributed software configuration management";
     longDescription = ''
       Fossil is a software configuration management system.  Fossil is
@@ -61,8 +58,9 @@ stdenv.mkDerivation rec {
       many such systems in use today. Fossil strives to distinguish itself
       from the others by being extremely simple to setup and operate.
     '';
-    homepage = "http://www.fossil-scm.org/";
+    homepage = "https://www.fossil-scm.org/";
     license = licenses.bsd2;
     maintainers = with maintainers; [ maggesi viric ];
+    platforms = platforms.all;
   };
 }

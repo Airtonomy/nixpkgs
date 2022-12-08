@@ -1,58 +1,72 @@
-{ stdenv
+{ lib
+, stdenv
 , mkDerivation
 , fetchFromGitHub
-, substituteAll
-, gdal
+, fetchpatch
+, clipper
 , cmake
+, cups
+, doxygen
+, gdal
 , ninja
 , proj
-, clipper
-, zlib
-, qttools
+, qtimageformats
 , qtlocation
 , qtsensors
+, qttools
 , qttranslations
-, doxygen
-, cups
-, qtimageformats
+, substituteAll
+, zlib
 }:
 
 mkDerivation rec {
   pname = "OpenOrienteering-Mapper";
-  version = "0.9.4";
-
-  buildInputs = [
-    gdal
-    qtlocation
-    qtimageformats
-    qtsensors
-    clipper
-    zlib
-    proj
-    cups
-  ];
-
-  nativeBuildInputs = [ cmake doxygen ninja qttools ];
+  version = "0.9.5";
 
   src = fetchFromGitHub {
     owner = "OpenOrienteering";
     repo = "mapper";
     rev = "v${version}";
-    sha256 = "13k9dirqm74lknhr8w121zr1hjd9gm1y73cj4rrj98rx44dzmk7b";
+    hash = "sha256-BQbryRV5diBkOtva9sYuLD8yo3IwFqrkz3qC+C6eEfE=";
   };
 
-  patches = (substituteAll {
-    # See https://github.com/NixOS/nixpkgs/issues/86054
-    src = ./fix-qttranslations-path.diff;
-    inherit qttranslations;
-  });
+  patches = [
+    # https://github.com/NixOS/nixpkgs/issues/86054
+    (substituteAll {
+      src = ./fix-qttranslations-path.diff;
+      inherit qttranslations;
+    })
+    # https://github.com/OpenOrienteering/mapper/pull/1907
+    (fetchpatch {
+      url = "https://github.com/OpenOrienteering/mapper/commit/bc52aa567e90a58d6963b44d5ae1909f3f841508.patch";
+      sha256 = "1bkckapzccn6k0ri6bgrr0nhis9498fnwj7b32s2ysym8zcg0355";
+    })
+  ];
+
+  nativeBuildInputs = [
+    cmake
+    doxygen
+    ninja
+    qttools
+  ];
+
+  buildInputs = [
+    clipper
+    cups
+    gdal
+    proj
+    qtimageformats
+    qtlocation
+    qtsensors
+    zlib
+  ];
 
   cmakeFlags = [
     # Building the manual and bundling licenses fails
     # See https://github.com/NixOS/nixpkgs/issues/85306
     "-DLICENSING_PROVIDER:BOOL=OFF"
     "-DMapper_MANUAL_QTHELP:BOOL=OFF"
-  ] ++ stdenv.lib.optionals stdenv.isDarwin [
+  ] ++ lib.optionals stdenv.isDarwin [
     # FindGDAL is broken and always finds /Library/Framework unless this is
     # specified
     "-DGDAL_INCLUDE_DIR=${gdal}/include"
@@ -68,21 +82,17 @@ mkDerivation rec {
   postInstall = with stdenv; lib.optionalString isDarwin ''
     mkdir -p $out/Applications
     mv $out/Mapper.app $out/Applications
-    # Fixes "This application failed to start because it could not find or load the Qt
-    # platform plugin "cocoa"."
-    wrapQtApp $out/Applications/Mapper.app/Contents/MacOS/Mapper
     mkdir -p $out/bin
     ln -s $out/Applications/Mapper.app/Contents/MacOS/Mapper $out/bin/mapper
   '';
 
-  meta = with stdenv.lib; {
-    description = ''
-      OpenOrienteering Mapper is an orienteering mapmaking program
-      and provides a free alternative to the existing proprietary solution.
-    '';
+  meta = with lib; {
     homepage = "https://www.openorienteering.org/apps/mapper/";
-    license = licenses.gpl3;
-    platforms = with platforms; linux ++ darwin;
+    description = "An orienteering mapmaking program";
+    changelog = "https://github.com/OpenOrienteering/mapper/releases/tag/v${version}";
+    license = licenses.gpl3Plus;
     maintainers = with maintainers; [ mpickering sikmir ];
+    platforms = with platforms; unix;
+    broken = stdenv.isDarwin;
   };
 }

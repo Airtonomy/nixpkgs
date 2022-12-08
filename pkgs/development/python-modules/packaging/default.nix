@@ -1,45 +1,48 @@
-{ stdenv
+{ lib
 , buildPythonPackage
 , fetchPypi
 , pyparsing
-, six
 , pytestCheckHook
+, pythonOlder
 , pretend
-, flit-core
+, setuptools
 }:
 
-buildPythonPackage rec {
-  pname = "packaging";
-  version = "20.7";
-  format = "pyproject";
+let
+  packaging = buildPythonPackage rec {
+    pname = "packaging";
+    version = "21.3";
+    format = "pyproject";
 
-  src = fetchPypi {
-    inherit pname version;
-    sha256 = "Ba87uF0yA3fbKBzyVKsFDhp+vL9UEGhamkB+GKH4EjY=";
+    disabled = pythonOlder "3.6";
+
+    src = fetchPypi {
+      inherit pname version;
+      sha256 = "sha256-3UfEKSfYmrkR5gZRiQfMLTofOLvQJjhZcGQ/nFuOz+s=";
+    };
+
+    nativeBuildInputs = [
+      setuptools
+    ];
+
+    propagatedBuildInputs = [ pyparsing ];
+
+    checkInputs = [
+      pytestCheckHook
+      pretend
+    ];
+
+    # Prevent circular dependency
+    doCheck = false;
+
+    passthru.tests = packaging.overridePythonAttrs (_: { doCheck = true; });
+
+    meta = with lib; {
+      description = "Core utilities for Python packages";
+      homepage = "https://github.com/pypa/packaging";
+      license = with licenses; [ bsd2 asl20 ];
+      maintainers = with maintainers; [ bennofs ];
+    };
   };
-
-  nativeBuildInputs = [
-    flit-core
-  ];
-
-  propagatedBuildInputs = [ pyparsing six ];
-
-  checkInputs = [
-    pytestCheckHook
-    pretend
-  ];
-
-  checkPhase = ''
-    py.test tests
-  '';
-
-  # Prevent circular dependency
-  doCheck = false;
-
-  meta = with stdenv.lib; {
-    description = "Core utilities for Python packages";
-    homepage = "https://github.com/pypa/packaging";
-    license = [ licenses.bsd2 licenses.asl20 ];
-    maintainers = with maintainers; [ bennofs ];
-  };
-}
+in
+packaging

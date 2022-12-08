@@ -2,11 +2,11 @@
 
 # Usage
 
-`emacsWithPackages` takes a single argument: a function from a package
+`emacs.pkgs.withPackages` takes a single argument: a function from a package
 set to a list of packages (the packages that will be available in
 Emacs). For example,
 ```
-emacsWithPackages (epkgs: [ epkgs.evil epkgs.magit ])
+emacs.pkgs.withPackages (epkgs: [ epkgs.evil epkgs.magit ])
 ```
 All the packages in the list should come from the provided package
 set. It is possible to add any package to the list, but the provided
@@ -15,24 +15,24 @@ the correct version of Emacs.
 
 # Overriding
 
-`emacsWithPackages` inherits the package set which contains it, so the
+`emacs.pkgs.withPackages` inherits the package set which contains it, so the
 correct way to override the provided package set is to override the
-set which contains `emacsWithPackages`. For example, to override
-`emacsPackages.emacsWithPackages`,
+set which contains `emacs.pkgs.withPackages`. For example, to override
+`emacs.pkgs.emacs.pkgs.withPackages`,
 ```
 let customEmacsPackages =
-      emacsPackages.overrideScope' (self: super: {
+      emacs.pkgs.overrideScope' (self: super: {
         # use a custom version of emacs
         emacs = ...;
         # use the unstable MELPA version of magit
         magit = self.melpaPackages.magit;
       });
-in customEmacsPackages.emacsWithPackages (epkgs: [ epkgs.evil epkgs.magit ])
+in customEmacsPackages.withPackages (epkgs: [ epkgs.evil epkgs.magit ])
 ```
 
 */
 
-{ lib, lndir, makeWrapper, runCommand }: self:
+{ lib, lndir, makeWrapper, runCommand, gcc }: self:
 
 with lib;
 
@@ -65,7 +65,10 @@ runCommand
     # Store all paths we want to add to emacs here, so that we only need to add
     # one path to the load lists
     deps = runCommand "emacs-packages-deps"
-      { inherit explicitRequires lndir emacs; }
+      {
+        inherit explicitRequires lndir emacs;
+        nativeBuildInputs = lib.optional nativeComp gcc;
+      }
       ''
         findInputsOld() {
           local pkg="$1"; shift
@@ -147,24 +150,35 @@ runCommand
         # Begin the new site-start.el by loading the original, which sets some
         # NixOS-specific paths. Paths are searched in the reverse of the order
         # they are specified in, so user and system profile paths are searched last.
+        #
+        # NOTE: Avoid displaying messages early at startup by binding
+        # inhibit-message to t. This would prevent the Emacs GUI from showing up
+        # prematurely. The messages would still be logged to the *Messages*
+        # buffer.
         rm -f $siteStart $siteStartByteCompiled $subdirs $subdirsByteCompiled
         cat >"$siteStart" <<EOF
-        (load-file "$emacs/share/emacs/site-lisp/site-start.el")
+        (let ((inhibit-message t))
+          (load-file "$emacs/share/emacs/site-lisp/site-start.el"))
         (add-to-list 'load-path "$out/share/emacs/site-lisp")
         (add-to-list 'exec-path "$out/bin")
         ${optionalString nativeComp ''
-          (add-to-list 'comp-eln-load-path "$out/share/emacs/native-lisp/")
+          (add-to-list 'native-comp-eln-load-path "$out/share/emacs/native-lisp/")
         ''}
         EOF
-        # Link subdirs.el from the emacs distribution
-        ln -s $emacs/share/emacs/site-lisp/subdirs.el -T $subdirs
+
+        # Generate a subdirs.el that statically adds all subdirectories to load-path.
+        $emacs/bin/emacs \
+          --batch \
+          --load ${./mk-wrapper-subdirs.el} \
+          --eval "(prin1 (macroexpand-1 '(mk-subdirs-expr \"$out/share/emacs/site-lisp\")))" \
+          > "$subdirs"
 
         # Byte-compiling improves start-up time only slightly, but costs nothing.
         $emacs/bin/emacs --batch -f batch-byte-compile "$siteStart" "$subdirs"
 
         ${optionalString nativeComp ''
           $emacs/bin/emacs --batch \
-            --eval "(add-to-list 'comp-eln-load-path \"$out/share/emacs/native-lisp/\")" \
+            --eval "(add-to-list 'native-comp-eln-load-path \"$out/share/emacs/native-lisp/\")" \
             -f batch-native-compile "$siteStart" "$subdirs"
         ''}
       '';
@@ -201,12 +215,9 @@ runCommand
       substitute ${./wrapper.sh} $out/Applications/Emacs.app/Contents/MacOS/Emacs \
         --subst-var-by bash ${emacs.stdenv.shell} \
         --subst-var-by wrapperSiteLisp "$deps/share/emacs/site-lisp" \
+        --subst-var-by wrapperSiteLispNative "$deps/share/emacs/native-lisp:" \
         --subst-var-by prog "$emacs/Applications/Emacs.app/Contents/MacOS/Emacs"
       chmod +x $out/Applications/Emacs.app/Contents/MacOS/Emacs
-
-      makeWrapper $emacs/Applications/Emacs.app/Contents/MacOS/Emacs $out/Applications/Emacs.app/Contents/MacOS/Emacs \
-        --suffix EMACSLOADPATH ":" "$deps/share/emacs/site-lisp:" \
-        --suffix EMACSNATIVELOADPATH ":" "$deps/share/emacs/native-lisp:"
     fi
 
     mkdir -p $out/share

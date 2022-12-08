@@ -1,21 +1,24 @@
-{ stdenv, rustPlatform, fetchFromGitHub, pkgconfig }:
+{ stdenv, lib, rustPlatform, fetchFromGitHub, pkg-config }:
 
 rustPlatform.buildRustPackage rec {
   pname = "gifski";
-  version = "1.2.4";
+  version = "1.7.2";
 
   src = fetchFromGitHub {
     owner = "ImageOptim";
     repo = "gifski";
     rev = version;
-    sha256 = "0mr4ni75klmzfjivfv5xmcdw03y1gjvkz1d297gwh46zq1q7blf3";
+    sha256 = "sha256-Hlowm+wtj3bJBGJd/JndOaGC6iSdab3sURUjzshqh+k=";
   };
 
-  cargoSha256 = "0wm139lik6w2hwg72j8hcphp0z89bbabfxjmfyqrih6akyzb0l01";
+  cargoSha256 = "sha256-Ir3u57nCBgzEuwaOzx8z71cxXmrIJLkURhuwFRoB2Xw=";
 
-  nativeBuildInputs = [ pkgconfig ];
+  nativeBuildInputs = lib.optionals stdenv.isLinux [ pkg-config ];
 
-  meta = with stdenv.lib; {
+  # error: the crate `gifski` is compiled with the panic strategy `abort` which is incompatible with this crate's strategy of `unwind`
+  doCheck = !stdenv.isDarwin;
+
+  meta = with lib; {
     description = "GIF encoder based on libimagequant (pngquant)";
     homepage = "https://gif.ski/";
     license = licenses.agpl3;

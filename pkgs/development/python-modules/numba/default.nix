@@ -1,44 +1,91 @@
-{ stdenv
+{ lib
+, stdenv
+, pythonAtLeast
 , pythonOlder
 , fetchPypi
 , python
 , buildPythonPackage
-, isPy27
-, isPy3k
+, setuptools
 , numpy
 , llvmlite
-, funcsigs
-, singledispatch
 , libcxx
+, importlib-metadata
+, substituteAll
+
+# CUDA-only dependencies:
+, addOpenGLRunpath ? null
+, cudaPackages ? {}
+
+# CUDA flags:
+, cudaSupport ? false
 }:
 
-buildPythonPackage rec {
-  version = "0.51.2";
+let
+  inherit (cudaPackages) cudatoolkit;
+in buildPythonPackage rec {
+  version = "0.56.2";
   pname = "numba";
-  # uses f-strings
-  disabled = pythonOlder "3.6";
+  format = "setuptools";
+  disabled = pythonOlder "3.6" || pythonAtLeast "3.11";
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "16bd59572114adbf5f600ea383880d7b2071ae45477e84a24994e089ea390768";
+    hash = "sha256-NJLwpdCeJX/FIfU3emxrkH7sGSDRRznwskWLnSmUalo=";
   };
 
-  NIX_CFLAGS_COMPILE = stdenv.lib.optionalString stdenv.isDarwin "-I${libcxx}/include/c++/v1";
+  postPatch = ''
+    substituteInPlace setup.py \
+      --replace "setuptools<60" "setuptools"
+  '';
 
-  propagatedBuildInputs = [numpy llvmlite]
-    ++ stdenv.lib.optionals isPy27 [ funcsigs singledispatch];
+  NIX_CFLAGS_COMPILE = lib.optionalString stdenv.isDarwin "-I${lib.getDev libcxx}/include/c++/v1";
+
+  nativeBuildInputs = lib.optionals cudaSupport [
+    addOpenGLRunpath
+  ];
+
+  propagatedBuildInputs = [
+    numpy
+    llvmlite
+    setuptools
+  ] ++ lib.optionals (pythonOlder "3.9") [
+    importlib-metadata
+  ] ++ lib.optionals cudaSupport [
+    cudatoolkit
+    cudatoolkit.lib
+  ];
+
+  patches = lib.optionals cudaSupport [
+    (substituteAll {
+      src = ./cuda_path.patch;
+      cuda_toolkit_path = cudatoolkit;
+      cuda_toolkit_lib_path = cudatoolkit.lib;
+    })
+  ];
+
+  postFixup = lib.optionalString cudaSupport ''
+    find $out -type f \( -name '*.so' -or -name '*.so.*' \) | while read lib; do
+      addOpenGLRunpath "$lib"
+      patchelf --set-rpath "${cudatoolkit}/lib:${cudatoolkit.lib}/lib:$(patchelf --print-rpath "$lib")" "$lib"
+    done
+  '';
 
   # Copy test script into $out and run the test suite.
   checkPhase = ''
     ${python.interpreter} -m numba.runtests
   '';
+
   # ImportError: cannot import name '_typeconv'
   doCheck = false;
 
-  meta =  {
-    homepage = "http://numba.pydata.org/";
-    license = stdenv.lib.licenses.bsd2;
+  pythonImportsCheck = [
+    "numba"
+  ];
+
+  meta =  with lib; {
     description = "Compiling Python code using LLVM";
-    maintainers = with stdenv.lib.maintainers; [ fridh ];
+    homepage = "https://numba.pydata.org/";
+    license = licenses.bsd2;
+    maintainers = with maintainers; [ fridh ];
   };
 }

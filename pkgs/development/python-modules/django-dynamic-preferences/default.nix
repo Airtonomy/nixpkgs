@@ -1,14 +1,14 @@
-{ stdenv, buildPythonPackage, fetchPypi
+{ lib, buildPythonPackage, fetchPypi
 , django, persisting-theory, six
 }:
 
 buildPythonPackage rec {
   pname = "django-dynamic-preferences";
-  version = "1.10.1";
+  version = "1.14.0";
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "e4b2bb7b2563c5064ba56dd76441c77e06b850ff1466a386a1cd308909a6c7de";
+    sha256 = "sha256-wAq8uNUkBnOQpmUYz80yaDuHrTzGINWRNkn8dwe4CDM=";
   };
 
   propagatedBuildInputs = [ six django persisting-theory ];
@@ -16,7 +16,7 @@ buildPythonPackage rec {
   # django.core.exceptions.ImproperlyConfigured: Requested setting DYNAMIC_PREFERENCES, but settings are not configured. You must either define the environment variable DJANGO_SETTINGS_MODULE or call settings.configure() before accessing settings
   doCheck = false;
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     homepage = "https://github.com/EliotBerriot/django-dynamic-preferences";
     description = "Dynamic global and instance settings for your django project";
     license = licenses.bsd3;

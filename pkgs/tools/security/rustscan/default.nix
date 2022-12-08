@@ -1,38 +1,36 @@
-{ stdenv, fetchFromGitHub, rustPlatform, nmap, Security }:
+{ lib, rustPlatform, fetchCrate, nmap, stdenv, Security, perl, python3 }:
 
 rustPlatform.buildRustPackage rec {
   pname = "rustscan";
-  version = "2.0.1";
+  version = "2.1.0";
 
-  src = fetchFromGitHub {
-    owner = "RustScan";
-    repo = pname;
-    rev = version;
-    sha256 = "0fdbsz1v7bb5dm3zqjs1qf73lb1m4qzkqyb3h3hbyrp9vklgxsgw";
+  src = fetchCrate {
+    inherit pname version;
+    sha256 = "sha256-f9QFsVGGKoWqZGIg8Z8FgZGcUo5M8MFNUavK69SgHkg=";
   };
 
-  cargoSha256 = "039xarscwqndpyrr3sgzkhqna3c908zh06id8x2qaykm8l248zs9";
+  cargoSha256 = "sha256-ZoDE7SJ6snWTFvYXHZdVCC6UCug2wGghH93FfDTDsv0=";
 
   postPatch = ''
-    substituteInPlace src/main.rs \
-      --replace 'Command::new("nmap")' 'Command::new("${nmap}/bin/nmap")'
+    substituteInPlace src/scripts/mod.rs \
+      --replace 'call_format = "nmap' 'call_format = "${nmap}/bin/nmap'
+    patchShebangs fixtures/.rustscan_scripts/*
   '';
 
-  buildInputs = stdenv.lib.optional stdenv.isDarwin Security;
+  buildInputs = lib.optional stdenv.isDarwin Security;
 
+  checkInputs = [ perl python3 ];
+
+  # these tests require network access
   checkFlags = [
-    "--skip=infer_ulimit_lowering_no_panic"
-    "--skip=google_dns_runs"
     "--skip=parse_correct_host_addresses"
     "--skip=parse_hosts_file_and_incorrect_hosts"
-    "--skip=run_perl_script"
-    "--skip=run_python_script"
   ];
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Faster Nmap Scanning with Rust";
     homepage = "https://github.com/RustScan/RustScan";
     license = licenses.gpl3Only;
-    maintainers = [ maintainers.SuperSandro2000 ];
+    maintainers = with maintainers; [ figsoda ];
   };
 }

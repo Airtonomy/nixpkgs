@@ -1,30 +1,47 @@
-{ stdenv
+{ lib
 , buildPythonPackage
 , fetchFromGitHub
+, makePythonPath
 , pythonOlder
 , python
-, alembic, bugsnag, click, dropbox, fasteners, keyring, keyrings-alt, packaging, pathspec, Pyro5, requests, setuptools, sdnotify, sqlalchemy, survey, watchdog
+, click
+, dbus-python
+, desktop-notifier
+, dropbox
+, fasteners
+, keyring
+, keyrings-alt
+, packaging
+, pathspec
+, Pyro5
+, requests
+, setuptools
+, sdnotify
+, survey
+, watchdog
 , importlib-metadata
-, importlib-resources
-, dbus-next
+, pytestCheckHook
+, nixosTests
 }:
 
 buildPythonPackage rec {
   pname = "maestral";
-  version = "1.3.1";
+  version = "1.6.3";
   disabled = pythonOlder "3.6";
 
   src = fetchFromGitHub {
     owner = "SamSchott";
     repo = "maestral";
-    rev = "v${version}";
-    sha256 = "sha256-SspyTdmAbbmWN3AqVp9bj/QfAKLVgU2bLiiHjZO0aCM=";
+    rev = "refs/tags/v${version}";
+    sha256 = "sha256-JVzaWwdHAn5JOruLEN9Z2/5eV1oh3J2NQffNI3RqYfA=";
   };
 
+  format = "pyproject";
+
   propagatedBuildInputs = [
-    alembic
-    bugsnag
     click
+    desktop-notifier
+    dbus-python
     dropbox
     fasteners
     keyring
@@ -35,31 +52,48 @@ buildPythonPackage rec {
     requests
     setuptools
     sdnotify
-    sqlalchemy
     survey
     watchdog
-  ] ++ stdenv.lib.optionals (pythonOlder "3.8") [
+  ] ++ lib.optionals (pythonOlder "3.8") [
     importlib-metadata
-  ] ++ stdenv.lib.optionals (pythonOlder "3.9") [
-    importlib-resources
-  ] ++ stdenv.lib.optionals stdenv.isLinux [
-    dbus-next
   ];
 
   makeWrapperArgs = [
     # Add the installed directories to the python path so the daemon can find them
-    "--prefix" "PYTHONPATH" ":" "${stdenv.lib.concatStringsSep ":" (map (p: p + "/lib/${python.libPrefix}/site-packages") (python.pkgs.requiredPythonModules propagatedBuildInputs))}"
-    "--prefix" "PYTHONPATH" ":" "$out/lib/${python.libPrefix}/site-packages"
+    "--prefix PYTHONPATH : ${makePythonPath propagatedBuildInputs}"
+    "--prefix PYTHONPATH : $out/lib/${python.libPrefix}/site-packages"
   ];
 
-  # no tests
-  doCheck = false;
+  checkInputs = [
+    pytestCheckHook
+  ];
 
-  meta = with stdenv.lib; {
+  preCheck = ''
+    export HOME=$(mktemp -d)
+  '';
+
+  disabledTests = [
+    # We don't want to benchmark
+    "test_performance"
+    # Requires systemd
+    "test_autostart"
+    # Requires network access
+    "test_check_for_updates"
+    # Tries to look at /usr
+    "test_filestatus"
+    "test_path_exists_case_insensitive"
+    "test_cased_path_candidates"
+  ];
+
+  pythonImportsCheck = [ "maestral" ];
+
+  passthru.tests.maestral = nixosTests.maestral;
+
+  meta = with lib; {
     description = "Open-source Dropbox client for macOS and Linux";
     license = licenses.mit;
-    maintainers = with maintainers; [ peterhoeg ];
+    maintainers = with maintainers; [ peterhoeg sfrijters ];
     platforms = platforms.unix;
-    inherit (src.meta) homepage;
+    homepage = "https://maestral.app";
   };
 }

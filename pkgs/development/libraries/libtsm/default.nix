@@ -1,25 +1,32 @@
-{ stdenv, fetchFromGitHub, libxkbcommon, pkgconfig, cmake }:
+{ lib, stdenv, fetchFromGitHub, libxkbcommon, pkg-config, cmake }:
 
 stdenv.mkDerivation rec {
   pname = "libtsm";
-  version = "4.0.1";
+  version = "4.0.2";
 
   src = fetchFromGitHub {
     owner = "Aetf";
     repo = "libtsm";
     rev = "v${version}";
-    sha256 = "0mwn91i5h5d518i1s05y7hzv6bc13vzcvxszpfh77473iwg4wprx";
+    sha256 = "sha256-BYMRPjGRVSnYzkdbxypkuE0YkeVLPJ32iGZ1b0R6wto=";
   };
 
   buildInputs = [ libxkbcommon ];
 
-  nativeBuildInputs = [ cmake pkgconfig ];
+  nativeBuildInputs = [ cmake pkg-config ];
 
-  meta = with stdenv.lib; {
+  # https://github.com/Aetf/libtsm/issues/20
+  postPatch = ''
+    substituteInPlace etc/libtsm.pc.in \
+      --replace '$'{exec_prefix}/@CMAKE_INSTALL_LIBDIR@ @CMAKE_INSTALL_FULL_LIBDIR@ \
+      --replace '$'{prefix}/@CMAKE_INSTALL_INCLUDEDIR@ @CMAKE_INSTALL_FULL_INCLUDEDIR@
+  '';
+
+  meta = with lib; {
     description = "Terminal-emulator State Machine";
     homepage = "http://www.freedesktop.org/wiki/Software/kmscon/libtsm/";
     license = licenses.mit;
     maintainers = with maintainers; [ cstrahan ];
-    platforms = with platforms; unix;
+    platforms = platforms.linux;
   };
 }

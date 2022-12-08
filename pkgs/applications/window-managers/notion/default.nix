@@ -1,8 +1,8 @@
-{ stdenv, fetchFromGitHub, pkgconfig
+{ lib, stdenv, fetchFromGitHub, pkg-config
 , lua, gettext, which, groff, xmessage, xterm
 , readline, fontconfig, libX11, libXext, libSM
 , libXinerama, libXrandr, libXft
-, xlibsWrapper, makeWrapper
+, makeWrapper
 }:
 
 stdenv.mkDerivation rec {
@@ -16,9 +16,9 @@ stdenv.mkDerivation rec {
     sha256 = "14swd0yqci8lxn259fkd9w92bgyf4rmjwgvgyqp78wlfix6ai4mv";
   };
 
-  nativeBuildInputs = [ pkgconfig makeWrapper groff ];
+  nativeBuildInputs = [ pkg-config makeWrapper groff ];
   buildInputs = [ lua gettext which readline fontconfig libX11 libXext libSM
-                  libXinerama libXrandr libXft xlibsWrapper ];
+                  libXinerama libXrandr libXft ];
 
   buildFlags = [ "LUA_DIR=${lua}" "X11_PREFIX=/no-such-path" ];
 
@@ -29,7 +29,7 @@ stdenv.mkDerivation rec {
       --prefix PATH ":" "${xmessage}/bin:${xterm}/bin" \
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Tiling tabbed window manager";
     homepage = "https://notionwm.net";
     license   = licenses.lgpl21;

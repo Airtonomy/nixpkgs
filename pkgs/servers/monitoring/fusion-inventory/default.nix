@@ -1,4 +1,4 @@
-{ stdenv, lib, perlPackages, nix, dmidecode, pciutils, usbutils, iproute, nettools
+{ lib, perlPackages, nix, dmidecode, pciutils, usbutils, iproute2, nettools
 , fetchFromGitHub, makeWrapper
 }:
 
@@ -18,13 +18,14 @@ perlPackages.buildPerlPackage rec {
     patchShebangs bin
 
     substituteInPlace "lib/FusionInventory/Agent/Tools/Linux.pm" \
-      --replace /sbin/ip ${iproute}/sbin/ip
+      --replace /sbin/ip ${iproute2}/sbin/ip
     substituteInPlace "lib/FusionInventory/Agent/Task/Inventory/Linux/Networks.pm" \
-      --replace /sbin/ip ${iproute}/sbin/ip
+      --replace /sbin/ip ${iproute2}/sbin/ip
   '';
 
   buildTools = [];
-  buildInputs = [ makeWrapper ] ++ (with perlPackages; [
+  nativeBuildInputs = [ makeWrapper ];
+  buildInputs = (with perlPackages; [
     CGI
     DataStructureUtil
     FileCopyRecursive
@@ -62,21 +63,22 @@ perlPackages.buildPerlPackage rec {
 
     cp -r bin $out
     cp -r lib $out
+    cp -r share $out
 
     for cur in $out/bin/*; do
       if [ -x "$cur" ]; then
         sed -e "s|./lib|$out/lib|" -i "$cur"
-        wrapProgram "$cur" --prefix PATH : ${lib.makeBinPath [nix dmidecode pciutils usbutils nettools iproute]}
+        wrapProgram "$cur" --prefix PATH : ${lib.makeBinPath [nix dmidecode pciutils usbutils nettools iproute2]}
       fi
     done
   '';
 
   outputs = [ "out" ];
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     homepage = "http://www.fusioninventory.org";
     description = "FusionInventory unified Agent for UNIX, Linux, Windows and MacOSX";
-    license = stdenv.lib.licenses.gpl2;
+    license = lib.licenses.gpl2;
     maintainers = [ maintainers.phile314 ];
   };
 }

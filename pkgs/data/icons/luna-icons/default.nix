@@ -1,20 +1,22 @@
-{ stdenv
+{ lib
+, stdenvNoCC
 , fetchFromGitHub
 , gtk3
 , breeze-icons
 , hicolor-icon-theme
 , pantheon
+, gitUpdater
 }:
 
-stdenv.mkDerivation rec {
+stdenvNoCC.mkDerivation rec {
   pname = "luna-icons";
-  version = "0.9";
+  version = "2.1";
 
   src = fetchFromGitHub {
     owner = "darkomarko42";
     repo = pname;
     rev = version;
-    sha256 = "1pwbmw20kzlxnwln92nxq7f5s1xwbpv6j7il7jxymlw0y31rl281";
+    sha256 = "sha256-zxaay4hwKgb9WWhPNG/s9JekltAvRNYmObeoTJi6Po0=";
   };
 
   nativeBuildInputs = [
@@ -35,12 +37,6 @@ stdenv.mkDerivation rec {
     mkdir -p $out/share/icons
     cp -a Luna* $out/share/icons
 
-    # remove files with spaces in the name, otherwise
-    # gtk-update-icon-cache fails with the message "The generated cache
-    # was invalid"
-    # https://github.com/darkomarko42/Luna-Icons/issues/2
-    rm "$out/share/icons/Luna/scalable/apps/yast-checkmedia (copia).svg"
-
     for theme in $out/share/icons/*; do
       gtk-update-icon-cache "$theme"
     done
@@ -48,7 +44,9 @@ stdenv.mkDerivation rec {
     runHook postInstall
   '';
 
-  meta = with stdenv.lib; {
+  passthru.updateScript = gitUpdater { };
+
+  meta = with lib; {
     description = "Icon pack based on marwaita and papirus icons";
     homepage = "https://github.com/darkomarko42/Luna-Icons";
     license = [ licenses.gpl3Only ];

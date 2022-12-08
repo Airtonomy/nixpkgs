@@ -1,7 +1,8 @@
-{ stdenvNoCC, raspberrypifw }:
+{ lib, stdenvNoCC, raspberrypifw }:
 
 stdenvNoCC.mkDerivation {
-  name = "raspberrypi-dtbs-${raspberrypifw.version}";
+  pname = "raspberrypi-dtbs";
+  version = raspberrypifw.version;
   nativeBuildInputs = [ raspberrypifw ];
 
   # Rename DTBs so u-boot finds them, like linux-rpi.nix
@@ -30,7 +31,7 @@ stdenvNoCC.mkDerivation {
     # Compatible overlays that may be used
     overlays = "${raspberrypifw}/share/raspberrypi/boot/overlays";
   };
-  meta = with stdenvNoCC.lib; {
+  meta = with lib; {
     inherit (raspberrypifw.meta) homepage license;
     description = "DTBs for the Raspberry Pi";
   };

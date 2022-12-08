@@ -1,76 +1,72 @@
-{ buildPythonPackage
-, isPy27
+{ lib
 , asn1crypto
-, azure-storage-blob
-, boto3
+, buildPythonPackage
 , certifi
 , cffi
+, charset-normalizer
 , fetchPypi
-, future
+, filelock
 , idna
-, ijson
-, isPy3k
-, lib
 , oscrypto
-, pyarrow
-, pyasn1-modules
 , pycryptodomex
 , pyjwt
 , pyopenssl
+, pythonOlder
 , pytz
 , requests
-, six
-, urllib3
+, setuptools
+, typing-extensions
 }:
 
 buildPythonPackage rec {
   pname = "snowflake-connector-python";
-  version = "2.3.6";
-  disabled = isPy27;
+  version = "2.8.0";
+  format = "setuptools";
+
+  disabled = pythonOlder "3.7";
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "1a4ebf25989fc13d6f70dc3e2064721c54834e493a7964a1d67be61d40e75f50";
+    hash = "sha256-gvZ+Nuf+Ns1XIYpsBHdegzA9sjFxT9+Qm6kbsJR8JLY=";
   };
 
   propagatedBuildInputs = [
-    azure-storage-blob
     asn1crypto
-    boto3
     certifi
     cffi
-    future
+    charset-normalizer
+    filelock
     idna
-    ijson
     oscrypto
     pycryptodomex
     pyjwt
     pyopenssl
     pytz
     requests
-    six
-  ] ++ lib.optionals (!isPy3k) [
-    pyarrow
-    pyasn1-modules
-    urllib3
+    setuptools
+    typing-extensions
   ];
 
   postPatch = ''
-    substituteInPlace setup.py \
-      --replace "'boto3>=1.4.4,<1.16'," "'boto3~=1.16'," \
-      --replace "'cryptography>=2.5.0,<3.0.0'," "'cryptography'," \
-      --replace "'idna<2.10'," "'idna'," \
-      --replace "'requests<2.24.0'," "'requests',"
+    substituteInPlace setup.cfg \
+      --replace "pyOpenSSL>=16.2.0,<23.0.0" "pyOpenSSL" \
+      --replace "cryptography>=3.1.0,<37.0.0" "cryptography" \
+      --replace "charset-normalizer~=2.0.0" "charset_normalizer>=2"
   '';
 
-  # tests require encrypted secrets, see
+  # Tests require encrypted secrets, see
   # https://github.com/snowflakedb/snowflake-connector-python/tree/master/.github/workflows/parameters
   doCheck = false;
-  pythonImportsCheck = [ "snowflake" "snowflake.connector" ];
+
+  pythonImportsCheck = [
+    "snowflake"
+    "snowflake.connector"
+  ];
 
   meta = with lib; {
     description = "Snowflake Connector for Python";
-    homepage = "https://www.snowflake.com/";
+    homepage = "https://github.com/snowflakedb/snowflake-connector-python";
     license = licenses.asl20;
+    maintainers = with maintainers; [ ];
   };
 }

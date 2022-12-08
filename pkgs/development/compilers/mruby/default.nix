@@ -1,14 +1,14 @@
-{ stdenv, ruby, bison, rake, fetchFromGitHub }:
+{ lib, stdenv, ruby, bison, rake, fetchFromGitHub }:
 
 stdenv.mkDerivation rec {
   pname = "mruby";
-  version = "2.1.2";
+  version = "3.1.0";
 
   src = fetchFromGitHub {
     owner   = "mruby";
     repo    = "mruby";
     rev     = version;
-    sha256  = "0fhfv8pi7i8jn2vgk2n2rjnbnfa12nhj514v8i4k353n7q4pmkh3";
+    sha256  = "0gnzip7qfadnl0r1k8bpc9a6796sy503h77ggds02wrz7mpq32nf";
   };
 
   nativeBuildInputs = [ ruby bison rake ];
@@ -24,7 +24,7 @@ stdenv.mkDerivation rec {
 
   doCheck = true;
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "An embeddable implementation of the Ruby language";
     homepage = "https://mruby.org";
     maintainers = [ maintainers.nicknovitski ];

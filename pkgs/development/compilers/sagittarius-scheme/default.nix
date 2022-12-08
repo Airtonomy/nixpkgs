@@ -1,7 +1,7 @@
-{ stdenv
+{ lib, stdenv
 , fetchurl
 , cmake
-, pkgconfig
+, pkg-config
 , libffi
 , boehmgc
 , openssl
@@ -16,10 +16,10 @@ let platformLdLibraryPath = if stdenv.isDarwin then "DYLD_FALLBACK_LIBRARY_PATH"
 in
 stdenv.mkDerivation rec {
   pname = "sagittarius-scheme";
-  version = "0.9.7";
+  version = "0.9.9";
   src = fetchurl {
     url = "https://bitbucket.org/ktakashi/${pname}/downloads/sagittarius-${version}.tar.gz";
-    sha256 = "18pjj6f5qvixv5hbl1k4d3jqfcmi9qyx0gz0cjwrzpxa8brpwld8";
+    sha256 = "sha256-UB7Lfyc2afTIVW5SIiHxXi2wyoVC2Q2ClTkSOQ6UmPg=";
   };
   preBuild = ''
            # since we lack rpath during build, need to explicitly add build path
@@ -27,11 +27,12 @@ stdenv.mkDerivation rec {
            # build extensions
            export ${platformLdLibraryPath}="$(pwd)/build"
            '';
-  nativeBuildInputs = [ pkgconfig cmake ];
+  nativeBuildInputs = [ pkg-config cmake ];
 
-  buildInputs = [ libffi boehmgc openssl zlib ] ++ stdenv.lib.optional odbcSupport libiodbc;
+  buildInputs = [ libffi boehmgc openssl zlib ] ++ lib.optional odbcSupport libiodbc;
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
+    broken = stdenv.isDarwin;
     description = "An R6RS/R7RS Scheme system";
     longDescription = ''
       Sagittarius Scheme is a free Scheme implementation supporting

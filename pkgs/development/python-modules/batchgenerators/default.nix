@@ -1,51 +1,68 @@
 { lib
 , buildPythonPackage
-, isPy27
+, pythonOlder
 , fetchFromGitHub
-, fetchpatch
 , pytestCheckHook
-, unittest2
 , future
 , numpy
 , pillow
+, fetchpatch
 , scipy
-, scikitlearn
+, scikit-learn
 , scikitimage
 , threadpoolctl
 }:
 
 buildPythonPackage rec {
   pname = "batchgenerators";
-  version = "0.20.1";
+  version = "0.24";
+  format = "setuptools";
 
-  disabled = isPy27;
+  disabled = pythonOlder "3.7";
 
   src = fetchFromGitHub {
     owner = "MIC-DKFZ";
     repo = pname;
     rev = "v${version}";
-    sha256 = "1f91yflv9rschyl5bnfn735hp1rxrzcxkx18aajmlzb067h0ip8m";
-
+    hash = "sha256-47jAeHMJPBk7GpUvXtQuJchgiSy6M50anftsuXWk2ag=";
   };
 
-  patches = [
-    # lift Pillow bound; should be merged in next release
-    (fetchpatch {
-      url = "https://github.com/MIC-DKFZ/batchgenerators/pull/59.patch";
-      sha256 = "171b3dm40yn0wi91m9s2nq3j565s1w39jpdf1mvc03rn75i8vdp0";
-    })
-  ];
-
   propagatedBuildInputs = [
-    future numpy pillow scipy scikitlearn scikitimage threadpoolctl
+    future
+    numpy
+    pillow
+    scipy
+    scikit-learn
+    scikitimage
+    threadpoolctl
   ];
 
-  checkInputs = [ pytestCheckHook unittest2 ];
+  # see https://github.com/MIC-DKFZ/batchgenerators/pull/78
+  postPatch = ''
+    substituteInPlace setup.py \
+      --replace '"unittest2",' ""
+  '';
 
-  meta = {
+  checkInputs = [
+    pytestCheckHook
+  ];
+
+  # see https://github.com/MIC-DKFZ/batchgenerators/pull/78
+  disabledTestPaths = [ "tests/test_axis_mirroring.py" ];
+
+  pythonImportsCheck = [
+    "batchgenerators"
+    "batchgenerators.augmentations"
+    "batchgenerators.dataloading"
+    "batchgenerators.datasets"
+    "batchgenerators.transforms"
+    "batchgenerators.utilities"
+  ];
+
+  meta = with lib; {
     description = "2D and 3D image data augmentation for deep learning";
     homepage = "https://github.com/MIC-DKFZ/batchgenerators";
-    license = lib.licenses.asl20;
-    maintainers = with lib.maintainers; [ bcdarwin ];
+    license = licenses.asl20;
+    maintainers = with maintainers; [ bcdarwin ];
   };
 }

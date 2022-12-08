@@ -1,4 +1,4 @@
-{ stdenv
+{ lib, stdenv
 , fetchFromGitHub
 , cmake
 , pkg-config
@@ -7,22 +7,22 @@
 , openssl
 , nlohmann_json
 , gtest
-, fmt
 , spdlog
 , c-ares
-, abseil-cpp
 , zlib
+, sqlite
+, re2
 }:
 
 stdenv.mkDerivation rec {
   pname = "bear";
-  version = "3.0.3";
+  version = "3.0.20";
 
   src = fetchFromGitHub {
     owner = "rizsotto";
     repo = pname;
     rev = version;
-    sha256 = "1abx5h6xy0h3mz29ial5si8smkmjzla050d130pcc6dzr4ic642w";
+    sha256 = "sha256-8hA0Y/AGczFwggxkTG7PQKOVnr2Oizx4OH38nS5jCU0=";
   };
 
   nativeBuildInputs = [ cmake pkg-config ];
@@ -33,11 +33,11 @@ stdenv.mkDerivation rec {
     openssl
     nlohmann_json
     gtest
-    fmt
     spdlog
     c-ares
-    abseil-cpp
     zlib
+    sqlite
+    re2
   ];
 
   patches = [
@@ -45,7 +45,7 @@ stdenv.mkDerivation rec {
     ./no-double-relative.patch
   ];
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Tool that generates a compilation database for clang tooling";
     longDescription = ''
       Note: the bear command is very useful to generate compilation commands
@@ -55,6 +55,6 @@ stdenv.mkDerivation rec {
     homepage = "https://github.com/rizsotto/Bear";
     license = licenses.gpl3Plus;
     platforms = platforms.unix;
-    maintainers = [ maintainers.babariviere ];
+    maintainers = with maintainers; [ babariviere qyliss ];
   };
 }

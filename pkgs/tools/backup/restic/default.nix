@@ -3,16 +3,21 @@
 
 buildGoModule rec {
   pname = "restic";
-  version = "0.11.0";
+  version = "0.14.0";
 
   src = fetchFromGitHub {
     owner = "restic";
     repo = "restic";
     rev = "v${version}";
-    sha256 = "13zmx9wzv29z0np3agx4rsz1j9pgrvlnngjsb971i1dnzwv5l3hf";
+    hash = "sha256-DwXAifXXQNnbzj2XngCyqPABzB9PS/T9U2/T4/z7wm0=";
   };
 
-  vendorSha256 = "09sa5jpdj73w595c063mib14132zacswh54nmjqp2n440cflmwjh";
+  patches = [
+    # The TestRestoreWithPermissionFailure test fails in Nix’s build sandbox
+    ./0001-Skip-testing-restore-with-permission-failure.patch
+  ];
+
+  vendorSha256 = "sha256-FakmnQ8RkBYjmj3piA1lDV61FdYIyBmFLY2XXN3AyIQ=";
 
   subPackages = [ "cmd/restic" ];
 
@@ -37,9 +42,10 @@ buildGoModule rec {
 
   meta = with lib; {
     homepage = "https://restic.net";
+    changelog = "https://github.com/restic/restic/blob/${src.rev}/CHANGELOG.md";
     description = "A backup program that is fast, efficient and secure";
     platforms = platforms.linux ++ platforms.darwin;
     license = licenses.bsd2;
-    maintainers = [ maintainers.mbrgm ];
+    maintainers = [ maintainers.mbrgm maintainers.dotlambda ];
   };
 }

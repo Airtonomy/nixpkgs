@@ -4,31 +4,30 @@ with lib;
 
 let
   cfg = config.services.dnsdist;
-  configFile = pkgs.writeText "dndist.conf" ''
+  configFile = pkgs.writeText "dnsdist.conf" ''
     setLocal('${cfg.listenAddress}:${toString cfg.listenPort}')
     ${cfg.extraConfig}
   '';
 in {
   options = {
     services.dnsdist = {
-      enable = mkEnableOption "dnsdist domain name server";
+      enable = mkEnableOption (lib.mdDoc "dnsdist domain name server");
 
       listenAddress = mkOption {
         type = types.str;
-        description = "Listen IP Address";
+        description = lib.mdDoc "Listen IP Address";
         default = "0.0.0.0";
       };
       listenPort = mkOption {
         type = types.int;
-        description = "Listen port";
+        description = lib.mdDoc "Listen port";
         default = 53;
       };
 
       extraConfig = mkOption {
         type = types.lines;
-        default = ''
-        '';
-        description = ''
+        default = "";
+        description = lib.mdDoc ''
           Extra lines to be added verbatim to dnsdist.conf.
         '';
       };

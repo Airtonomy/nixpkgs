@@ -3,7 +3,7 @@
 , fetchFromGitLab
 , fetchpatch
 , autoreconfHook
-, pkgconfig
+, pkg-config
 , pcsclite
 , PCSC
 , xcbuild
@@ -25,7 +25,7 @@ stdenv.mkDerivation rec {
 
   nativeBuildInputs = [
     autoreconfHook
-    pkgconfig
+    pkg-config
   ] ++ lib.optional stdenv.isDarwin xcbuild;
   buildInputs = if stdenv.isDarwin then [ PCSC ] else [ pcsclite ];
 
@@ -47,11 +47,12 @@ stdenv.mkDerivation rec {
   buildFlags =
     lib.optional stdenv.isDarwin "pcsclite_CFLAGS=-I${PCSC}/Library/Frameworks/PCSC.framework/Headers";
 
-  meta = with stdenv.lib; {
-    homepage = "https://code.videolan.org/videolan/aribb25";
+  meta = with lib; {
     description = "Sample implementation of the ARIB STD-B25 standard";
-    platforms = platforms.all;
+    homepage = "https://code.videolan.org/videolan/aribb25";
     license = licenses.isc;
     maintainers = with maintainers; [ midchildan ];
+    mainProgram = "b25";
+    platforms = platforms.all;
   };
 }

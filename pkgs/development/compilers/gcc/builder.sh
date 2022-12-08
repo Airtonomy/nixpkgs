@@ -37,6 +37,9 @@ if test "$noSysDirs" = "1"; then
             # Figure out what extra flags when linking to pass to the gcc
             # compilers being generated to make sure that they use our libc.
             extraLDFlags=($(< "${!curBintools}/nix-support/libc-ldflags") $(< "${!curBintools}/nix-support/libc-ldflags-before" || true))
+            if [ -e ${!curBintools}/nix-support/ld-set-dynamic-linker ]; then
+                extraLDFlags=-dynamic-linker=$(< ${!curBintools}/nix-support/dynamic-linker)
+            fi
 
             # The path to the Libc binaries such as `crti.o'.
             libc_libdir="$(< "${!curBintools}/nix-support/orig-libc")/lib"
@@ -144,11 +147,6 @@ if test "$noSysDirs" = "1"; then
     fi
 fi
 
-if test -n "${targetConfig-}"; then
-    # The host strip will destroy some important details of the objects
-    dontStrip=1
-fi
-
 eval "$oldOpts"
 
 providedPreConfigure="$preConfigure";
@@ -166,15 +164,6 @@ preConfigure() {
         # the target libgcc as target libraries.
         # See 'configure:5370'
         rm -Rf zlib
-    fi
-
-    if test -f "$NIX_CC/nix-support/orig-libc"; then
-        # Patch the configure script so it finds glibc headers.  It's
-        # important for example in order not to get libssp built,
-        # because its functionality is in glibc already.
-        sed -i \
-            -e "s,glibc_header_dir=/usr/include,glibc_header_dir=$libc_dev/include", \
-            gcc/configure
     fi
 
     if test -n "$crossMingw" -a -n "$crossStageStatic"; then
@@ -204,9 +193,14 @@ preInstall() {
     mkdir -p "$out/${targetConfig}/lib"
     mkdir -p "${!outputLib}/${targetConfig}/lib"
     # Make ‘lib64’ symlinks to ‘lib’.
-    if [ -n "$is64bit" -a -z "$enableMultilib" ]; then
+    if [ -n "$linkLib64toLib" ]; then
         ln -s lib "$out/${targetConfig}/lib64"
         ln -s lib "${!outputLib}/${targetConfig}/lib64"
+    fi
+    # Make ‘lib32’ symlinks to ‘lib’.
+    if [ -n "$linkLib32toLib" ]; then
+        ln -s lib "$out/${targetConfig}/lib32"
+        ln -s lib "${!outputLib}/${targetConfig}/lib32"
     fi
 }
 
@@ -218,6 +212,10 @@ postInstall() {
     moveToOutput "${targetConfig+$targetConfig/}lib/lib*.dylib" "${!outputLib}"
     moveToOutput "${targetConfig+$targetConfig/}lib/lib*.dll.a" "${!outputLib}"
     moveToOutput "share/gcc-*/python" "${!outputLib}"
+
+    if [ -z "$enableShared" ]; then
+        moveToOutput "${targetConfig+$targetConfig/}lib/lib*.a" "${!outputLib}"
+    fi
 
     for i in "${!outputLib}/${targetConfig}"/lib/*.{la,py}; do
         substituteInPlace "$i" --replace "$out" "${!outputLib}"
@@ -252,7 +250,7 @@ postInstall() {
 
     if [[ targetConfig == *"linux"* ]]; then
         # For some reason, when building for linux on darwin, the libs retain
-	# RPATH to $out.
+        # RPATH to $out.
         for i in "$lib"/"$targetConfig"/lib/{libtsan,libasan,libubsan}.so.*.*.*; do
             PREV_RPATH=`patchelf --print-rpath "$i"`
             NEW_RPATH=`echo "$PREV_RPATH" | sed "s,:${out}[^:]*,,g"`

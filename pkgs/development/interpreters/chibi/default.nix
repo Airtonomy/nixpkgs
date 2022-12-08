@@ -1,27 +1,17 @@
-{ stdenv, fetchFromGitHub, makeWrapper }:
-let
-  version = "0.9.1";
-  name = "chibi-scheme-${version}";
-in
-stdenv.mkDerivation {
-  inherit name;
+{ lib, stdenv, fetchFromGitHub, makeWrapper }:
 
-  meta = {
-    homepage = "https://github.com/ashinn/chibi-scheme";
-    description = "Small Footprint Scheme for use as a C Extension Language";
-    platforms = stdenv.lib.platforms.all;
-    license = stdenv.lib.licenses.bsd3;
-    maintainers = [ stdenv.lib.maintainers.DerGuteMoritz ];
-  };
+stdenv.mkDerivation rec {
+  version = "0.10";
+  pname = "chibi-scheme";
 
   src = fetchFromGitHub {
     owner = "ashinn";
     repo = "chibi-scheme";
     rev = version;
-    sha256 = "0nd63i924ifh39cba1hd4sbi6vh1cb73v97nrn4bf8rrjh3k8pdi";
+    sha256 = "sha256-7vDxcnXhq1wJSLFHGxtwh+H+KWxh6B0JXSMPzSmQFXo=";
   };
 
-  buildInputs = [ makeWrapper ];
+  nativeBuildInputs = [ makeWrapper ];
 
   installPhase = ''
     make install PREFIX="$out"
@@ -36,4 +26,12 @@ stdenv.mkDerivation {
         --replace "/usr/bin/env chibi-scheme" "$out/bin/chibi-scheme"
     done
   '';
+
+  meta = {
+    homepage = "https://github.com/ashinn/chibi-scheme";
+    description = "Small Footprint Scheme for use as a C Extension Language";
+    platforms = lib.platforms.all;
+    license = lib.licenses.bsd3;
+    maintainers = [ lib.maintainers.DerGuteMoritz ];
+  };
 }

@@ -2,21 +2,21 @@
 
 buildGoModule rec {
   pname = "cni-plugins";
-  version = "0.9.0";
+  version = "1.1.1";
 
   src = fetchFromGitHub {
     owner = "containernetworking";
     repo = "plugins";
     rev = "v${version}";
-    sha256 = "1nkaspz96yglq1fr8a3xr39qmbs98pk7qpqav3cfd82qwbq7vs06";
+    sha256 = "sha256-I9OmTO5obTwAj4hkecUfmRYR4Q3rdllMfbpESv66eEQ=";
   };
 
   vendorSha256 = null;
 
   doCheck = false;
 
-  buildFlagsArray = [
-    "-ldflags=-X github.com/containernetworking/plugins/pkg/utils/buildversion.BuildVersion=v${version}"
+  ldflags = [
+    "-X github.com/containernetworking/plugins/pkg/utils/buildversion.BuildVersion=v${version}"
   ];
 
   subPackages = [
@@ -32,7 +32,6 @@ buildGoModule rec {
     "plugins/main/vlan"
     "plugins/meta/bandwidth"
     "plugins/meta/firewall"
-    "plugins/meta/flannel"
     "plugins/meta/portmap"
     "plugins/meta/sbr"
     "plugins/meta/tuning"

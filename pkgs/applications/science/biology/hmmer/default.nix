@@ -1,4 +1,4 @@
-{ stdenv, fetchurl }:
+{ lib, stdenv, fetchurl }:
 
 stdenv.mkDerivation rec {
   version = "3.3.2";
@@ -9,7 +9,7 @@ stdenv.mkDerivation rec {
     sha256 = "0s9wf6n0qanbx8qs6igfl3vyjikwbrvh4d9d6mv54yp3xysykzlj";
   };
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Biosequence analysis using profile hidden Markov models";
     longDescription = ''
       HMMER is used for searching sequence databases for sequence homologs, and for making sequence alignments. It implements methods using probabilistic models called profile hidden Markov models (profile HMMs).
@@ -20,6 +20,7 @@ stdenv.mkDerivation rec {
     homepage = "http://hmmer.org/";
     license = licenses.gpl3;
     maintainers = [ maintainers.iimog ];
-    platforms = platforms.unix;
+    # at least SSE is *required*
+    platforms = platforms.x86_64;
   };
 }

@@ -1,83 +1,98 @@
-{ stdenv
-, lib
-, buildPythonPackage
-, fetchPypi
-, pythonOlder
-, pytest
+{ lib
+, stdenv
+, Accelerate
 , blis
+, buildPythonPackage
 , catalogue
+, confection
+, contextvars
+, CoreFoundation
+, CoreGraphics
+, CoreVideo
 , cymem
 , cython
-, darwin
+, dataclasses
+, fetchPypi
 , hypothesis
 , mock
 , murmurhash
 , numpy
-, pathlib
 , plac
 , preshed
+, pydantic
+, pytestCheckHook
+, python
+, pythonOlder
 , srsly
 , tqdm
+, typing-extensions
 , wasabi
 }:
 
 buildPythonPackage rec {
   pname = "thinc";
-  version = "7.4.5";
+  version = "8.1.1";
+  format = "setuptools";
+
+  disabled = pythonOlder "3.6";
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "5743fde41706252ec6ce4737c68d3505f7e1cc3d4431174a17149838d594f8cb";
+    hash = "sha256-m5AoKYTzy6rJjgNn3xsa+eSDYjG8Bj361yQqnQ3VK80=";
   };
 
-  buildInputs = [ cython ] ++ lib.optionals stdenv.isDarwin (with darwin.apple_sdk.frameworks; [
+  buildInputs = [
+    cython
+  ] ++ lib.optionals stdenv.isDarwin [
     Accelerate
     CoreFoundation
     CoreGraphics
     CoreVideo
-  ]);
+  ];
 
   propagatedBuildInputs = [
     blis
     catalogue
+    confection
     cymem
     murmurhash
     numpy
     plac
     preshed
+    pydantic
     srsly
     tqdm
     wasabi
-  ] ++ lib.optional (pythonOlder "3.4") pathlib;
-
+  ] ++ lib.optionals (pythonOlder "3.8") [
+    typing-extensions
+  ] ++ lib.optionals (pythonOlder "3.7") [
+    contextvars
+    dataclasses
+  ];
 
   checkInputs = [
     hypothesis
     mock
-    pytest
+    pytestCheckHook
   ];
 
-  # Cannot find cython modules.
-  doCheck = false;
+  # Add native extensions.
+  preCheck = ''
+    export PYTHONPATH=$out/${python.sitePackages}:$PYTHONPATH
 
-  postPatch = ''
-    substituteInPlace setup.py \
-      --replace "blis>=0.4.0,<0.8.0" "blis>=0.4.0,<1.0" \
-      --replace "catalogue>=0.0.7,<1.1.0" "catalogue>=0.0.7,<3.0" \
-      --replace "plac>=0.9.6,<1.2.0" "plac>=0.9.6,<2.0" \
-      --replace "srsly>=0.0.6,<1.1.0" "srsly>=0.0.6,<3.0"
+    # avoid local paths, relative imports wont resolve correctly
+    mv thinc/tests tests
+    rm -r thinc
   '';
 
-  checkPhase = ''
-    pytest thinc/tests
-  '';
+  pythonImportsCheck = [
+    "thinc"
+  ];
 
-  pythonImportsCheck = [ "thinc" ];
-
-  meta = with stdenv.lib; {
-    description = "Practical Machine Learning for NLP in Python";
+  meta = with lib; {
+    description = "Library for NLP machine learning";
     homepage = "https://github.com/explosion/thinc";
     license = licenses.mit;
-    maintainers = with maintainers; [ aborsu danieldk sdll ];
+    maintainers = with maintainers; [ aborsu ];
   };
 }

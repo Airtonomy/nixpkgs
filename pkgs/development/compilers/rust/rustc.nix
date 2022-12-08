@@ -1,18 +1,22 @@
-{ stdenv, removeReferencesTo, pkgsBuildBuild, pkgsBuildHost, pkgsBuildTarget
-, llvmShared, llvmSharedForBuild, llvmSharedForHost, llvmSharedForTarget
+{ lib, stdenv, removeReferencesTo, pkgsBuildBuild, pkgsBuildHost, pkgsBuildTarget
+, llvmShared, llvmSharedForBuild, llvmSharedForHost, llvmSharedForTarget, llvmPackages
 , fetchurl, file, python3
 , darwin, cmake, rust, rustPlatform
-, pkgconfig, openssl
+, pkg-config, openssl, xz
+, libiconv
 , which, libffi
 , withBundledLLVM ? false
 , enableRustcDev ? true
 , version
 , sha256
 , patches ? []
+, fd
+, firefox
+, thunderbird
 }:
 
 let
-  inherit (stdenv.lib) optionals optional optionalString concatStringsSep;
+  inherit (lib) optionals optional optionalString concatStringsSep;
   inherit (darwin.apple_sdk.frameworks) Security;
 in stdenv.mkDerivation rec {
   pname = "rustc";
@@ -36,6 +40,13 @@ in stdenv.mkDerivation rec {
   # Running `strip -S` when cross compiling can harm the cross rlibs.
   # See: https://github.com/NixOS/nixpkgs/pull/56540#issuecomment-471624656
   stripDebugList = [ "bin" ];
+
+  # The Rust pkg-config crate does not support prefixed pkg-config executables[1],
+  # but it does support checking these idiosyncratic PKG_CONFIG_${TRIPLE}
+  # environment variables.
+  # [1]: https://github.com/rust-lang/pkg-config-rs/issues/53
+  "PKG_CONFIG_${builtins.replaceStrings ["-"] ["_"] (rust.toRustTarget stdenv.buildPlatform)}" =
+    "${pkgsBuildHost.stdenv.cc.targetPrefix}pkg-config";
 
   NIX_LDFLAGS = toString (
        # when linking stage1 libstd: cc: undefined reference to `__cxa_begin_catch'
@@ -86,11 +97,15 @@ in stdenv.mkDerivation rec {
     "${setBuild}.cxx=${cxxForBuild}"
     "${setHost}.cxx=${cxxForHost}"
     "${setTarget}.cxx=${cxxForTarget}"
+
+    "${setBuild}.crt-static=${lib.boolToString stdenv.buildPlatform.isStatic}"
+    "${setHost}.crt-static=${lib.boolToString stdenv.hostPlatform.isStatic}"
+    "${setTarget}.crt-static=${lib.boolToString stdenv.targetPlatform.isStatic}"
   ] ++ optionals (!withBundledLLVM) [
     "--enable-llvm-link-shared"
-    "${setBuild}.llvm-config=${llvmSharedForBuild}/bin/llvm-config"
-    "${setHost}.llvm-config=${llvmSharedForHost}/bin/llvm-config"
-    "${setTarget}.llvm-config=${llvmSharedForTarget}/bin/llvm-config"
+    "${setBuild}.llvm-config=${llvmSharedForBuild.dev}/bin/llvm-config"
+    "${setHost}.llvm-config=${llvmSharedForHost.dev}/bin/llvm-config"
+    "${setTarget}.llvm-config=${llvmSharedForTarget.dev}/bin/llvm-config"
   ] ++ optionals (stdenv.isLinux && !stdenv.targetPlatform.isRedox) [
     "--enable-profiler" # build libprofiler_builtins
   ] ++ optionals stdenv.buildPlatform.isMusl [
@@ -99,6 +114,11 @@ in stdenv.mkDerivation rec {
     "${setHost}.musl-root=${pkgsBuildHost.targetPackages.stdenv.cc.libc}"
   ] ++ optionals stdenv.targetPlatform.isMusl [
     "${setTarget}.musl-root=${pkgsBuildTarget.targetPackages.stdenv.cc.libc}"
+  ] ++ optionals (rust.IsNoStdTarget stdenv.targetPlatform) [
+    "--disable-docs"
+  ] ++ optionals (stdenv.isDarwin && stdenv.isx86_64) [
+    # https://github.com/rust-lang/rust/issues/92173
+    "--set rust.jemalloc"
   ];
 
   # The bootstrap.py will generated a Makefile that then executes the build.
@@ -117,7 +137,7 @@ in stdenv.mkDerivation rec {
   postPatch = ''
     patchShebangs src/etc
 
-    ${optionalString (!withBundledLLVM) ''rm -rf src/llvm''}
+    ${optionalString (!withBundledLLVM) "rm -rf src/llvm"}
 
     # Fix the configure script to not require curl as we won't use it
     sed -i configure \
@@ -125,25 +145,33 @@ in stdenv.mkDerivation rec {
 
     # Useful debugging parameter
     # export VERBOSE=1
+  '' + lib.optionalString (stdenv.isDarwin && stdenv.isx86_64) ''
+    # See https://github.com/jemalloc/jemalloc/issues/1997
+    # Using a value of 48 should work on both emulated and native x86_64-darwin.
+    export JEMALLOC_SYS_WITH_LG_VADDR=48
   '';
 
   # rustc unfortunately needs cmake to compile llvm-rt but doesn't
   # use it for the normal build. This disables cmake in Nix.
   dontUseCmakeConfigure = true;
 
+  depsBuildBuild = [ pkgsBuildHost.stdenv.cc pkg-config ];
+
   nativeBuildInputs = [
     file python3 rustPlatform.rust.rustc cmake
-    which libffi removeReferencesTo pkgconfig
+    which libffi removeReferencesTo pkg-config xz
   ];
 
   buildInputs = [ openssl ]
-    ++ optional stdenv.isDarwin Security
+    ++ optionals stdenv.isDarwin [ Security ]
     ++ optional (!withBundledLLVM) llvmShared;
+
+  depsTargetTargetPropagated = optionals stdenv.isDarwin [ libiconv ];
 
   outputs = [ "out" "man" "doc" ];
   setOutputFlags = false;
 
-  postInstall = stdenv.lib.optionalString enableRustcDev ''
+  postInstall = lib.optionalString enableRustcDev ''
     # install rustc-dev components. Necessary to build rls, clippy...
     python x.py dist rustc-dev
     tar xf build/dist/rustc-dev*tar.gz
@@ -158,6 +186,9 @@ in stdenv.mkDerivation rec {
     # remove references to llvm-config in lib/rustlib/x86_64-unknown-linux-gnu/codegen-backends/librustc_codegen_llvm-llvm.so
     # and thus a transitive dependency on ncurses
     find $out/lib -name "*.so" -type f -exec remove-references-to -t ${llvmShared} '{}' '+'
+
+    # remove uninstall script that doesn't really make sense for Nix.
+    rm $out/lib/rustlib/uninstall.sh
   '';
 
   configurePlatforms = [];
@@ -170,12 +201,16 @@ in stdenv.mkDerivation rec {
 
   requiredSystemFeatures = [ "big-parallel" ];
 
-  passthru.llvm = llvmShared;
+  passthru = {
+    llvm = llvmShared;
+    inherit llvmPackages;
+    tests = { inherit fd; } // lib.optionalAttrs stdenv.hostPlatform.isLinux { inherit firefox thunderbird; };
+  };
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     homepage = "https://www.rust-lang.org/";
     description = "A safe, concurrent, practical language";
-    maintainers = with maintainers; [ madjar cstrahan globin havvy ];
+    maintainers = with maintainers; [ cstrahan globin havvy ];
     license = [ licenses.mit licenses.asl20 ];
     platforms = platforms.linux ++ platforms.darwin;
   };

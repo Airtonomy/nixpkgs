@@ -1,55 +1,34 @@
-{ stdenv, lib, fetchFromGitHub, cmake, pkgconfig
-, alsaLib, asio, avahi, boost170, flac, libogg, libvorbis, soxr
+{ stdenv, lib, fetchFromGitHub, cmake, pkg-config, darwin
+, alsa-lib, asio, avahi, boost17x, flac, libogg, libvorbis, soxr
+, aixlog, popl
+, pulseaudioSupport ? false, libpulseaudio
 , nixosTests }:
 
-let
-
-  dependency = { name, version, sha256 }:
-  stdenv.mkDerivation {
-    name = "${name}-${version}";
-
-    src = fetchFromGitHub {
-      owner = "badaix";
-      repo  = name;
-      rev   = "v${version}";
-      inherit sha256;
-    };
-
-    nativeBuildInputs = [ cmake ];
-  };
-
-  aixlog = dependency {
-    name    = "aixlog";
-    version = "1.2.1";
-    sha256  = "1rh4jib5g41b85bqrxkl5g74hk5ryf187y9fw0am76g59xlymfpr";
-  };
-
-  popl = dependency {
-    name    = "popl";
-    version = "1.2.0";
-    sha256  = "1z6z7fwffs3d9h56mc2m24d5gp4fc5bi8836zyfb276s6fjyfcai";
-  };
-
-in
+assert pulseaudioSupport -> libpulseaudio != null;
 
 stdenv.mkDerivation rec {
   pname = "snapcast";
-  version = "0.20.0";
+  version = "0.26.0";
 
   src = fetchFromGitHub {
     owner  = "badaix";
     repo   = "snapcast";
     rev    = "v${version}";
-    sha256 = "152ic8hlyawcmj9pykb33xc6yx7il6yb9ilmsy6m9nlh40m8yxls";
+    sha256 = "sha256-CCifn9OEFM//Hk1PJj8T3MXIV8pXCTdBBXPsHuZwLyQ=";
   };
 
-  nativeBuildInputs = [ cmake pkgconfig boost170.dev ];
+  nativeBuildInputs = [ cmake pkg-config ];
   # snapcast also supports building against tremor but as we have libogg, that's
   # not needed
   buildInputs = [
-    alsaLib asio avahi flac libogg libvorbis
+    boost17x
+    asio avahi flac libogg libvorbis
     aixlog popl soxr
-  ];
+  ] ++ lib.optional pulseaudioSupport libpulseaudio
+  ++ lib.optional stdenv.isLinux alsa-lib
+  ++ lib.optionals stdenv.isDarwin [darwin.apple_sdk.frameworks.IOKit darwin.apple_sdk.frameworks.AudioToolbox];
+
+  TARGET=lib.optionalString stdenv.isDarwin "MACOS";
 
   # Upstream systemd unit files are pretty awful, so we provide our own in a
   # NixOS module. It might make sense to get that upstreamed...
@@ -64,6 +43,7 @@ stdenv.mkDerivation rec {
     description = "Synchronous multi-room audio player";
     homepage = "https://github.com/badaix/snapcast";
     maintainers = with maintainers; [ fpletz ];
-    license = licenses.gpl3;
+    platforms = platforms.linux ++ platforms.darwin;
+    license = licenses.gpl3Plus;
   };
 }

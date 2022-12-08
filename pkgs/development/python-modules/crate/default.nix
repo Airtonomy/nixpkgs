@@ -1,4 +1,4 @@
-{ stdenv
+{ lib
 , fetchPypi
 , buildPythonPackage
 , urllib3
@@ -6,16 +6,17 @@
 , isPy3k
 , sqlalchemy
 , pytestCheckHook
+, stdenv
 }:
 
 buildPythonPackage rec {
   pname = "crate";
-  version = "0.26.0";
+  version = "0.27.2";
   disabled = !isPy3k;
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "6f650c2efe250b89bf35f8fe3211eb37ebc8d76f7a9c09bd73db3076708fa2fc";
+    sha256 = "sha256-Ch4O3enHlQ+XO6+r7cnptrGJwnElHp07UubJuErft6U=";
   };
 
   propagatedBuildInputs = [
@@ -28,7 +29,17 @@ buildPythonPackage rec {
     pytestCheckHook
   ];
 
-  meta = with stdenv.lib; {
+  disabledTests = [
+    # network access
+    "test_layer_from_uri"
+  ];
+
+  disabledTestPaths = [
+    # imports setuptools.ssl_support, which doesn't exist anymore
+    "src/crate/client/test_http.py"
+  ];
+
+  meta = with lib; {
     homepage = "https://github.com/crate/crate-python";
     description = "A Python client library for CrateDB";
     license = licenses.asl20;

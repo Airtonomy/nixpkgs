@@ -1,20 +1,22 @@
-{ stdenv, fetchurl, pkg-config, perl
-, openssl, db, zlib, cyrus_sasl
+{ lib, stdenv, fetchurl, pkg-config, perl
+, openssl, db, cyrus_sasl, zlib
+, Security
 }:
 
 stdenv.mkDerivation rec {
   pname = "isync";
-  version = "1.3.3";
+  version = "1.4.4";
 
   src = fetchurl {
     url = "mirror://sourceforge/isync/${pname}-${version}.tar.gz";
-    sha256 = "10n8ykag0q3ws6fc15xqyg3v980v5nq3kzpablly2rh2z7vkn8gj";
+    sha256 = "1zq0wwvmqsl9y71546dr0aygzn9gjjfiw19hlcq87s929y4p6ckw";
   };
 
   nativeBuildInputs = [ pkg-config perl ];
-  buildInputs = [ openssl db cyrus_sasl zlib ];
+  buildInputs = [ openssl db cyrus_sasl zlib ]
+    ++ lib.optionals stdenv.isDarwin [ Security ];
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     homepage = "http://isync.sourceforge.net/";
     # https://sourceforge.net/projects/isync/
     changelog = "https://sourceforge.net/p/isync/isync/ci/v${version}/tree/NEWS";
@@ -27,5 +29,6 @@ stdenv.mkDerivation rec {
     license = licenses.gpl2Plus;
     platforms = platforms.unix;
     maintainers = with maintainers; [ primeos lheckemann ];
+    mainProgram = "mbsync";
   };
 }

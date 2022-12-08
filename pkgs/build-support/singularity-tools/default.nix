@@ -1,4 +1,5 @@
 { runCommand
+, lib
 , stdenv
 , storeDir ? builtins.storeDir
 , writeScript
@@ -37,7 +38,8 @@ rec {
     contents ? [],
     diskSize ? 1024,
     runScript ? "#!${stdenv.shell}\nexec /bin/sh",
-    runAsRoot ? null
+    runAsRoot ? null,
+    memSize ? 512
   }:
     let layer = mkLayer {
           inherit name;
@@ -53,6 +55,7 @@ rec {
               size = diskSize;
               fullName = "singularity-run-disk";
             };
+            inherit memSize;
           }
           ''
             rm -rf $out
@@ -64,7 +67,7 @@ rec {
             mkdir proc sys dev
 
             # Run root script
-            ${stdenv.lib.optionalString (runAsRoot != null) ''
+            ${lib.optionalString (runAsRoot != null) ''
               mkdir -p ./${storeDir}
               mount --rbind ${storeDir} ./${storeDir}
               unshare -imnpuf --mount-proc chroot ./ ${runAsRootFile}
@@ -72,7 +75,7 @@ rec {
             ''}
 
             # Build /bin and copy across closure
-            mkdir -p bin nix/store
+            mkdir -p bin ./${builtins.storeDir}
             for f in $(cat $layerClosure) ; do
               cp -ar $f ./$f
             done

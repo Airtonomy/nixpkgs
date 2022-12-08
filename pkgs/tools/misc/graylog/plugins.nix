@@ -1,4 +1,4 @@
-{ pkgs,  stdenv, fetchurl, unzip, graylog }:
+{ pkgs,  lib, stdenv, fetchurl, unzip, graylog }:
 
 with pkgs.lib;
 
@@ -15,10 +15,11 @@ let
     stdenv.mkDerivation (a // {
       inherit installPhase;
       dontUnpack = true;
-      buildInputs = [ unzip ];
+      nativeBuildInputs = [ unzip ];
       meta = a.meta // {
         platforms = graylog.meta.platforms;
         maintainers = (a.meta.maintainers or []) ++ [ maintainers.fadenb ];
+        sourceProvenance = with sourceTypes; [ binaryBytecode ];
       };
     });
 in {
@@ -77,7 +78,7 @@ in {
     meta = {
       homepage = "https://docs.graylog.org/en/3.3/pages/integrations.html#enterprise";
       description = "Integrations are tools that help Graylog work with external systems (unfree enterprise integrations)";
-      license = stdenv.lib.licenses.unfree;
+      license = lib.licenses.unfree;
     };
   };
   filter-messagesize = glPlugin rec {
@@ -107,7 +108,7 @@ in {
       cp ${pluginName}-${version}.jar $out/bin/${pluginName}-${version}.jar
     '';
     meta = {
-      homepage = https://github.com/Graylog2/graylog-plugin-integrations;
+      homepage = "https://github.com/Graylog2/graylog-plugin-integrations";
       description = "A collection of open source Graylog integrations that will be released together";
     };
   };
@@ -224,7 +225,7 @@ in {
       sha256 = "1hkaklwzcsvqq45b98chwqxqdgnnbj4dg68agsll13yq4zx37qpp";
     };
     meta = {
-      homepage = https://github.com/graylog-labs/graylog-plugin-snmp;
+      homepage = "https://github.com/graylog-labs/graylog-plugin-snmp";
       description = "Graylog plugin to receive SNMP traps";
     };
   };

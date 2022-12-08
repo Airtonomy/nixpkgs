@@ -1,38 +1,32 @@
-{ stdenv
-, buildPythonPackage
-, fetchPypi
-, dateutil
-, sigtools
-, six
+{ lib
 , attrs
-, od
+, buildPythonPackage
 , docutils
-, repeated_test
+, fetchPypi
+, od
 , pygments
-, unittest2
 , pytestCheckHook
+, pythonOlder
+, python-dateutil
+, setuptools
+, sigtools
+, unittest2
 }:
 
 buildPythonPackage rec {
   pname = "clize";
-  version = "4.1.1";
+  version = "5.0.0";
+  format = "pyproject";
+
+  disabled = pythonOlder "3.7";
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "f54dedcf6fea90a3e75c30cb65e0ab1e832760121f393b8d68edd711dbaf7187";
+    hash = "sha256-/cFpEvAN/Movd38xaE53Y+D9EYg/SFyHeqtlVUo1D0I=";
   };
 
-  # Remove overly restrictive version constraints
-  postPatch = ''
-    substituteInPlace setup.py --replace "attrs>=19.1.0,<20" "attrs"
-  '';
-
-  checkInputs = [
-    pytestCheckHook
-    dateutil
-    pygments
-    repeated_test
-    unittest2
+  nativeBuildInputs = [
+    setuptools
   ];
 
   propagatedBuildInputs = [
@@ -40,14 +34,32 @@ buildPythonPackage rec {
     docutils
     od
     sigtools
-    six
   ];
 
-  pythonImportsCheck = [ "clize" ];
+  passthru.optional-dependencies = {
+    datetime = [
+      python-dateutil
+    ];
+  };
 
-  meta = with stdenv.lib; {
+  # repeated_test no longer exists in nixpkgs
+  # also see: https://github.com/epsy/clize/issues/74
+  doCheck = false;
+  checkInputs = [
+    pytestCheckHook
+    python-dateutil
+    pygments
+    unittest2
+  ];
+
+  pythonImportsCheck = [
+    "clize"
+  ];
+
+  meta = with lib; {
     description = "Command-line argument parsing for Python";
     homepage = "https://github.com/epsy/clize";
     license = licenses.mit;
+    maintainers = with maintainers; [ ];
   };
 }

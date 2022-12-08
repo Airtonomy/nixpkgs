@@ -1,32 +1,60 @@
-{ stdenv, fetchPypi, buildPythonPackage, isPy3k, flask, blinker, twill }:
+{ lib
+, stdenv
+, blinker
+, pytestCheckHook
+, buildPythonPackage
+, fetchPypi
+, flask
+, pythonOlder
+}:
 
 buildPythonPackage rec {
-  pname = "Flask-Testing";
-  version = "0.8.0";
+  pname = "flask-testing";
+  version = "0.8.1";
+  format = "setuptools";
+
+  disabled = pythonOlder "3.7";
 
   src = fetchPypi {
-    inherit pname version;
-    sha256 = "1rkkqgmrzmhpv6y1xysqh0ij03xniic8h631yvghksqwxd9vyjfq";
+    pname = "Flask-Testing";
+    inherit version;
+    hash = "sha256-CnNNe2jmOpQQtBPNex+WRW+ahYvQmmIi1GVlDMeC6wE=";
   };
 
-  postPatch = ''
-    substituteInPlace setup.py --replace "twill==0.9.1" "twill"
-  '';
+  propagatedBuildInputs = [
+    flask
+  ];
 
-  propagatedBuildInputs = [ flask ];
+  checkInputs = [
+    blinker
+    pytestCheckHook
+  ];
 
-  checkInputs = [ blinker ] ++ stdenv.lib.optionals (!isPy3k) [ twill ];
+  # Some of the tests use localhost networking on darwin
+  doCheck = !stdenv.isDarwin;
 
-  # twill integration is outdated in Python 2, hence it the tests fails.
-  # Some of the tests use localhost networking on darwin.
-  doCheck = isPy3k && !stdenv.isDarwin;
+  disabledTests = [
+    # RuntimeError and NotImplementedError
+    "test_assert_redirects"
+    "test_server_listening"
+    "test_server_process_is_spawned"
+    # change in repr(template) in recent flask
+    "test_assert_template_rendered_signal_sent"
+  ];
 
-  pythonImportsCheck = [ "flask_testing" ];
+  disabledTestPaths = [
+    # twill is only used by Python 2 according setup.py
+    "tests/test_twill.py"
+  ];
 
-  meta = with stdenv.lib; {
-    description = "Flask unittest integration.";
+  pythonImportsCheck = [
+    "flask_testing"
+  ];
+
+  meta = with lib; {
+    description = "Extension provides unit testing utilities for Flask";
     homepage = "https://pythonhosted.org/Flask-Testing/";
     license = licenses.bsd3;
-    maintainers = [ maintainers.mic92 ];
+    maintainers = with maintainers; [ mic92 ];
   };
 }

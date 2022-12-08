@@ -1,4 +1,4 @@
-{ stdenv
+{ lib
 , fetchurl
 , gettext
 , itstool
@@ -12,19 +12,19 @@
 , gobject-introspection
 , gtk3
 , gtksourceview4
-, gnome3
+, gnome
 , gsettings-desktop-schemas
 }:
 
 python3.pkgs.buildPythonApplication rec {
   pname = "meld";
-  version = "3.21.0";
+  version = "3.22.0";
 
   format = "other";
 
   src = fetchurl {
-    url = "mirror://gnome/sources/${pname}/${stdenv.lib.versions.majorMinor version}/${pname}-${version}.tar.xz";
-    sha256 = "toARTVq3kzJFSf1Y9OsgLY4oDAYzoLdl7ebfs0FgqBs=";
+    url = "mirror://gnome/sources/${pname}/${lib.versions.majorMinor version}/${pname}-${version}.tar.xz";
+    sha256 = "sha256-P8EHyY7251NY/9Kw0UyF3bSP4UoR6TmpQyL6qo6QxA0=";
   };
 
   nativeBuildInputs = [
@@ -44,8 +44,7 @@ python3.pkgs.buildPythonApplication rec {
     gtk3
     gtksourceview4
     gsettings-desktop-schemas
-    gnome3.adwaita-icon-theme
-    gobject-introspection # fixes https://github.com/NixOS/nixpkgs/issues/56943 for now
+    gnome.adwaita-icon-theme
   ];
 
   propagatedBuildInputs = with python3.pkgs; [
@@ -53,15 +52,24 @@ python3.pkgs.buildPythonApplication rec {
     pycairo
   ];
 
+  # gobject-introspection and some other similar setup hooks do not currently work with strictDeps.
+  # https://github.com/NixOS/nixpkgs/issues/56943
+  strictDeps = false;
+
+  postPatch = ''
+    patchShebangs meson_shebang_normalisation.py
+  '';
+
   passthru = {
-    updateScript = gnome3.updateScript {
+    updateScript = gnome.updateScript {
       packageName = pname;
+      versionPolicy = "none"; # should be odd-unstable but we are tracking unstable versions for now
     };
   };
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Visual diff and merge tool";
-    homepage = "http://meldmerge.org/";
+    homepage = "https://meld.app/";
     license = licenses.gpl2Plus;
     platforms = platforms.linux ++ platforms.darwin;
     maintainers = with maintainers; [ jtojnar mimame ];

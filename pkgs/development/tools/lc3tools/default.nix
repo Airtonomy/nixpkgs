@@ -1,4 +1,4 @@
-{ stdenv, fetchurl, unzip, flex, tk, ncurses, readline }:
+{ lib, stdenv, fetchurl, unzip, flex, tk, ncurses, readline }:
 
 stdenv.mkDerivation {
   pname = "lc3tools";
@@ -19,6 +19,9 @@ stdenv.mkDerivation {
 
     # lc3sim-tk looks for lc3sim in $out/bin instead of $out
     ./0003-lc3sim-tk-path.patch
+
+    # use `cc` instead of `gcc`; on macOS the latter is not present
+    ./0004-configure-use-cc.patch
   ];
 
   nativeBuildInputs = [ unzip ];
@@ -39,9 +42,16 @@ stdenv.mkDerivation {
     mv -t $out/bin $out/lc3*
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
+    longDescription = ''
+      The LC-3 tools package contains the lc3as assembler, the lc3sim simulator,
+      and lc3sim-tk, a Tcl/Tk-based GUI frontend to the simulator.
+    '';
     description = "Toolchain and emulator for the LC-3 architecture";
+    homepage = "https://highered.mheducation.com/sites/0072467509/student_view0/lc-3_simulator.html";
     license = licenses.gpl2;
     maintainers = with maintainers; [ anna328p ];
+    mainProgram = "lc3sim-tk";
+    platforms = with lib.platforms; unix ++ windows;
   };
 }

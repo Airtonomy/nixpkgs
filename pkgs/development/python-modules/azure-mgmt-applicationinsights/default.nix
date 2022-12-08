@@ -1,28 +1,29 @@
 { lib
 , buildPythonPackage
-, python
 , fetchPypi
 , msrest
 , msrestazure
 , azure-common
+, azure-mgmt-core
 , azure-mgmt-nspkg
 , isPy3k
 }:
 
 buildPythonPackage rec {
   pname = "azure-mgmt-applicationinsights";
-  version = "0.3.0";
+  version = "3.1.0";
 
   src = fetchPypi {
     inherit pname version;
     extension = "zip";
-    sha256 = "3c788a54db4fbca1a8850151462ec1471ff59c86b3a10d6082952bbdaa7e6651";
+    sha256 = "sha256-mFUKupq4IXywGs6aQQYFYSNNH9PCNxicS1mRneSdhHU=";
   };
 
   propagatedBuildInputs = [
+    azure-common
+    azure-mgmt-core
     msrest
     msrestazure
-    azure-common
   ] ++ lib.optionals (!isPy3k) [
     azure-mgmt-nspkg
   ];

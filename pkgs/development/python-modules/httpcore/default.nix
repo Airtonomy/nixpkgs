@@ -1,47 +1,71 @@
 { lib
+, anyio
 , buildPythonPackage
-, pythonOlder
+, certifi
 , fetchFromGitHub
 , h11
 , h2
 , pproxy
+, pytest-asyncio
+, pytest-httpbin
+, pytest-trio
 , pytestCheckHook
-, pytestcov
+, pythonOlder
 , sniffio
-, uvicorn
+, socksio
 }:
 
 buildPythonPackage rec {
   pname = "httpcore";
-  version = "0.12.0";
-  disabled = pythonOlder "3.6";
+  version = "0.15.0";
+  format = "setuptools";
+
+  disabled = pythonOlder "3.7";
 
   src = fetchFromGitHub {
     owner = "encode";
     repo = pname;
     rev = version;
-    sha256 = "0bwxn7m7r7h6k41swxj0jqj3nzi76wqxwbnry6y7d4qfh4m26g2j";
+    hash = "sha256-FF3Yzac9nkVcA5bHVOz2ymvOelSfJ0K6oU8UWpBDcmo=";
   };
 
+  postPatch = ''
+    substituteInPlace setup.py \
+      --replace "h11>=0.11,<0.13" "h11>=0.11,<0.14"
+  '';
+
   propagatedBuildInputs = [
+    anyio
+    certifi
     h11
-    h2
     sniffio
   ];
 
+  passthru.optional-dependencies = {
+    http2 = [
+      h2
+    ];
+    socks = [
+      socksio
+    ];
+  };
+
   checkInputs = [
     pproxy
+    pytest-asyncio
+    pytest-httpbin
+    pytest-trio
     pytestCheckHook
-    pytestcov
-    uvicorn
+  ] ++ passthru.optional-dependencies.http2
+    ++ passthru.optional-dependencies.socks;
+
+  pythonImportsCheck = [
+    "httpcore"
   ];
 
   pytestFlagsArray = [
-    # these tests fail during dns lookups: httpcore.ConnectError: [Errno -2] Name or service not known
-    "--ignore=tests/sync_tests/test_interfaces.py"
+    "--asyncio-mode=strict"
   ];
-
-  pythonImportsCheck = [ "httpcore" ];
 
   meta = with lib; {
     description = "A minimal low-level HTTP client";

@@ -3,30 +3,31 @@
 , fetchFromGitHub
 , isPy27
 , numpy
-, scikitlearn
+, scikit-learn
 , pytestCheckHook
-, pytorch
+, torch
 , torchvision
 , tqdm
+, faiss
 }:
 
 buildPythonPackage rec {
   pname   = "pytorch-metric-learning";
-  version = "0.9.95";
+  version = "1.6.2";
 
   disabled = isPy27;
 
   src = fetchFromGitHub {
     owner = "KevinMusgrave";
     repo = pname;
-    rev = "v${version}";
-    sha256 = "1msvs1j3n47762ahm21bnkk2qqabxw8diiyi7s420x4zg24mr23g";
+    rev = "refs/tags/v${version}";
+    sha256 = "sha256-y/KqMqxSzTGsjwtbhHbFK+S4CX6yHC6tR6jdPWUzeGg=";
   };
 
   propagatedBuildInputs = [
     numpy
-    pytorch
-    scikitlearn
+    torch
+    scikit-learn
     torchvision
     tqdm
   ];
@@ -36,15 +37,25 @@ buildPythonPackage rec {
     export TEST_DEVICE=cpu
     export TEST_DTYPES=float32,float64  # half-precision tests fail on CPU
   '';
+
   # package only requires `unittest`, but use `pytest` to exclude tests
-  checkInputs = [ pytestCheckHook ];
+  checkInputs = [
+    faiss
+    pytestCheckHook
+  ];
+
   disabledTests = [
-    # requires FAISS (not in Nixpkgs)
-    "test_accuracy_calculator_and_faiss"
+    # TypeError: setup() missing 1 required positional argument: 'world_size'
+    "TestDistributedLossWrapper"
     # require network access:
+    "TestInference"
     "test_get_nearest_neighbors"
     "test_tuplestoweights_sampler"
     "test_untrained_indexer"
+    "test_metric_loss_only"
+    "test_pca"
+    # flaky
+    "test_distributed_classifier_loss_and_miner"
   ];
 
   meta = {

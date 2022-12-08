@@ -1,42 +1,75 @@
-{ stdenv, fetchurl, fetchpatch, autoreconfHook, dejagnu, gettext, pkgconfig
-, gdbm, pam, readline, ncurses, gnutls, guile, texinfo, gnum4, sasl, fribidi, nettools
-, python3, gss, libmysqlclient, system-sendmail }:
+{ lib
+, stdenv
+, fetchurl
+, fetchpatch
+, autoreconfHook
+, dejagnu
+, gettext
+, gnum4
+, pkg-config
+, texinfo
+, fribidi
+, gdbm
+, gnutls
+, gss
+, guile
+, libmysqlclient
+, mailcap
+, nettools
+, pam
+, readline
+, ncurses
+, python3
+, sasl
+, system-sendmail
+, libxcrypt
+}:
 
 stdenv.mkDerivation rec {
   pname = "mailutils";
-  version = "3.10";
+  version = "3.14";
 
   src = fetchurl {
     url = "mirror://gnu/${pname}/${pname}-${version}.tar.xz";
-    sha256 = "17smrxjdgbbzbzakik30vj46q4iib85ksqhb82jr4vjp57akszh9";
+    hash = "sha256-wMWzj+qLRaSvzUNkh/Knb9VSUJLQN4gTputVQsIScTk=";
   };
+
+  separateDebugInfo = true;
 
   postPatch = ''
     sed -i -e '/chown root:mail/d' \
            -e 's/chmod [24]755/chmod 0755/' \
       */Makefile{.in,.am}
     sed -i 's:/usr/lib/mysql:${libmysqlclient}/lib/mysql:' configure.ac
-    sed -i 's/0\.18/0.19/' configure.ac
   '';
 
   nativeBuildInputs = [
-    autoreconfHook gettext pkgconfig
+    autoreconfHook
+    gettext
+    gnum4
+    pkg-config
+    texinfo
   ];
 
   buildInputs = [
-    gdbm pam readline ncurses gnutls guile texinfo gnum4 sasl fribidi nettools
-    gss libmysqlclient python3
-  ];
+    fribidi
+    gdbm
+    gnutls
+    gss
+    guile
+    libmysqlclient
+    mailcap
+    ncurses
+    pam
+    python3
+    readline
+    sasl
+    libxcrypt
+  ] ++ lib.optionals stdenv.isLinux [ nettools ];
 
   patches = [
     ./fix-build-mb-len-max.patch
     ./path-to-cat.patch
-    # mailquota.c:277: undefined reference to `get_size'
-    # https://lists.gnu.org/archive/html/bug-mailutils/2020-08/msg00002.html
-    (fetchpatch {
-      url = "http://git.savannah.gnu.org/cgit/mailutils.git/patch/?id=37713b42a501892469234b90454731d8d8b7a3e6";
-      sha256 = "1mwj77nxvf4xvqf26yjs59jyksnizj0lmbymbzg4kmqynzq3zjny";
-    })
     # Fix cross-compilation
     # https://lists.gnu.org/archive/html/bug-mailutils/2020-11/msg00038.html
     (fetchpatch {
@@ -53,6 +86,8 @@ stdenv.mkDerivation rec {
     "--with-gsasl"
     "--with-mysql"
     "--with-path-sendmail=${system-sendmail}/bin/sendmail"
+    "--with-mail-rc=/etc/mail.rc"
+    "DEFAULT_CUPS_CONFDIR=${mailcap}/etc" # provides mime.types to mimeview
   ];
 
   readmsg-tests = let
@@ -63,8 +98,6 @@ stdenv.mkDerivation rec {
     (fetchurl { url = "${p}/twomsg.at"; sha256 = "15m29rg2xxa17xhx6jp4s2vwa9d4khw8092vpygqbwlhw68alk9g"; })
     (fetchurl { url = "${p}/weed.at"; sha256 = "1101xakhc99f5gb9cs3mmydn43ayli7b270pzbvh7f9rbvh0d0nh"; })
   ];
-
-  NIX_CFLAGS_COMPILE = "-L${libmysqlclient}/lib/mysql -I${libmysqlclient}/include/mysql";
 
   checkInputs = [ dejagnu ];
   doCheck = false; # fails 1 out of a bunch of tests, looks like a bug
@@ -90,7 +123,7 @@ stdenv.mkDerivation rec {
     unset LD_LIBRARY_PATH
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Rich and powerful protocol-independent mail framework";
 
     longDescription = ''

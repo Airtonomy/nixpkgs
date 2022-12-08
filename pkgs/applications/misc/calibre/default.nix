@@ -1,66 +1,80 @@
 { lib
-, mkDerivation
+, stdenv
 , fetchurl
-, poppler_utils
-, pkgconfig
-, libpng
-, imagemagick
-, libjpeg
+, cmake
+, fetchpatch
 , fontconfig
-, podofo
-, qtbase
-, qmake
-, icu
-, sqlite
 , hunspell
 , hyphen
-, unrarSupport ? false
-, chmlib
-, pythonPackages
-, libusb1
+, icu
+, imagemagick
+, libjpeg
 , libmtp
-, xdg_utils
-, makeDesktopItem
+, libpng
+, libstemmer
+, libuchardet
+, libusb1
+, pkg-config
+, podofo
+, poppler_utils
+, python3Packages
+, qmake
+, qtbase
+, qtwayland
 , removeReferencesTo
+, sqlite
+, wrapQtAppsHook
+, xdg-utils
+, unrarSupport ? false
 }:
 
-mkDerivation rec {
+stdenv.mkDerivation rec {
   pname = "calibre";
-  version = "4.23.0";
+  version = "6.8.0";
 
   src = fetchurl {
     url = "https://download.calibre-ebook.com/${version}/${pname}-${version}.tar.xz";
-    sha256 = "sha256-Ft5RRzzw4zb5RqVyUaHk9Pu6H4V/F9j8FKoTLn61lRg=";
+    hash = "sha256-d9JaWjAjJzKldjyrdrl6OyX1JSatp9U8agRog7K5n2s=";
   };
 
+  # https://sources.debian.org/patches/calibre/${version}+dfsg-1
   patches = [
-    # Patches from Debian that:
-    # - disable plugin installation (very insecure)
-    ./disable_plugins.patch
-    # - switches the version update from enabled to disabled by default
-    ./no_updates_dialog.patch
-    # the unrar patch is not from debian
-  ] ++ lib.optional (!unrarSupport) ./dont_build_unrar_plugin.patch;
+    #  allow for plugin update check, but no calibre version check
+    (fetchpatch {
+      name = "0001-only-plugin-update.patch";
+      url = "https://raw.githubusercontent.com/debian-calibre/calibre/debian/${version}%2Bdfsg-1/debian/patches/0001-only-plugin-update.patch";
+      hash = "sha256-uL1mSjgCl5ZRLbSuKxJM6XTfvVwog70F7vgKtQzQNEQ=";
+    })
+    (fetchpatch {
+      name = "0006-Hardening-Qt-code.patch";
+      url = "https://raw.githubusercontent.com/debian-calibre/calibre/debian/${version}%2Bdfsg-1/debian/patches/0006-Hardening-Qt-code.patch";
+      hash = "sha256-CutVTb7K4tjewq1xAjHEGUHFcuuP/Z4FFtj4xQb4zKQ=";
+    })
+  ]
+  ++ lib.optional (!unrarSupport) ./dont_build_unrar_plugin.patch;
 
   prePatch = ''
-    sed -i "/pyqt_sip_dir/ s:=.*:= '${pythonPackages.pyqt5}/share/sip/PyQt5':"  \
-      setup/build_environment.py
+    sed -i "s@\[tool.sip.project\]@[tool.sip.project]\nsip-include-dirs = [\"${python3Packages.pyqt6}/${python3Packages.python.sitePackages}/PyQt6/bindings\"]@g" \
+      setup/build.py
+    sed -i "s/\[tool.sip.bindings.pictureflow\]/[tool.sip.bindings.pictureflow]\ntags = [\"${python3Packages.sip.platform_tag}\"]/g" \
+      setup/build.py
 
     # Remove unneeded files and libs
-    rm -rf resources/calibre-portable.* \
-           src/odf
+    rm -rf src/odf resources/calibre-portable.*
   '';
 
   dontUseQmakeConfigure = true;
+  dontUseCmakeConfigure = true;
 
-  enableParallelBuilding = true;
-
-  nativeBuildInputs = [ pkgconfig qmake removeReferencesTo ];
-
-  CALIBRE_PY3_PORT = builtins.toString pythonPackages.isPy3k;
+  nativeBuildInputs = [
+    cmake
+    pkg-config
+    qmake
+    removeReferencesTo
+    wrapQtAppsHook
+  ];
 
   buildInputs = [
-    chmlib
     fontconfig
     hunspell
     hyphen
@@ -69,19 +83,25 @@ mkDerivation rec {
     libjpeg
     libmtp
     libpng
+    libstemmer
+    libuchardet
     libusb1
     podofo
     poppler_utils
     qtbase
+    qtwayland
     sqlite
-    xdg_utils
+    xdg-utils
   ] ++ (
-    with pythonPackages; [
-      apsw
+    with python3Packages; [
+      (apsw.overrideAttrs (oldAttrs: rec {
+        setupPyBuildFlags = [ "--enable=load_extension" ];
+      }))
       beautifulsoup4
+      cchardet
       css-parser
       cssselect
-      dateutil
+      python-dateutil
       dnspython
       feedparser
       html2text
@@ -92,13 +112,23 @@ mkDerivation rec {
       msgpack
       netifaces
       pillow
-      pyqt5
-      pyqtwebengine
+      pychm
+      pyqt-builder
+      pyqt6
       python
       regex
       sip
+      setuptools
+      zeroconf
+      jeepney
+      pycryptodome
       # the following are distributed with calibre, but we use upstream instead
       odfpy
+    ] ++ lib.optionals (lib.lists.any (p: p == stdenv.hostPlatform.system) pyqt6-webengine.meta.platforms) [
+      # much of calibre's functionality is usable without a web
+      # browser, so we enable building on platforms which qtwebengine
+      # does not support by simply omitting qtwebengine.
+      pyqt6-webengine
     ] ++ lib.optional (unrarSupport) unrardll
   );
 
@@ -114,11 +144,10 @@ mkDerivation rec {
     export FC_LIB_DIR=${fontconfig.lib}/lib
     export PODOFO_INC_DIR=${podofo.dev}/include/podofo
     export PODOFO_LIB_DIR=${podofo.lib}/lib
-    export SIP_BIN=${pythonPackages.sip}/bin/sip
     export XDG_DATA_HOME=$out/share
     export XDG_UTILS_INSTALL_MODE="user"
 
-    ${pythonPackages.python.interpreter} setup.py install --root=$out \
+    ${python3Packages.python.interpreter} setup.py install --root=$out \
       --prefix=$out \
       --libdir=$out/lib \
       --staging-root=$out \
@@ -140,19 +169,16 @@ mkDerivation rec {
 
   # Wrap manually
   dontWrapQtApps = true;
-  dontWrapGApps = true;
 
   # Remove some references to shrink the closure size. This reference (as of
   # 2018-11-06) was a single string like the following:
   #   /nix/store/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx-podofo-0.9.6-dev/include/podofo/base/PdfVariant.h
   preFixup = ''
     remove-references-to -t ${podofo.dev} \
-      $out/lib/calibre/calibre/plugins${lib.optionalString pythonPackages.isPy3k "/3"}/podofo.so
+      $out/lib/calibre/calibre/plugins/podofo.so
 
     for program in $out/bin/*; do
-      wrapProgram $program \
-        ''${qtWrapperArgs[@]} \
-        ''${gappsWrapperArgs[@]} \
+      wrapQtApp $program \
         --prefix PYTHONPATH : $PYTHONPATH \
         --prefix PATH : ${poppler_utils.out}/bin
     done
@@ -161,11 +187,16 @@ mkDerivation rec {
   disallowedReferences = [ podofo.dev ];
 
   meta = with lib; {
-    description = "Comprehensive e-book software";
     homepage = "https://calibre-ebook.com";
-    license = with licenses; if unrarSupport then unfreeRedistributable else gpl3;
-    maintainers = with maintainers; [ domenkozar pSub AndersonTorres ];
+    description = "Comprehensive e-book software";
+    longDescription = ''
+      calibre is a powerful and easy to use e-book manager. Users say it’s
+      outstanding and a must-have. It’ll allow you to do nearly everything and
+      it takes things a step beyond normal e-book software. It’s also completely
+      free and open source and great for both casual users and computer experts.
+    '';
+    license = with licenses; if unrarSupport then unfreeRedistributable else gpl3Plus;
+    maintainers = with maintainers; [ pSub AndersonTorres ];
     platforms = platforms.linux;
-    inherit version;
   };
 }

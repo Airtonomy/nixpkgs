@@ -1,10 +1,8 @@
-{ stdenv, fetchurl, file }:
+{ lib, stdenv, fetchurl, file }:
 
-let
-  version = "0.8.9.0";
-in stdenv.mkDerivation rec {
+stdenv.mkDerivation rec {
   pname = "libmodplug";
-  inherit version;
+  version = "0.8.9.0";
 
   preConfigure = ''
      substituteInPlace configure \
@@ -12,7 +10,7 @@ in stdenv.mkDerivation rec {
         --replace /usr/bin/file ${file}/bin/file
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "MOD playing library";
     homepage    = "http://modplug-xmms.sourceforge.net/";
     license     = licenses.publicDomain;

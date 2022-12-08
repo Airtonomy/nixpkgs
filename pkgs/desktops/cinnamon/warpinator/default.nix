@@ -1,5 +1,5 @@
 { fetchFromGitHub
-, stdenv
+, lib
 , gobject-introspection
 , meson
 , ninja
@@ -10,20 +10,20 @@
 , gettext
 , polkit
 , glib
+, gitUpdater
 }:
 
 python3.pkgs.buildPythonApplication rec  {
   pname = "warpinator";
-  version = "1.0.8";
+  version = "1.2.14";
 
   format = "other";
-  doCheck = false;
 
   src = fetchFromGitHub {
     owner = "linuxmint";
     repo = pname;
     rev = version;
-    sha256 = "0n1b50j2w76qnhfj5yg5q2j7fgxr9gbmzpazmbml4q41h8ybcmxm";
+    hash = "sha256-0OmrviDti843c+nvpt7ennSrso0PD7eZOJ94JiWJT58=";
   };
 
   nativeBuildInputs = [
@@ -55,6 +55,10 @@ python3.pkgs.buildPythonApplication rec  {
     netifaces
   ];
 
+  mesonFlags = [
+    "-Dbundle-zeroconf=false"
+  ];
+
   postPatch = ''
     chmod +x install-scripts/*
     patchShebangs .
@@ -69,11 +73,15 @@ python3.pkgs.buildPythonApplication rec  {
     chmod -x+X $out/libexec/warpinator/*.py
   '';
 
-  meta = with stdenv.lib; {
+  passthru.updateScript = gitUpdater {
+    ignoredVersions = "^master.*";
+  };
+
+  meta = with lib; {
     homepage = "https://github.com/linuxmint/warpinator";
     description = "Share files across the LAN";
     license = licenses.gpl3Plus;
     platforms = platforms.linux;
-    maintainers = [ maintainers.mkg20001 ];
+    maintainers = teams.cinnamon.members;
   };
 }

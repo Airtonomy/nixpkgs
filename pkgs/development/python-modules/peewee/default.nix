@@ -1,48 +1,64 @@
-{ stdenv, lib, buildPythonPackage, fetchFromGitHub
-, sqlite
-, cython
+{ lib
 , apsw
+, buildPythonPackage
+, cython
+, fetchFromGitHub
 , flask
-, withPostgres ? false, psycopg2
-, withMysql ? false, mysql-connector
+, python
+, sqlite
+, withMysql ? false
+, mysql-connector
+, withPostgres ? false
+, psycopg2
+, pythonOlder
 }:
 
 buildPythonPackage rec {
-
   pname = "peewee";
-  version = "3.13.3";
+  version = "3.15.3";
+  format = "setuptools";
 
-  # pypi release does not provide tests
+  disabled = pythonOlder "3.7";
+
   src = fetchFromGitHub {
     owner = "coleifer";
     repo = pname;
-    rev = version;
-    sha256 = "1r67hxb9m6v0xbnbqfnsw6dahmdr94pf81b4x51jfw6x9sa4izi4";
+    rev = "refs/tags/${version}";
+    hash = "sha256-6s+JTUYmuP6Y6D+mi8YTznHbPYUS7yk259MuPpm9H/s=";
   };
-
-
-  checkInputs = [ flask ];
-
-  checkPhase = ''
-    rm -r playhouse # avoid using the folder in the cwd
-    python runtests.py
-  '';
 
   buildInputs = [
     sqlite
-    cython # compile speedups
+    cython
   ];
 
   propagatedBuildInputs = [
-    apsw # sqlite performance improvement
-  ] ++ (lib.optional withPostgres psycopg2)
-    ++ (lib.optional withMysql mysql-connector);
+    apsw
+  ] ++ lib.optionals withPostgres [
+    psycopg2
+  ] ++ lib.optionals withMysql [
+    mysql-connector
+  ];
+
+  checkInputs = [
+    flask
+  ];
 
   doCheck = withPostgres;
 
-  meta = with stdenv.lib;{
-    description = "a small, expressive orm";
-    homepage    = "http://peewee-orm.com";
-    license     = licenses.mit;
+  checkPhase = ''
+    rm -r playhouse # avoid using the folder in the cwd
+    ${python.interpreter} runtests.py
+  '';
+
+  pythonImportsCheck = [
+    "peewee"
+  ];
+
+  meta = with lib; {
+    description = "Python ORM with support for various database implementation";
+    homepage = "http://peewee-orm.com";
+    license = licenses.mit;
+    maintainers = with maintainers; [ ];
   };
 }

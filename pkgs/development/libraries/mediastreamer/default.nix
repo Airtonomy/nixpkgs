@@ -1,31 +1,21 @@
-{ alsaLib
-, bctoolbox
+{ bctoolbox
 , bzrtp
 , cmake
-, doxygen
 , fetchFromGitLab
-, fetchpatch
-, ffmpeg_3
+, ffmpeg
 , glew
 , gsm
-, intltool
-, libGL
-, libGLU
+, lib
 , libX11
 , libXext
-, libXv
-, libmatroska
 , libopus
-, libpcap
 , libpulseaudio
-, libtheora
-, libupnp
 , libv4l
 , libvpx
 , ortp
-, pkgconfig
-, python
-, SDL
+, python3
+, qtbase
+, qtdeclarative
 , speex
 , srtp
 , stdenv
@@ -33,7 +23,9 @@
 
 stdenv.mkDerivation rec {
   pname = "mediastreamer2";
-  version = "4.4.13";
+  version = "5.1.20";
+
+  dontWrapQtApps = true;
 
   src = fetchFromGitLab {
     domain = "gitlab.linphone.org";
@@ -41,7 +33,7 @@ stdenv.mkDerivation rec {
     group = "BC";
     repo = pname;
     rev = version;
-    sha256 = "0w84v1ajhyysr41qaj7x4njwdak84cc10lq33hl8lq68a52fc2vw";
+    sha256 = "sha256-u8YqF5BzyYIF9+XB90Eu6DlwXuu1FDOJUzxebj0errU=";
   };
 
   patches = [
@@ -55,54 +47,48 @@ stdenv.mkDerivation rec {
 
   nativeBuildInputs = [
     cmake
-    doxygen
-    intltool
-    pkgconfig
-    python
+    python3
+    qtbase
+    qtdeclarative
   ];
 
   propagatedBuildInputs = [
-    alsaLib
+    # Made by BC
     bctoolbox
     bzrtp
-    ffmpeg_3
+    ortp
+
+    ffmpeg
     glew
-    gsm
-    libGL
-    libGLU
     libX11
     libXext
-    libXv
-    libmatroska
-    libopus
-    libpcap
     libpulseaudio
-    libtheora
-    libupnp
     libv4l
-    libvpx
-    ortp
-    SDL
     speex
     srtp
+
+    # Optional
+    gsm  # GSM audio codec
+    libopus  # Opus audio codec
+    libvpx  # VP8 video codec
   ];
 
-  # Do not build static libraries
-  cmakeFlags = [ "-DENABLE_STATIC=NO" ];
+  strictDeps = true;
 
-  NIX_CFLAGS_COMPILE = toString [
-    "-DGIT_VERSION=\"v${version}\""
-    "-Wno-error=deprecated-declarations"
-    "-Wno-error=cast-function-type"
-    "-Wno-error=stringop-truncation"
-    "-Wno-error=stringop-overflow"
+  cmakeFlags = [
+    "-DENABLE_STATIC=NO" # Do not build static libraries
+    "-DENABLE_QT_GL=ON" # Build necessary MSQOGL plugin for Linphone desktop
+    "-DCMAKE_C_FLAGS=-DGIT_VERSION=\"v${version}\""
+    "-DENABLE_STRICT=NO" # Disable -Werror
+    "-DENABLE_UNIT_TESTS=NO" # Do not build test executables
   ];
+
   NIX_LDFLAGS = "-lXext";
 
-  meta = with stdenv.lib; {
-    description = "A powerful and lightweight streaming engine specialized for voice/video telephony applications";
+  meta = with lib; {
+    description = "A powerful and lightweight streaming engine specialized for voice/video telephony applications. Part of the Linphone project";
     homepage = "http://www.linphone.org/technical-corner/mediastreamer2";
-    license = licenses.gpl3;
+    license = licenses.gpl3Only;
     platforms = platforms.linux;
     maintainers = with maintainers; [ jluttine ];
   };

@@ -1,6 +1,5 @@
 { lib
 , stdenv
-, buildPackages
 , fetchFromGitHub
 , zlib
 , ilmbase
@@ -10,7 +9,7 @@
 
 stdenv.mkDerivation rec {
   pname = "openexr";
-  version = "2.5.3";
+  version = "2.5.8";
 
   outputs = [ "bin" "dev" "out" "doc" ];
 
@@ -18,21 +17,25 @@ stdenv.mkDerivation rec {
     owner = "AcademySoftwareFoundation";
     repo = "openexr";
     rev = "v${version}";
-    sha256 = "xyYdRrwAYdnRZmErIK0tZspguqtrXvixO5+6nMDoOh8=";
+    sha256 = "sha256-N7XdDaDsYdx4TXvHplQDTvhHNUmW5rntdaTKua4C0es=";
   };
 
   patches = [
-    # Fix pkg-config paths
     (fetchpatch {
-      url = "https://github.com/AcademySoftwareFoundation/openexr/commit/6442fb71a86c09fb0a8118b6dbd93bcec4883a3c.patch";
-      sha256 = "bwD5WTKPT4DjOJDnPXIvT5hJJkH0b71Vo7qupWO9nPA=";
+      name = "CVE-2021-45942.patch";
+      url = "https://github.com/AcademySoftwareFoundation/openexr/commit/11cad77da87c4fa2aab7d58dd5339e254db7937e.patch";
+      stripLen = 4;
+      extraPrefix = "OpenEXR/IlmImf/";
+      sha256 = "1wa2jn6sa0n3phaqvklnlbgk1bz60y756ad4jk4d757pzpnannsy";
     })
   ];
+
+  cmakeFlags = lib.optional stdenv.hostPlatform.isStatic "-DCMAKE_SKIP_RPATH=ON";
 
   nativeBuildInputs = [ cmake ];
   propagatedBuildInputs = [ ilmbase zlib ];
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "A high dynamic-range (HDR) image file format";
     homepage = "https://www.openexr.com/";
     license = licenses.bsd3;

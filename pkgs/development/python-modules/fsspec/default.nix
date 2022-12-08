@@ -1,38 +1,59 @@
 { lib
+, stdenv
+, aiohttp
 , buildPythonPackage
 , fetchFromGitHub
-, pythonOlder
-, pytestCheckHook
 , numpy
-, stdenv
+, paramiko
+, pytest-asyncio
+, pytest-mock
+, pytest-vcr
+, pytestCheckHook
+, pythonOlder
+, requests
+, smbprotocol
+, tqdm
 }:
 
 buildPythonPackage rec {
   pname = "fsspec";
-  version = "0.8.3";
-  disabled = pythonOlder "3.5";
+  version = "2022.8.2";
+  format = "setuptools";
+
+  disabled = pythonOlder "3.7";
 
   src = fetchFromGitHub {
     owner = "intake";
     repo = "filesystem_spec";
     rev = version;
-    sha256 = "0mfy0wxjfwwnp5q2afhhfbampf0fk71wsv512pi9yvrkzzfi1hga";
+    hash = "sha256-eT1zqTbU5kfQ7bvzigT9579HfXU6VaOEjRg8VG/DHMI=";
   };
 
-  checkInputs = [
-    pytestCheckHook
-    numpy
+  propagatedBuildInputs = [
+    aiohttp
+    paramiko
+    requests
+    smbprotocol
+    tqdm
   ];
+
+  checkInputs = [
+    numpy
+    pytest-asyncio
+    pytest-mock
+    pytest-vcr
+    pytestCheckHook
+  ];
+
+  __darwinAllowLocalNetworking = true;
 
   disabledTests = [
     # Test assumes user name is part of $HOME
     # AssertionError: assert 'nixbld' in '/homeless-shelter/foo/bar'
     "test_strip_protocol_expanduser"
-    # flaky: works locally but fails on hydra
-    # as it uses the install dir for tests instead of a temp dir
-    # resolved in https://github.com/intake/filesystem_spec/issues/432 and
-    # can be enabled again from version 0.8.4
-    "test_pathobject"
+    # test accesses this remote ftp server:
+    # https://ftp.fau.de/debian-cd/current/amd64/log/success
+    "test_find"
   ] ++ lib.optionals (stdenv.isDarwin) [
     # works locally on APFS, fails on hydra with AssertionError comparing timestamps
     # darwin hydra builder uses HFS+ and has only one second timestamp resolution
@@ -41,10 +62,15 @@ buildPythonPackage rec {
     "test_touch"
   ];
 
+  pythonImportsCheck = [
+    "fsspec"
+  ];
+
   meta = with lib; {
-    description = "A specification that python filesystems should adhere to";
+    description = "A specification that Python filesystems should adhere to";
     homepage = "https://github.com/intake/filesystem_spec";
+    changelog = "https://github.com/fsspec/filesystem_spec/raw/${version}/docs/source/changelog.rst";
     license = licenses.bsd3;
-    maintainers = [ maintainers.costrouc ];
+    maintainers = with maintainers; [ costrouc ];
   };
 }

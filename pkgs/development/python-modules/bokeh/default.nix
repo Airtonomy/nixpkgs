@@ -1,6 +1,6 @@
 { buildPythonPackage
 , fetchPypi
-, futures
+, futures ? null
 , isPy27
 , isPyPy
 , jinja2
@@ -12,7 +12,6 @@
 , pillow
 #, pytestCheckHook#
 , pytest
-, python
 , python-dateutil
 , pyyaml
 , selenium
@@ -33,11 +32,12 @@
 
 buildPythonPackage rec {
   pname = "bokeh";
-  version = "2.2.3";
+  # update together with panel which is not straightforward
+  version = "2.4.3";
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "c4a3f97afe5f525019dd58ee8c4e3d43f53fe1b1ac264ccaae9b02c07b2abc17";
+    sha256 = "sha256-7zOAEWGvN5Zlq3o0aE8iCYYeOu/VyAOiH7u5nZSHSwM=";
   };
 
   patches = [

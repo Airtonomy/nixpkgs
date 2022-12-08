@@ -1,21 +1,21 @@
-{stdenv, fetchFromGitHub, autoreconfHook, pandoc, pkgconfig}:
+{lib, stdenv, fetchFromGitHub, autoreconfHook, pandoc, pkg-config}:
 
 stdenv.mkDerivation rec {
   pname = "jo";
-  version = "1.4";
+  version = "1.9";
 
   src = fetchFromGitHub {
     owner  = "jpmens";
     repo = "jo";
     rev = version;
-    sha256 ="1jnv3g38vaa66m83hqibyki31ii81xfpvjw6wgdv18ci3iwvsz3v";
+    sha256 ="sha256-1q4/RpxfoAdtY3m8bBuj7bhD17V+4dYo3Vb8zMbI1YU=";
   };
 
   enableParallelBuilding = true;
 
-  nativeBuildInputs = [ autoreconfHook pandoc pkgconfig ];
+  nativeBuildInputs = [ autoreconfHook pandoc pkg-config ];
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "A small utility to create JSON objects";
     homepage = "https://github.com/jpmens/jo";
     license = licenses.gpl2Plus;

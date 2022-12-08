@@ -1,18 +1,18 @@
 { stdenv, lib, fetchFromGitHub, substituteAll
-, pkgconfig, autoreconfHook, autoconf-archive, makeWrapper, patchelf
-, tpm2-tss, tpm2-tools, opensc, openssl, sqlite, python37, glibc, libyaml
+, pkg-config, autoreconfHook, autoconf-archive, makeWrapper, patchelf
+, tpm2-tss, tpm2-tools, opensc, openssl, sqlite, python3, glibc, libyaml
 , abrmdSupport ? true, tpm2-abrmd ? null
 }:
 
 stdenv.mkDerivation rec {
   pname = "tpm2-pkcs11";
-  version = "1.5.0";
+  version = "1.8.0";
 
   src = fetchFromGitHub {
     owner = "tpm2-software";
     repo = pname;
     rev = version;
-    sha256 = "0sm73a762c7qd6x3f052m00d7daprifimsfa17dfdf4jvy9fqy56";
+    sha256 = "sha256-f5wi0nIM071yaQCwPkY1agKc7OEQa/IxHJc4V2i0Q9I=";
   };
 
   patches = lib.singleton (
@@ -29,11 +29,11 @@ stdenv.mkDerivation rec {
   '';
 
   nativeBuildInputs = [
-    pkgconfig autoreconfHook autoconf-archive makeWrapper patchelf
+    pkg-config autoreconfHook autoconf-archive makeWrapper patchelf
   ];
   buildInputs = [
     tpm2-tss tpm2-tools opensc openssl sqlite libyaml
-    (python37.withPackages (ps: [ ps.pyyaml ps.cryptography ps.pyasn1-modules ]))
+    (python3.withPackages (ps: with ps; [ packaging pyyaml cryptography pyasn1-modules tpm2-pytss ]))
   ];
 
   outputs = [ "out" "bin" "dev" ];

@@ -1,25 +1,32 @@
-{ fetchFromGitHub, fzf, lib, makeWrapper, rustPlatform, wget }:
+{ stdenv, fetchFromGitHub, lib, makeWrapper, rustPlatform, wget, libiconv, withFzf ? true, fzf }:
 
 rustPlatform.buildRustPackage rec {
   pname = "navi";
-  version = "2.13.0";
+  version = "2.20.1";
 
   src = fetchFromGitHub {
     owner = "denisidoro";
     repo = "navi";
     rev = "v${version}";
-    sha256 = "04ks38s6d3nkdj0arhxw8f3sfw796l97fbqxsm7b9g5d2953a6cs";
+    sha256 = "sha256-uu82KG2RHEP0PstoYB4eWZWFjlousT40A1XAaBfkjFE=";
   };
 
-  cargoSha256 = "1zwar1l793809bsgqnwrgi50y76bd78qd4s8lw6d64f4z72dh80g";
+  cargoSha256 = "sha256-gpHeyxLcDqwi96BWF6Hwlb27JG2LSUgfsE4FTB1vIoQ=";
 
   nativeBuildInputs = [ makeWrapper ];
+
+  buildInputs = lib.optionals stdenv.isDarwin [ libiconv ];
 
   postInstall = ''
     wrapProgram $out/bin/navi \
       --prefix PATH : "$out/bin" \
-      --prefix PATH : ${lib.makeBinPath [ fzf wget ]}
+      --prefix PATH : ${lib.makeBinPath([ wget ] ++ lib.optionals withFzf [ fzf ])}
   '';
+
+  checkFlags = [
+    # error: Found argument '--test-threads' which wasn't expected, or isn't valid in this context
+    "--skip=test_parse_variable_line"
+   ];
 
   meta = with lib; {
     description = "An interactive cheatsheet tool for the command-line and application launchers";

@@ -1,8 +1,6 @@
-{ stdenv, fetchurl, SDL2, SDL2_ttf, SDL2_image, SDL2_mixer, pkgconfig, lua, zlib, unzip }:
+{ lib, stdenv, fetchurl, SDL2, SDL2_ttf, SDL2_image, SDL2_mixer, pkg-config, lua, zlib, unzip }:
 
 let
-  version = "3.3.2";
-
   # I took several games at random from https://instead.syscall.ru/games/
   games = [
     (fetchurl {
@@ -28,8 +26,9 @@ let
   ];
 in
 
-stdenv.mkDerivation {
-  name = "instead-" + version;
+stdenv.mkDerivation rec {
+  pname = "instead";
+  version = "3.3.2";
 
   src = fetchurl {
     url = "mirror://sourceforge/project/instead/instead/${version}/instead_${version}.tar.gz";
@@ -38,7 +37,7 @@ stdenv.mkDerivation {
 
   NIX_LDFLAGS = "-llua -lgcc_s";
 
-  nativeBuildInputs = [ pkgconfig unzip ];
+  nativeBuildInputs = [ pkg-config unzip ];
   buildInputs = [ SDL2 SDL2_ttf SDL2_image SDL2_mixer lua zlib ];
 
   postPatch = ''
@@ -62,11 +61,11 @@ stdenv.mkDerivation {
 
   enableParallelBuilding = true;
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Simple text adventure interpreter for Unix and Windows";
     homepage = "https://instead.syscall.ru/";
-    license = stdenv.lib.licenses.gpl2;
-    platforms = with stdenv.lib.platforms; linux;
+    license = lib.licenses.gpl2;
+    platforms = with lib.platforms; linux;
     maintainers = with maintainers; [ pSub ];
   };
 }

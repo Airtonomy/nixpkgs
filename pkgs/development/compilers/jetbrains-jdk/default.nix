@@ -1,16 +1,25 @@
-{ stdenv, openjdk11, fetchFromGitHub, jetbrains }:
+{ lib
+, stdenv
+, fetchFromGitHub
+, jetbrains
+, openjdk17
+}:
 
-openjdk11.overrideAttrs (oldAttrs: rec {
+openjdk17.overrideAttrs (oldAttrs: rec {
   pname = "jetbrains-jdk";
-  version = "11.0.7-b64";
+  version = "17.0.3-b469.37";
+
   src = fetchFromGitHub {
     owner = "JetBrains";
     repo = "JetBrainsRuntime";
-    rev = "jb${stdenv.lib.replaceStrings ["."] ["_"] version}";
-    sha256 = "1gxqi6dkyriv9j29ppan638w1ns2g9m4q1sq7arf9kwqr05zim90";
+    rev = "jb${version}";
+    hash =
+     # Upstream issue: https://github.com/JetBrains/JetBrainsRuntime/issues/163
+     if stdenv.isDarwin then "sha256-ExRvjs53rIuhUx4oCgAqu1Av3CNAgmE1ZlN0srEh3XM="
+     else "sha256-O+OIDRJcIsb/vhO2+SYuYdUYWYTGkBcQ9cHTExLIFDE=";
   };
-  patches = [];
-  meta = with stdenv.lib; {
+
+  meta = with lib; {
     description = "An OpenJDK fork to better support Jetbrains's products.";
     longDescription = ''
      JetBrains Runtime is a runtime environment for running IntelliJ Platform
@@ -23,11 +32,13 @@ openjdk11.overrideAttrs (oldAttrs: rec {
      JetBrains Runtime is not a certified build of OpenJDK. Please, use at
      your own risk.
     '';
-    homepage = "https://bintray.com/jetbrains/intellij-jdk/";
-    license = licenses.gpl2;
-    maintainers = with maintainers; [ edwtjo petabyteboy ];
-    platforms = [ "i686-linux" "x86_64-linux" "aarch64-linux" "armv7l-linux" "armv6l-linux" ];
+    homepage = "https://confluence.jetbrains.com/display/JBR/JetBrains+Runtime";
+    inherit (openjdk17.meta) license platforms mainProgram;
+    maintainers = with maintainers; [ edwtjo ];
+
+    broken = stdenv.isDarwin;
   };
+
   passthru = oldAttrs.passthru // {
     home = "${jetbrains.jdk}/lib/openjdk";
   };

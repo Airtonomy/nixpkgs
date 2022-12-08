@@ -1,4 +1,5 @@
 { stdenv
+, lib
 , fetchurl
 , fetchpatch
 , substituteAll
@@ -7,25 +8,28 @@
 , gobject-introspection
 , gjs
 , nixosTests
+, curl
 , glib
 , systemd
 , xz
 , e2fsprogs
 , libsoup
+, glib-networking
+, wrapGAppsNoGuiHook
 , gpgme
 , which
 , makeWrapper
 , autoconf
 , automake
 , libtool
-, fuse
+, fuse3
 , util-linuxMinimal
 , libselinux
 , libsodium
 , libarchive
 , libcap
 , bzip2
-, yacc
+, bison
 , libxslt
 , docbook-xsl-nons
 , docbook_xml_dtd_42
@@ -39,13 +43,13 @@ let
   ]));
 in stdenv.mkDerivation rec {
   pname = "ostree";
-  version = "2020.8";
+  version = "2022.6";
 
   outputs = [ "out" "dev" "man" "installedTests" ];
 
   src = fetchurl {
     url = "https://github.com/ostreedev/ostree/releases/download/v${version}/libostree-${version}.tar.xz";
-    sha256 = "16v73v63h16ika73kgh2cvgm0v27r2d48m932mbj3xm6s295kapx";
+    sha256 = "sha256-g170fZoLNaEMd//X8PvS4rh/fMy1iNonRCoF/3H/rYw=";
   };
 
   patches = [
@@ -74,19 +78,22 @@ in stdenv.mkDerivation rec {
     gobject-introspection
     which
     makeWrapper
-    yacc
+    bison
     libxslt
     docbook-xsl-nons
     docbook_xml_dtd_42
+    wrapGAppsNoGuiHook
   ];
 
   buildInputs = [
+    curl
     glib
     systemd
     e2fsprogs
     libsoup
+    glib-networking
     gpgme
-    fuse
+    fuse3
     libselinux
     libsodium
     libcap
@@ -103,6 +110,7 @@ in stdenv.mkDerivation rec {
   enableParallelBuilding = true;
 
   configureFlags = [
+    "--with-curl"
     "--with-systemdsystemunitdir=${placeholder "out"}/lib/systemd/system"
     "--with-systemdsystemgeneratordir=${placeholder "out"}/lib/systemd/system-generators"
     "--enable-installed-tests"
@@ -119,7 +127,7 @@ in stdenv.mkDerivation rec {
   '';
 
   postFixup = let
-    typelibPath = stdenv.lib.makeSearchPath "/lib/girepository-1.0" [
+    typelibPath = lib.makeSearchPath "/lib/girepository-1.0" [
       (placeholder "out")
       gobject-introspection
     ];
@@ -135,7 +143,7 @@ in stdenv.mkDerivation rec {
     };
   };
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Git for operating system binaries";
     homepage = "https://ostree.readthedocs.io/en/latest/";
     license = licenses.lgpl2Plus;

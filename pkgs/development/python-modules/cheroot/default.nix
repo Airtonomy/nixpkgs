@@ -1,51 +1,55 @@
-{ lib, stdenv, fetchPypi, buildPythonPackage, isPy3k
+{ lib
+, stdenv
+, buildPythonPackage
+, fetchPypi
+, jaraco_functools
 , jaraco_text
 , more-itertools
 , portend
-, pyopenssl
-, pytestCheckHook
-, pytestcov
+, pypytools
 , pytest-mock
+, pytestCheckHook
+, pythonOlder
 , requests
 , requests-toolbelt
 , requests-unixsocket
-, setuptools_scm
+, setuptools-scm
 , setuptools-scm-git-archive
 , six
-, trustme
 }:
 
 buildPythonPackage rec {
   pname = "cheroot";
-  version = "8.4.8";
+  version = "8.6.0";
 
-  disabled = !isPy3k;
+  disabled = pythonOlder "3.7";
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "1089c28a9c320d19fdf9a4b0ed6ace23a0948db1c171a36ac985f3741bc62865";
+    hash = "sha256-NmrfbnyslVVIbC0b5il5kwIu/2+MRlXBRDJozKPwjiU=";
   };
 
-  nativeBuildInputs = [ setuptools_scm setuptools-scm-git-archive ];
+  nativeBuildInputs = [
+    setuptools-scm
+    setuptools-scm-git-archive
+  ];
 
-  propagatedBuildInputs = [ more-itertools six ];
+  propagatedBuildInputs = [
+    jaraco_functools
+    more-itertools
+    six
+  ];
 
   checkInputs = [
     jaraco_text
     portend
-    pyopenssl
-    pytestCheckHook
-    pytestcov
+    pypytools
     pytest-mock
+    pytestCheckHook
     requests
     requests-toolbelt
     requests-unixsocket
-    trustme
   ];
-
-  # avoid attempting to use 3 packages not available on nixpkgs
-  # (jaraco.apt, jaraco.context, yg.lockfile)
-  pytestFlagsArray = [ "--ignore=cheroot/test/test_wsgi.py" ];
 
   # Disable doctest plugin because times out
   # Disable xdist (-n arg) because it's incompatible with testmon
@@ -58,12 +62,25 @@ buildPythonPackage rec {
     rm pytest.ini
   '';
 
-  disabledTests= [
+  disabledTests = [
     "tls" # touches network
     "peercreds_unix_sock" # test urls no longer allowed
   ] ++ lib.optionals stdenv.isDarwin [
     "http_over_https_error"
     "bind_addr_unix"
+    "test_ssl_env"
+  ];
+
+  disabledTestPaths = [
+    # avoid attempting to use 3 packages not available on nixpkgs
+    # (jaraco.apt, jaraco.context, yg.lockfile)
+    "cheroot/test/test_wsgi.py"
+    # requires pyopenssl
+    "cheroot/test/test_ssl.py"
+  ];
+
+  pythonImportsCheck = [
+    "cheroot"
   ];
 
   # Some of the tests use localhost networking.
@@ -73,5 +90,6 @@ buildPythonPackage rec {
     description = "High-performance, pure-Python HTTP";
     homepage = "https://github.com/cherrypy/cheroot";
     license = licenses.mit;
+    maintainers = with maintainers; [ ];
   };
 }

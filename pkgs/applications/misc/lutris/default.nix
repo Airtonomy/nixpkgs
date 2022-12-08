@@ -1,7 +1,10 @@
-{ buildPythonApplication, lib, fetchFromGitHub, fetchpatch
+{ buildPythonApplication
+, lib
+, fetchFromGitHub
 
-# build inputs
+  # build inputs
 , atk
+, file
 , gdk-pixbuf
 , glib-networking
 , gnome-desktop
@@ -13,17 +16,24 @@
 , webkitgtk
 , wrapGAppsHook
 
-# python dependencies
+  # check inputs
+, xvfb-run
+, nose2
+, flake8
+
+  # python dependencies
 , dbus-python
 , distro
 , evdev
+, lxml
 , pillow
 , pygobject3
 , pyyaml
 , requests
 , keyring
+, python-magic
 
-# commands that lutris needs
+  # commands that lutris needs
 , xrandr
 , pciutils
 , psmisc
@@ -42,7 +52,7 @@
 
 let
   # See lutris/util/linux.py
-  binPath = lib.makeBinPath [
+  requiredTools = [
     xrandr
     pciutils
     psmisc
@@ -60,6 +70,8 @@ let
     xorg.xkbcomp
   ];
 
+  binPath = lib.makeBinPath requiredTools;
+
   gstDeps = with gst_all_1; [
     gst-libav
     gst-plugins-bad
@@ -69,15 +81,16 @@ let
     gstreamer
   ];
 
-in buildPythonApplication rec {
+in
+buildPythonApplication rec {
   pname = "lutris-original";
-  version = "0.5.7.1";
+  version = "0.5.11";
 
   src = fetchFromGitHub {
     owner = "lutris";
     repo = "lutris";
-    rev = "v${version}";
-    sha256 = "12ispwkbbm5aq263n3bdjmjfkpwplizacnqs2c0wnag4zj4kpm29";
+    rev = "refs/tags/v${version}";
+    sha256 = "sha256-D2qMKYmi5TC8jEAECcz2V0rUrmp5kjXJ5qyW6C4re3w=";
   };
 
   nativeBuildInputs = [ wrapGAppsHook ];
@@ -91,29 +104,51 @@ in buildPythonApplication rec {
     libnotify
     pango
     webkitgtk
+    python-magic
   ] ++ gstDeps;
 
   propagatedBuildInputs = [
-    evdev distro pyyaml pygobject3 requests pillow dbus-python keyring
+    evdev
+    distro
+    lxml
+    pyyaml
+    pygobject3
+    requests
+    pillow
+    dbus-python
+    keyring
+    python-magic
   ];
+
+  postPatch = ''
+    substituteInPlace lutris/util/magic.py \
+      --replace "'libmagic.so.1'" "'${lib.getLib file}/lib/libmagic.so.1'"
+  '';
+
+
+  checkInputs = [ xvfb-run nose2 flake8 ] ++ requiredTools;
+  preCheck = "export HOME=$PWD";
+  checkPhase = ''
+    runHook preCheck
+    xvfb-run -s '-screen 0 800x600x24' make test
+    runHook postCheck
+  '';
 
   # avoid double wrapping
   dontWrapGApps = true;
   makeWrapperArgs = [
     "--prefix PATH : ${binPath}"
-    ''''${gappsWrapperArgs[@]}''
+    "\${gappsWrapperArgs[@]}"
   ];
   # needed for glib-schemas to work correctly (will crash on dialogues otherwise)
   # see https://github.com/NixOS/nixpkgs/issues/56943
   strictDeps = false;
 
-  preCheck = "export HOME=$PWD";
-
   meta = with lib; {
     homepage = "https://lutris.net";
     description = "Open Source gaming platform for GNU/Linux";
-    license = licenses.gpl3;
-    maintainers = with maintainers; [ chiiruno ];
+    license = licenses.gpl3Plus;
+    maintainers = with maintainers; [ Madouura ];
     platforms = platforms.linux;
   };
 }

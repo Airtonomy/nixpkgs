@@ -1,46 +1,47 @@
-{ stdenv
+{ lib
+, stdenv
 , fetchFromGitHub
-, nix-update-script
-, meson
-, ninja
-, python3
-, gettext
-, pkgconfig
-, desktop-file-utils
-, wrapGAppsHook
 , appstream-glib
-, epoxy
+, desktop-file-utils
 , glib
-, gtk3
+, gtk4
+, libepoxy
+, libadwaita
+, meson
 , mpv
+, ninja
+, nix-update-script
+, pkg-config
+, python3
+, wrapGAppsHook4
 }:
 
 stdenv.mkDerivation rec {
   pname = "celluloid";
-  version = "0.20";
+  version = "0.24";
 
   src = fetchFromGitHub {
     owner = "celluloid-player";
     repo = "celluloid";
     rev = "v${version}";
-    hash = "sha256-fEZnH8EqU6CykgKINXnKChuBUlisroa97B1vjcx2cWA=";
+    hash = "sha256-8Y/dCeoS29R1UHwmLOp0d+JNNC4JH5pLpiqfBZU+kLI=";
   };
 
   nativeBuildInputs = [
+    appstream-glib
+    desktop-file-utils
     meson
     ninja
+    pkg-config
     python3
-    appstream-glib
-    gettext
-    pkgconfig
-    desktop-file-utils
-    wrapGAppsHook
+    wrapGAppsHook4
   ];
 
   buildInputs = [
-    epoxy
     glib
-    gtk3
+    gtk4
+    libadwaita
+    libepoxy
     mpv
   ];
 
@@ -50,22 +51,20 @@ stdenv.mkDerivation rec {
 
   doCheck = true;
 
-  passthru = {
-    updateScript = nix-update-script {
-      attrPath = pname;
-    };
+  passthru.updateScript = nix-update-script {
+    attrPath = pname;
   };
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
+    homepage = "https://github.com/celluloid-player/celluloid";
     description = "Simple GTK frontend for the mpv video player";
     longDescription = ''
-      GNOME MPV interacts with mpv via the client API exported by libmpv,
-      allowing access to mpv's powerful playback capabilities through an
-      easy-to-use user interface.
+      Celluloid (formerly GNOME MPV) is a simple GTK+ frontend for mpv.
+      Celluloid interacts with mpv via the client API exported by libmpv,
+      allowing access to mpv's powerful playback capabilities.
     '';
-    homepage = "https://github.com/celluloid-player/celluloid";
     license = licenses.gpl3Plus;
-    maintainers = with maintainers; [ worldofpeace ];
+    maintainers = with maintainers; [ AndersonTorres ];
     platforms = platforms.linux;
   };
 }

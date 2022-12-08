@@ -1,6 +1,6 @@
-{ stdenv, libffi, openssl, python3Packages }:
+{ lib, libffi, openssl, python3Packages }:
 let
-  inherit (python3Packages) fetchPypi buildPythonApplication vcrpy mock hiro;
+  inherit (python3Packages) fetchPypi buildPythonApplication;
 in
   buildPythonApplication rec {
     pname = "jira-cli";
@@ -19,11 +19,11 @@ in
     checkInputs = with python3Packages; [ vcrpy mock hiro ];
     buildInputs = [ libffi openssl ];
     propagatedBuildInputs = with python3Packages; [
-      ordereddict requests six suds-jurko termcolor keyring
+      requests six suds-jurko termcolor keyring
       jira  keyrings-alt
     ];
 
-    meta = with stdenv.lib; {
+    meta = with lib; {
       description = "A command line interface to Jira";
       homepage = "https://github.com/alisaifee/jira-cli";
       maintainers = with maintainers; [ nyarly ];

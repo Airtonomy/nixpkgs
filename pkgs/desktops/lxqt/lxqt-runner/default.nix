@@ -2,7 +2,7 @@
 , mkDerivation
 , fetchFromGitHub
 , cmake
-, pkgconfig
+, pkg-config
 , lxqt-build-tools
 , qtbase
 , qttools
@@ -15,23 +15,23 @@
 , menu-cache
 , muparser
 , pcre
-, lxqtUpdateScript
+, gitUpdater
 }:
 
 mkDerivation rec {
   pname = "lxqt-runner";
-  version = "0.16.0";
+  version = "1.1.0";
 
   src = fetchFromGitHub {
     owner = "lxqt";
     repo = pname;
     rev = version;
-    sha256 = "0bmx5y4l443j8vrzw8967kw5i150braq0pfj8xk0nyz6zz62rrf1";
+    sha256 = "hnuzoHKXqM6xEzN0jvHVjVWUXRxuwdhD3BiBfFMmZSk=";
   };
 
   nativeBuildInputs = [
     cmake
-    pkgconfig
+    pkg-config
     lxqt-build-tools
   ];
 
@@ -49,13 +49,13 @@ mkDerivation rec {
     pcre
   ];
 
-  passthru.updateScript = lxqtUpdateScript { inherit pname version src; };
+  passthru.updateScript = gitUpdater { };
 
   meta = with lib; {
-    description = "Tool used to launch programs quickly by typing their names";
     homepage = "https://github.com/lxqt/lxqt-runner";
-    license = licenses.lgpl21;
+    description = "Tool used to launch programs quickly by typing their names";
+    license = licenses.lgpl21Plus;
     platforms = platforms.linux;
-    maintainers = with maintainers; [ romildo ];
+    maintainers = teams.lxqt.members;
   };
 }

@@ -1,34 +1,34 @@
-{ stdenv, fetchurl, cups, busybox }:
+{ lib, stdenv, fetchurl, cups, busybox }:
 
 stdenv.mkDerivation rec {
   pname = "epson-inkjet-printer-escpr2";
-  version = "1.1.24";
+  version = "1.1.49";
 
   src = fetchurl {
     # To find new versions, visit
     # http://download.ebz.epson.net/dsc/search/01/search/?OSC=LX and search for
     # some printer like for instance "WF-7210" to get to the most recent
-    # version.  
-    # NOTE: Don't forget to update the webarchive link too!
-    urls = [
-      "https://download3.ebz.epson.net/dsc/f/03/00/12/09/63/b7d2bb6a97c9ad99a96ebc68f8abcb1254888e94/epson-inkjet-printer-escpr2-1.1.24-1lsb3.2.src.rpm"
-      "https://web.archive.org/web/20201112163802if_/https://download3.ebz.epson.net/dsc/f/03/00/12/09/63/b7d2bb6a97c9ad99a96ebc68f8abcb1254888e94/epson-inkjet-printer-escpr2-1.1.24-1lsb3.2.src.rpm"
-    ];
-    sha256 = "sha256-DPzjKKsTWbfDk1MsVPXNsO5D7C/RiNegmwq2sEMx2co=";
+    # version.
+    url = "https://download3.ebz.epson.net/dsc/f/03/00/13/76/47/16f624dc1dfad10c3b4eb141c50c651a6360f69a/epson-inkjet-printer-escpr2-1.1.49-1lsb3.2.src.rpm";
+    sha256 = "sha256-WKDOpS7YL7J/IaNQcTjcoyXNXJGOuEexopdhYFubf50=";
   };
+
+  unpackPhase = ''
+    runHook preUnpack
+
+    rpm2cpio $src | cpio -idmv
+    tar xvf ${pname}-${version}-1lsb3.2.tar.gz
+    cd ${pname}-${version}
+
+    runHook postUnpack
+  '';
 
   patches = [ ./cups-filter-ppd-dirs.patch ];
 
-  buildInputs = [ cups busybox ];
+  buildInputs = [ cups ];
+  nativeBuildInputs = [ busybox ];
 
-  unpackPhase = ''
-    rpm2cpio $src | cpio -idmv
-
-    tar xvf ${pname}-${version}-1lsb3.2.tar.gz
-    cd ${pname}-${version}
-  '';
-
-  meta = with stdenv.lib; {
+  meta = with lib; {
     homepage = "http://download.ebz.epson.net/dsc/search/01/search/";
     description = "ESC/P-R 2 Driver (generic driver)";
     longDescription = ''

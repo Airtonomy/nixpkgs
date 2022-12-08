@@ -1,13 +1,13 @@
-{ stdenv, fetchgit, postgresql }:
+{ lib, stdenv, fetchgit, postgresql }:
 
 stdenv.mkDerivation rec {
   pname = "smlar-unstable";
-  version = "2020-04-08";
+  version = "2021-11-08";
 
   src = fetchgit {
     url = "git://sigaev.ru/smlar.git";
-    rev = "0c345af71969d9863bb76efa833391d00705669e";
-    sha256 = "1pr3pbnjc9n209l52sgsn4xqzp92qk6wci55hcqjjrwf2gdxy0yr";
+    rev = "f2522d5f20a46a3605a761d34a3aefcdffb94e71";
+    sha256 = "sha256-AC6w7uYw0OW70pQpWbK1A3rkCnMvTJzTCAdFiY3rO7A=";
   };
 
   buildInputs = [ postgresql ];
@@ -20,7 +20,7 @@ stdenv.mkDerivation rec {
     install -D -t $out/share/postgresql/extension *.control
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Compute similary of any one-dimensional arrays";
     homepage = "http://sigaev.ru/git/gitweb.cgi?p=smlar.git";
     platforms = postgresql.meta.platforms;

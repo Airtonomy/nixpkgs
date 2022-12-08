@@ -2,24 +2,23 @@
 
 buildGoModule rec {
   pname = "charm";
-  version = "0.8.5";
+  version = "0.12.4";
 
   src = fetchFromGitHub {
     owner = "charmbracelet";
     repo = "charm";
     rev = "v${version}";
-    sha256 = "0cgl5dpyzc4lciij9q9yghppiclrdnrl1jsbizfgh2an3s18ab8k";
+    sha256 = "sha256-1uxgiVJGdTE8R0gEQ515zxoKXSs5lTGAURNlgJYMuMI=";
   };
 
-  vendorSha256 = "1spzawnk2fslc1m14dp8lx4vpnxwz7xgm1hxbpz4bqlqz1hfd6ax";
+  vendorSha256 = "sha256-ouqA4Rg03M9dAUu2Uxmvez7LJTcrqYvqPNVQQmqwoFQ=";
 
-  doCheck = false;
-
-  buildFlagsArray = [ "-ldflags=" "-X=main.Version=${version}" ];
+  ldflags = [ "-s" "-w" "-X=main.Version=${version}" ];
 
   meta = with lib; {
     description = "Manage your charm account on the CLI";
     homepage = "https://github.com/charmbracelet/charm";
+    changelog = "https://github.com/charmbracelet/charm/releases/tag/v${version}";
     license = licenses.mit;
     maintainers = with maintainers; [ penguwin ];
   };

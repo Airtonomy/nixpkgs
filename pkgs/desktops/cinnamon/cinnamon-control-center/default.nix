@@ -1,34 +1,25 @@
-{ stdenv
+{ lib
+, stdenv
 , fetchFromGitHub
-, pkgconfig
-, autoreconfHook
+, pkg-config
 , glib
 , gettext
 , cinnamon-desktop
-, intltool
 , gtk3
 , libnotify
-, gnome-menus
 , libxml2
-, systemd
-, upower
 , gnome-online-accounts
 , cinnamon-settings-daemon
 , colord
 , polkit
-, ibus
-, libpulseaudio
-, isocodes
-, kerberos
 , libxkbfile
 , cinnamon-menus
-, dbus-glib
 , libgnomekbd
 , libxklavier
 , networkmanager
+, libgudev
 , libwacom
-, gnome3
-, libtool
+, gnome
 , wrapGAppsHook
 , tzdata
 , glibc
@@ -36,17 +27,22 @@
 , modemmanager
 , xorg
 , gdk-pixbuf
+, meson
+, ninja
+, cinnamon-translations
+, python3
+, upower
 }:
 
 stdenv.mkDerivation rec {
   pname = "cinnamon-control-center";
-  version = "4.6.2";
+  version = "5.4.7";
 
   src = fetchFromGitHub {
     owner = "linuxmint";
     repo = pname;
     rev = version;
-    sha256 = "0fbgi2r2xikpa04k431qq9akngi9akyflq1kcks8f095qs5gsana";
+    hash = "sha256-38n1QCygkBq+wOLwui1oF6MtDWxAFWxp5U1omSVtbro=";
   };
 
   buildInputs = [
@@ -56,12 +52,12 @@ stdenv.mkDerivation rec {
     libnotify
     cinnamon-menus
     libxml2
-    dbus-glib
     polkit
     libgnomekbd
     libxklavier
     colord
     cinnamon-settings-daemon
+    libgudev
     libwacom
     gnome-online-accounts
     tzdata
@@ -71,21 +67,23 @@ stdenv.mkDerivation rec {
     xorg.libXxf86misc
     xorg.libxkbfile
     gdk-pixbuf
+    upower
   ];
 
   /* ./panels/datetime/test-timezone.c:4:#define TZ_DIR "/usr/share/zoneinfo/"
-  ./panels/datetime/tz.h:32:#  define TZ_DATA_FILE "/usr/share/zoneinfo/zone.tab"
-  ./panels/datetime/tz.h:34:#  define TZ_DATA_FILE "/usr/share/lib/zoneinfo/tab/zone_sun.tab" */
+    ./panels/datetime/tz.h:32:#  define TZ_DATA_FILE "/usr/share/zoneinfo/zone.tab"
+    ./panels/datetime/tz.h:34:#  define TZ_DATA_FILE "/usr/share/lib/zoneinfo/tab/zone_sun.tab" */
 
   postPatch = ''
-    patchShebangs ./autogen.sh
+    find . -type f -exec sed -i \
+      -e s,/usr/share/locale,/run/current-system/sw/share/locale,g \
+      {} +
+
     sed 's|TZ_DIR "/usr/share/zoneinfo/"|TZ_DIR "${tzdata}/share/zoneinfo/"|g' -i ./panels/datetime/test-timezone.c
     sed 's|TZ_DATA_FILE "/usr/share/zoneinfo/zone.tab"|TZ_DATA_FILE "${tzdata}/share/zoneinfo/zone.tab"|g' -i ./panels/datetime/tz.h
     sed 's|"/usr/share/i18n/locales/"|"${glibc}/share/i18n/locales/"|g' -i panels/datetime/test-endianess.c
-  '';
 
-  autoreconfPhase = ''
-    NOCONFIGURE=1 bash ./autogen.sh
+    patchShebangs meson_install_schemas.py
   '';
 
   # it needs to have access to that file, otherwise we can't run tests after build
@@ -95,22 +93,30 @@ stdenv.mkDerivation rec {
     ln -s $PWD/panels/datetime $out/share/cinnamon-control-center/
   '';
 
-  preInstall = ''
-    rm -rfv $out
-  '';
-
-  doCheck = true;
-
-  nativeBuildInputs = [
-    pkgconfig
-    autoreconfHook
-    wrapGAppsHook
-    gettext
-    intltool
-    libtool
+  mesonFlags = [
+    # TODO: https://github.com/NixOS/nixpkgs/issues/36468
+    "-Dc_args=-I${glib.dev}/include/gio-unix-2.0"
+    # use locales from cinnamon-translations
+    "--localedir=${cinnamon-translations}/share/locale"
   ];
 
-  meta = with stdenv.lib; {
+  preInstall = ''
+    rm -r $out
+  '';
+
+  # the only test is wacom-calibrator and it seems to need an xserver and prob more services aswell
+  doCheck = false;
+
+  nativeBuildInputs = [
+    pkg-config
+    meson
+    ninja
+    wrapGAppsHook
+    gettext
+    python3
+  ];
+
+  meta = with lib; {
     homepage = "https://github.com/linuxmint/cinnamon-control-center";
     description = "A collection of configuration plugins used in cinnamon-settings";
     license = licenses.gpl2;

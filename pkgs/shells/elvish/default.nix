@@ -1,25 +1,45 @@
-{ stdenv, buildGoModule, fetchFromGitHub }:
+{ lib, buildGoModule, fetchFromGitHub, runCommand }:
 
 buildGoModule rec {
   pname = "elvish";
-  version = "0.14.1";
+  version = "0.18.0";
 
-  excludedPackages = [ "website" ];
+  subPackages = [ "cmd/elvish" ];
 
-  buildFlagsArray = [ "-ldflags=-s -w -X github.com/elves/elvish/pkg/buildinfo.Version==${version} -X github.com/elves/elvish/pkg/buildinfo.Reproducible=true" ];
+  ldflags = [ "-s" "-w" "-X src.elv.sh/pkg/buildinfo.Version==${version}" "-X src.elv.sh/pkg/buildinfo.Reproducible=true" ];
 
   src = fetchFromGitHub {
     owner = "elves";
     repo = pname;
     rev = "v${version}";
-    sha256 = "05wp3cx4s2cjf60yncdpmycs5h4z1dlin56dmljmfwz4z099079b";
+    sha256 = "sha256-AyTkJiNebpq17vdPluwJBztivezd+c1KAdWFTYYDIFE=";
   };
 
-  vendorSha256 = "1f971n17h9bc0qcgs9ipiaw0x9807mz761fqm605br4ch1kp0897";
+  vendorSha256 = "sha256-iuklI7XEQUgZ2ObYRROxyiccZ1JkajK5OJA7hIcpRZQ=";
 
+  strictDeps = true;
   doCheck = false;
 
-  meta = with stdenv.lib; {
+  doInstallCheck = true;
+  installCheckPhase = ''
+    runHook preInstallCheck
+
+    $out${passthru.shellPath} -c "
+      fn expect {|key expected|
+        var actual = \$buildinfo[\$key]
+        if (not-eq \$actual \$expected) {
+          fail '\$buildinfo['\$key']: expected '(to-string \$expected)', got '(to-string \$actual)
+        }
+      }
+
+      expect version ${version}
+      expect reproducible \$true
+    "
+
+    runHook postInstallCheck
+  '';
+
+  meta = with lib; {
     description = "A friendly and expressive command shell";
     longDescription = ''
       Elvish is a friendly interactive shell and an expressive programming
@@ -29,10 +49,7 @@ buildGoModule rec {
     homepage = "https://elv.sh/";
     license = licenses.bsd2;
     maintainers = with maintainers; [ vrthra AndersonTorres ];
-    platforms = with platforms; linux ++ darwin;
   };
 
-  passthru = {
-    shellPath = "/bin/elvish";
-  };
+  passthru.shellPath = "/bin/elvish";
 }

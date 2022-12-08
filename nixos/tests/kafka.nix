@@ -8,7 +8,7 @@ with pkgs.lib;
 let
   makeKafkaTest = name: kafkaPackage: (import ./make-test-python.nix ({
     inherit name;
-    meta = with pkgs.stdenv.lib.maintainers; {
+    meta = with pkgs.lib.maintainers; {
       maintainers = [ nequissimus ];
     };
 
@@ -19,7 +19,6 @@ let
         };
 
         networking.firewall.allowedTCPPorts = [ 2181 ];
-        virtualisation.memorySize = 1024;
       };
       kafka = { ... }: {
         services.apache-kafka = {
@@ -30,11 +29,6 @@ let
           '';
           package = kafkaPackage;
           zookeeper = "zookeeper1:2181";
-          # These are the default options, but UseCompressedOops doesn't work with 32bit JVM
-          jvmOptions = [
-            "-server" "-Xmx1G" "-Xms1G" "-XX:+UseParNewGC" "-XX:+UseConcMarkSweepGC" "-XX:+CMSClassUnloadingEnabled"
-            "-XX:+CMSScavengeBeforeRemark" "-XX:+DisableExplicitGC" "-Djava.awt.headless=true" "-Djava.net.preferIPv4Stack=true"
-          ] ++ optionals (! pkgs.stdenv.isi686 ) [ "-XX:+UseCompressedOops" ];
         };
 
         networking.firewall.allowedTCPPorts = [ 9092 ];
@@ -56,7 +50,7 @@ let
 
       kafka.wait_until_succeeds(
           "${kafkaPackage}/bin/kafka-topics.sh --create "
-          + "--zookeeper zookeeper1:2181 --partitions 1 "
+          + "--bootstrap-server localhost:9092 --partitions 1 "
           + "--replication-factor 1 --topic testtopic"
       )
       kafka.succeed(
@@ -64,22 +58,19 @@ let
           + "${kafkaPackage}/bin/kafka-console-producer.sh "
           + "--broker-list localhost:9092 --topic testtopic"
       )
-    '' + (if name == "kafka_0_9" then ''
-      assert "test 1" in kafka.succeed(
-          "${kafkaPackage}/bin/kafka-console-consumer.sh "
-          + "--zookeeper zookeeper1:2181 --topic testtopic "
-          + "--from-beginning --max-messages 1"
-      )
-    '' else ''
       assert "test 1" in kafka.succeed(
           "${kafkaPackage}/bin/kafka-console-consumer.sh "
           + "--bootstrap-server localhost:9092 --topic testtopic "
           + "--from-beginning --max-messages 1"
       )
-    '');
+    '';
   }) { inherit system; });
 
 in with pkgs; {
-  kafka_2_4  = makeKafkaTest "kafka_2_4"  apacheKafka_2_4;
-  kafka_2_5  = makeKafkaTest "kafka_2_5"  apacheKafka_2_5;
+  kafka_2_8  = makeKafkaTest "kafka_2_8"  apacheKafka_2_8;
+  kafka_3_0  = makeKafkaTest "kafka_3_0"  apacheKafka_3_0;
+  kafka_3_1  = makeKafkaTest "kafka_3_1"  apacheKafka_3_1;
+  kafka_3_2  = makeKafkaTest "kafka_3_2"  apacheKafka_3_2;
+  kafka_3_3  = makeKafkaTest "kafka_3_3"  apacheKafka_3_3;
+  kafka  = makeKafkaTest "kafka"  apacheKafka;
 }

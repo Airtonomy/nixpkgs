@@ -1,11 +1,10 @@
 { stdenv
 , fetchurl
 , lib
-, pkgconfig
+, pkg-config
 , meson
 , ninja
 , gettext
-, gobject-introspection
 , python3
 , gstreamer
 , orc
@@ -19,6 +18,7 @@
 , libvisual
 , tremor # provides 'virbisidec'
 , libGL
+, gobject-introspection
 , enableX11 ? stdenv.isLinux
 , libXv
 , libXext
@@ -26,12 +26,13 @@
 , wayland
 , wayland-protocols
 , enableAlsa ? stdenv.isLinux
-, alsaLib
+, alsa-lib
 # Enabling Cocoa seems to currently not work, giving compile
 # errors. Suspected is that a newer version than clang
 # is needed than 5.0 but it is not clear.
 , enableCocoa ? false
-, darwin
+, Cocoa
+, OpenGL
 , enableGl ? (enableX11 || enableWayland || enableCocoa)
 , enableCdparanoia ? (!stdenv.isDarwin)
 , cdparanoia
@@ -40,34 +41,35 @@
 
 stdenv.mkDerivation rec {
   pname = "gst-plugins-base";
-  version = "1.18.2";
+  version = "1.20.3";
 
   outputs = [ "out" "dev" ];
 
   src = fetchurl {
-    url = "${meta.homepage}/src/${pname}/${pname}-${version}.tar.xz";
-    sha256 = "1b05kg46azrxxvq42c71071lfsnc34pw4vynnkczdqi6g0gzn16x";
+    url = "https://gstreamer.freedesktop.org/src/${pname}/${pname}-${version}.tar.xz";
+    sha256 = "sha256-fjCz3YGnA4D/dVT5mEcdaZb/drvm/FRHCW+FHiRHPJ8=";
   };
 
-  patches = [
-    ./fix_pkgconfig_includedir.patch
+  strictDeps = true;
+  depsBuildBuild = [
+    pkg-config
   ];
-
   nativeBuildInputs = [
     meson
     ninja
-    pkgconfig
+    pkg-config
     python3
     gettext
     orc
     glib
-    gobject-introspection
-
+    gstreamer
     # docs
     # TODO add hotdoc here
+    gobject-introspection
   ] ++ lib.optional enableWayland wayland;
 
   buildInputs = [
+    gobject-introspection
     orc
     libtheora
     libintl
@@ -77,13 +79,13 @@ stdenv.mkDerivation rec {
     libjpeg
     tremor
     libGL
-  ] ++ lib.optional (!stdenv.isDarwin) [
+  ] ++ lib.optionals (!stdenv.isDarwin) [
     libvisual
   ] ++ lib.optionals stdenv.isDarwin [
     pango
-    darwin.apple_sdk.frameworks.OpenGL
+    OpenGL
   ] ++ lib.optionals enableAlsa [
-    alsaLib
+    alsa-lib
   ] ++ lib.optionals enableX11 [
     libXext
     libXv
@@ -91,7 +93,7 @@ stdenv.mkDerivation rec {
   ] ++ lib.optionals enableWayland [
     wayland
     wayland-protocols
-  ] ++ lib.optional enableCocoa darwin.apple_sdk.frameworks.Cocoa
+  ] ++ lib.optional enableCocoa Cocoa
     ++ lib.optional enableCdparanoia cdparanoia;
 
   propagatedBuildInputs = [
@@ -104,6 +106,8 @@ stdenv.mkDerivation rec {
     "-Dgl-graphene=disabled" # not packaged in nixpkgs as of writing
     # See https://github.com/GStreamer/gst-plugins-base/blob/d64a4b7a69c3462851ff4dcfa97cc6f94cd64aef/meson_options.txt#L15 for a list of choices
     "-Dgl_winsys=${lib.concatStringsSep "," (lib.optional enableX11 "x11" ++ lib.optional enableWayland "wayland" ++ lib.optional enableCocoa "cocoa")}"
+  ] ++ lib.optionals (stdenv.buildPlatform != stdenv.hostPlatform) [
+    "-Dtests=disabled"
   ]
   ++ lib.optional (!enableX11) "-Dx11=disabled"
   # TODO How to disable Wayland?
@@ -116,7 +120,7 @@ stdenv.mkDerivation rec {
 
   postPatch = ''
     patchShebangs \
-      common/scangobj-merge.py \
+      scripts/meson-pkg-config-file-fixup.py \
       scripts/extract-release-date-from-doap-file.py
   '';
 

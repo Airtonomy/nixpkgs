@@ -2,18 +2,18 @@
 
 buildGoModule rec {
   pname = "go-chromecast";
-  version = "0.2.6";
+  version = "0.2.12";
 
   src = fetchFromGitHub {
     owner = "vishen";
     repo = pname;
     rev = "v${version}";
-    sha256 = "0frvj1van1qn7hi96m0l7pzm4jf0v49xl4r4fi2lh1yqzgsgzy9f";
+    sha256 = "sha256-h8qWwMaEhXnj6ZSrKAXBVbrMR0je41EoOtFeN9XlCuk=";
   };
 
-  vendorSha256 = "0vgbmgk07kqmhhmcssy1ibr2hzk07hf32kkdyj2b9jqj9sb49p49";
+  vendorSha256 = "sha256-PpMLHuJR6irp+QHhzguwGtBy30HM7DR0tNGiwB07M5E=";
 
-  buildFlagsArray = [ "-ldflags=-s -w -X main.version=${version} -X main.commit=${src.rev} -X main.date=unknown" ];
+  ldflags = [ "-s" "-w" "-X main.version=${version}" "-X main.commit=${src.rev}" "-X main.date=unknown" ];
 
   meta = with lib; {
     homepage = "https://github.com/vishen/go-chromecast";

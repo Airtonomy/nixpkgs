@@ -1,28 +1,34 @@
-{ lib, fetchFromGitHub, rustPlatform, pkgconfig, openssl }:
+{ lib, stdenv, fetchFromGitHub, rustPlatform, pkg-config, dtc, openssl }:
 
 rustPlatform.buildRustPackage rec {
   pname = "cloud-hypervisor";
-  version = "0.8.0";
+  version = "26.0";
 
   src = fetchFromGitHub {
     owner = "cloud-hypervisor";
     repo = pname;
     rev = "v${version}";
-    sha256 = "h2aWWjycTm84TS89/vhqnAvwOqeeSDtvvCt+Is6I0eI=";
+    sha256 = "sha256-choTT20TVp42nN/vS6xCDA7Mbf1ZuAE1tFQZn49g9ak=";
   };
 
-  nativeBuildInputs = [ pkgconfig ];
-  buildInputs = [ openssl ];
+  separateDebugInfo = true;
 
-  cargoPatches = [ ./cargo-lock-vendor-fix.patch ];
-  cargoSha256 = "fOIB+qVDqAAgQPW3bK2NfST24GzYJeRXgaMFXyNPcPQ=";
+  nativeBuildInputs = [ pkg-config ];
+  buildInputs = [ openssl ] ++ lib.optional stdenv.isAarch64 dtc;
+
+  cargoSha256 = "sha256-mmyaT24he33wLI3zLOOKhVtzrPRyWzKgXUvc37suy5E=";
+
+  OPENSSL_NO_VENDOR = true;
+
+  # Integration tests require root.
+  cargoTestFlags = [ "--bins" ];
 
   meta = with lib; {
     homepage = "https://github.com/cloud-hypervisor/cloud-hypervisor";
     description = "Open source Virtual Machine Monitor (VMM) that runs on top of KVM";
     changelog = "https://github.com/cloud-hypervisor/cloud-hypervisor/releases/tag/v${version}";
     license = with licenses; [ asl20 bsd3 ];
-    maintainers = with maintainers; [ offline ];
-    platforms = [ "x86_64-linux" ];
+    maintainers = with maintainers; [ offline qyliss ];
+    platforms = [ "aarch64-linux" "x86_64-linux" ];
   };
 }

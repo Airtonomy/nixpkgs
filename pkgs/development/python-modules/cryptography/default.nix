@@ -1,69 +1,85 @@
-{ stdenv
+{ lib
+, stdenv
+, callPackage
 , buildPythonPackage
 , fetchPypi
-, fetchpatch
-, isPy27
-, ipaddress
+, rustPlatform
+, setuptools-rust
 , openssl
-, cryptography_vectors
-, darwin
+, Security
 , packaging
 , six
-, pythonOlder
 , isPyPy
 , cffi
-, pytest
+, pytestCheckHook
+, pytest-benchmark
+, pytest-subtests
+, pythonOlder
 , pretend
+, libiconv
 , iso8601
 , pytz
 , hypothesis
-, enum34
 }:
 
+let
+  cryptography-vectors = callPackage ./vectors.nix { };
+in
 buildPythonPackage rec {
   pname = "cryptography";
-  version = "3.3.1"; # Also update the hash in vectors.nix
+  version = "38.0.1"; # Also update the hash in vectors.nix
+  disabled = pythonOlder "3.6";
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "1ribd1vxq9wwz564mg60dzcy699gng54admihjjkgs9dx95pw5vy";
+    hash = "sha256-HbPYB6FJMfoxf5ZDVpXZ7Dhr57hLYYzGHPpdCLCuM9c=";
   };
 
-  outputs = [ "out" "dev" ];
+  cargoDeps = rustPlatform.fetchCargoTarball {
+    inherit src;
+    sourceRoot = "${pname}-${version}/${cargoRoot}";
+    name = "${pname}-${version}";
+    hash = "sha256-o8l13fnfEUvUdDasq3LxSPArozRHKVsZfQg9DNR6M6Q=";
+  };
 
-  nativeBuildInputs = stdenv.lib.optionals (!isPyPy) [
+  cargoRoot = "src/rust";
+
+  nativeBuildInputs = lib.optionals (!isPyPy) [
     cffi
-  ];
+  ] ++ [
+    rustPlatform.cargoSetupHook
+    setuptools-rust
+  ] ++ (with rustPlatform; [ rust.cargo rust.rustc ]);
 
   buildInputs = [ openssl ]
-             ++ stdenv.lib.optional stdenv.isDarwin darwin.apple_sdk.frameworks.Security;
-  propagatedBuildInputs = [
-    packaging
-    six
-  ] ++ stdenv.lib.optionals (!isPyPy) [
+    ++ lib.optionals stdenv.isDarwin [ Security libiconv ];
+
+  propagatedBuildInputs = lib.optionals (!isPyPy) [
     cffi
-  ] ++ stdenv.lib.optionals isPy27 [
-    ipaddress enum34
   ];
 
   checkInputs = [
-    cryptography_vectors
+    cryptography-vectors
     hypothesis
     iso8601
     pretend
-    pytest
+    pytestCheckHook
+    pytest-benchmark
+    pytest-subtests
     pytz
   ];
 
-  checkPhase = ''
-    py.test --disable-pytest-warnings tests
-  '';
+  pytestFlagsArray = [
+    "--disable-pytest-warnings"
+  ];
 
-  # IOKit's dependencies are inconsistent between OSX versions, so this is the best we
-  # can do until nix 1.11's release
-  __impureHostDeps = [ "/usr/lib" ];
+  disabledTestPaths = lib.optionals (stdenv.isDarwin && stdenv.isAarch64) [
+    # aarch64-darwin forbids W+X memory, but this tests depends on it:
+    # * https://cffi.readthedocs.io/en/latest/using.html#callbacks
+    "tests/hazmat/backends/test_openssl_memleak.py"
+  ];
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "A package which provides cryptographic recipes and primitives";
     longDescription = ''
       Cryptography includes both high level recipes and low level interfaces to
@@ -76,6 +92,6 @@ buildPythonPackage rec {
     changelog = "https://cryptography.io/en/latest/changelog/#v"
       + replaceStrings [ "." ] [ "-" ] version;
     license = with licenses; [ asl20 bsd3 psfl ];
-    maintainers = with maintainers; [ primeos ];
+    maintainers = with maintainers; [ SuperSandro2000 ];
   };
 }

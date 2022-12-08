@@ -1,21 +1,37 @@
-{ lib, rustPlatform, fetchFromGitHub, installShellFiles }:
+{ lib
+, stdenv
+, fetchFromGitHub
+, SystemConfiguration
+, installShellFiles
+, libiconv
+, rustPlatform
+}:
 
 rustPlatform.buildRustPackage rec {
   pname = "pueue";
-  version = "0.8.2";
+  version = "2.1.0";
 
   src = fetchFromGitHub {
     owner = "Nukesor";
-    repo = pname;
+    repo = "pueue";
     rev = "v${version}";
-    sha256 = "1vdlsfnqnyri0ny2g695lhivs9m25v9lsqf1valwbjv9l9vjxfqa";
+    hash = "sha256-xUTkjj/PdlgDEp2VMwBuRtF/9iGGiN4FZizdOdcbTag=";
   };
 
-  cargoSha256 = "0qziwb69qpbziz772np8dcb1dvxg6m506k5kl63m75z4zicgykcv";
+  cargoSha256 = "sha256-7VdPu+9RYoj4Xfb3J6GLOji7Fqxkk+Fswi4C4q33+jk=";
 
   nativeBuildInputs = [ installShellFiles ];
 
-  checkFlags = [ "--skip=test_single_huge_payload" "--skip=test_create_unix_socket" ];
+  buildInputs = lib.optionals stdenv.isDarwin [
+    SystemConfiguration
+    libiconv
+  ];
+
+  checkFlags = [
+    "--test client_tests"
+    "--skip=test_single_huge_payload"
+    "--skip=test_create_unix_socket"
+  ];
 
   postInstall = ''
     for shell in bash fish zsh; do
@@ -25,9 +41,21 @@ rustPlatform.buildRustPackage rec {
   '';
 
   meta = with lib; {
-    description = "A daemon for managing long running shell commands";
     homepage = "https://github.com/Nukesor/pueue";
+    description = "A daemon for managing long running shell commands";
+    longDescription = ''
+      Pueue is a command-line task management tool for sequential and parallel
+      execution of long-running tasks.
+
+      Simply put, it's a tool that processes a queue of shell commands. On top
+      of that, there are a lot of convenient features and abstractions.
+
+      Since Pueue is not bound to any terminal, you can control your tasks from
+      any terminal on the same machine. The queue will be continuously
+      processed, even if you no longer have any active ssh sessions.
+    '';
+    changelog = "https://github.com/Nukesor/pueue/raw/v${version}/CHANGELOG.md";
     license = licenses.mit;
-    maintainers = [ maintainers.marsam ];
+    maintainers = with maintainers; [ marsam ];
   };
 }

@@ -1,23 +1,35 @@
-{ stdenv, fetchurl
+{ lib, stdenv, fetchurl, fetchpatch
 , buildPackages, bison, flex, pkg-config
 , db, iptables, libelf, libmnl
+, gitUpdater
 }:
 
 stdenv.mkDerivation rec {
   pname = "iproute2";
-  version = "5.9.0";
+  version = "5.19.0";
 
   src = fetchurl {
     url = "mirror://kernel/linux/utils/net/${pname}/${pname}-${version}.tar.xz";
-    sha256 = "1kys6dmhrl43iaq95n5sh02p39d7bq8i5y672qrzgwnwpjaaqpd2";
+    sha256 = "JrejTWp/0vekLis5xakMthusUi0QlgZ//rGV5Wk9d5E=";
   };
+
+  patches = [
+    # To avoid ./configure failing due to invalid arguments:
+    (fetchpatch { # configure: restore backward compatibility
+      url = "https://git.kernel.org/pub/scm/network/iproute2/iproute2.git/patch/?id=a3272b93725a406bc98b67373da67a4bdf6fcdb0";
+      sha256 = "0hyagh2lf6rrfss4z7ca8q3ydya6gg7vfhh25slhpgcn6lnk0xbv";
+    })
+
+    # fix build on musl. applied anywhere to prevent patchrot.
+    (fetchpatch {
+      url = "https://git.alpinelinux.org/aports/plain/main/iproute2/min.patch?id=4b78dbe29d18151402052c56af43cc12d04b1a69";
+      sha256 = "sha256-0ROZQAN3mUPPgggictr23jyA4JDG7m9vmBUhgRp4ExY=";
+    })
+  ];
 
   preConfigure = ''
     # Don't try to create /var/lib/arpd:
     sed -e '/ARPDDIR/d' -i Makefile
-    # TODO: Drop temporary version fix for 5.9 once 5.10 is out:
-    substituteInPlace include/version.h \
-      --replace "5.8.0" "${version}"
   '';
 
   outputs = [ "out" "dev" ];
@@ -43,7 +55,13 @@ stdenv.mkDerivation rec {
 
   enableParallelBuilding = true;
 
-  meta = with stdenv.lib; {
+  passthru.updateScript = gitUpdater {
+    # No nicer place to find latest release.
+    url = "https://git.kernel.org/pub/scm/network/iproute2/iproute2.git";
+    rev-prefix = "v";
+  };
+
+  meta = with lib; {
     homepage = "https://wiki.linuxfoundation.org/networking/iproute2";
     description = "A collection of utilities for controlling TCP/IP networking and traffic control in Linux";
     platforms = platforms.linux;

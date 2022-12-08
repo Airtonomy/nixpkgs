@@ -1,72 +1,65 @@
-{ stdenv, nixosTests, fetchurl, autoPatchelfHook, atomEnv, makeWrapper, makeDesktopItem, gtk3, wrapGAppsHook, zlib, libxkbfile }:
+{ lib, stdenv, nixosTests, fetchurl, autoPatchelfHook, atomEnv, makeWrapper, makeDesktopItem, copyDesktopItems, libxshmfence, wrapGAppsHook }:
 
 let
-  description = "Trilium Notes is a hierarchical note taking application with focus on building large personal knowledge bases";
-  desktopItem = makeDesktopItem {
-    name = "Trilium";
-    exec = "trilium";
-    icon = "trilium";
-    comment = description;
-    desktopName = "Trilium Notes";
-    categories = "Office";
-  };
-
-  meta = with stdenv.lib; {
-    inherit description;
+  metaCommon = with lib; {
+    description = "Hierarchical note taking application with focus on building large personal knowledge bases";
     homepage = "https://github.com/zadam/trilium";
-    license = licenses.agpl3;
+    license = licenses.agpl3Plus;
+    sourceProvenance = with sourceTypes; [ binaryNativeCode ];
     platforms = [ "x86_64-linux" ];
-    maintainers = with maintainers; [ emmanuelrosa dtzWill kampka ];
+    maintainers = with maintainers; [ fliegendewurst ];
   };
 
-  version = "0.43.3";
+  version = "0.56.2";
 
-  desktopSource = {
-    url = "https://github.com/zadam/trilium/releases/download/v${version}/trilium-linux-x64-${version}.tar.xz";
-    sha256 = "1k9vcs7pwa89bzivqp0gfs45jzqw216fpypg3ja4n2dzn4qkv2as";
-  };
+  desktopSource.url = "https://github.com/zadam/trilium/releases/download/v${version}/trilium-linux-x64-${version}.tar.xz";
+  desktopSource.sha256 = "1rqfkbxgcd32kpi6xfd590nivd1ga0d0kf5zvffyypyy28q95pyz";
 
-  serverSource = {
-    url = "https://github.com/zadam/trilium/releases/download/v${version}/trilium-linux-x64-server-${version}.tar.xz";
-    sha256 = "1n3v7wdav6mvgcy72mmfhncsa74i0ax1ij5rjczgfjjyiyc5y0rk";
-  };
+  serverSource.url = "https://github.com/zadam/trilium/releases/download/v${version}/trilium-linux-x64-server-${version}.tar.xz";
+  serverSource.sha256 = "1pyi2b649n2rihr4dcz8brfkqrbvssbzhr3dnmyrhrp3qdyxamb6";
 
 in {
 
   trilium-desktop = stdenv.mkDerivation rec {
     pname = "trilium-desktop";
     inherit version;
-    inherit meta;
-
-    src = fetchurl desktopSource;
-
-    # Fetch from source repo, no longer included in release.
-    # (they did special-case icon.png but we want the scalable svg)
-    # Use the version here to ensure we get any changes.
-    trilium_svg = fetchurl {
-      url = "https://raw.githubusercontent.com/zadam/trilium/v${version}/images/trilium.svg";
-      sha256 = "1rgj7pza20yndfp8n12k93jyprym02hqah36fkk2b3if3kcmwnfg";
+    meta = metaCommon // {
+      mainProgram = "trilium";
     };
 
+    src = fetchurl desktopSource;
 
     nativeBuildInputs = [
       autoPatchelfHook
       makeWrapper
       wrapGAppsHook
+      copyDesktopItems
     ];
 
-    buildInputs = atomEnv.packages ++ [ gtk3 ];
+    buildInputs = atomEnv.packages ++ [ libxshmfence ];
+
+    desktopItems = [
+      (makeDesktopItem {
+        name = "Trilium";
+        exec = "trilium";
+        icon = "trilium";
+        comment = meta.description;
+        desktopName = "Trilium Notes";
+        categories = [ "Office" ];
+      })
+    ];
 
     installPhase = ''
+      runHook preInstall
       mkdir -p $out/bin
       mkdir -p $out/share/trilium
-      mkdir -p $out/share/{applications,icons/hicolor/scalable/apps}
+      mkdir -p $out/share/icons/hicolor/128x128/apps
 
       cp -r ./* $out/share/trilium
       ln -s $out/share/trilium/trilium $out/bin/trilium
 
-      ln -s ${trilium_svg} $out/share/icons/hicolor/scalable/apps/trilium.svg
-      cp ${desktopItem}/share/applications/* $out/share/applications
+      ln -s $out/share/trilium/icon.png $out/share/icons/hicolor/128x128/apps/trilium.png
+      runHook postInstall
     '';
 
     # LD_LIBRARY_PATH "shouldn't" be needed, remove when possible :)
@@ -75,13 +68,15 @@ in {
     '';
 
     dontStrip = true;
+
+    passthru.updateScript = ./update.sh;
   };
 
 
   trilium-server = stdenv.mkDerivation rec {
     pname = "trilium-server";
     inherit version;
-    inherit meta;
+    meta = metaCommon;
 
     src = fetchurl serverSource;
 
@@ -91,16 +86,20 @@ in {
 
     buildInputs = [
       stdenv.cc.cc.lib
-      zlib
-      libxkbfile
     ];
 
-    patches = [ ./0001-Use-console-logger-instead-of-rolling-files.patch ] ;
+    patches = [
+      # patch logger to use console instead of rolling files
+      ./0001-Use-console-logger-instead-of-rolling-files.patch
+    ];
+
     installPhase = ''
+      runHook preInstall
       mkdir -p $out/bin
       mkdir -p $out/share/trilium-server
 
       cp -r ./* $out/share/trilium-server
+      runHook postInstall
     '';
 
     postFixup = ''

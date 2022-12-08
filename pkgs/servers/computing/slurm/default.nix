@@ -1,15 +1,20 @@
-{ stdenv, fetchFromGitHub, pkgconfig, libtool, curl
-, python3, munge, perl, pam, zlib, shadow, coreutils
-, ncurses, libmysqlclient, gtk2, lua, hwloc, numactl
+{ lib, stdenv, fetchFromGitHub, pkg-config, libtool, curl
+, python3, munge, perl, pam, shadow, coreutils, dbus, libbpf
+, ncurses, libmysqlclient, lua, hwloc, numactl
 , readline, freeipmi, xorg, lz4, rdma-core, nixosTests
 , pmix
+, libjwt
+, libyaml
+, json_c
+, http-parser
 # enable internal X11 support via libssh2
 , enableX11 ? true
+, enableGtk2 ? false, gtk2
 }:
 
 stdenv.mkDerivation rec {
   pname = "slurm";
-  version = "20.11.0.1";
+  version = "22.05.5.1";
 
   # N.B. We use github release tags instead of https://www.schedmd.com/downloads.php
   # because the latter does not keep older releases.
@@ -18,7 +23,7 @@ stdenv.mkDerivation rec {
     repo = "slurm";
     # The release tags use - instead of .
     rev = "${pname}-${builtins.replaceStrings ["."] ["-"] version}";
-    sha256 = "0f750wlvm48j5b2fkvhy47zyagxfl6kbn2m9lx0spxwyn9qgh6bn";
+    sha256 = "1mw0dkll1iwwdpdbxcy26zpnjgj07prlgdz2da64krn4yyfhca30";
   };
 
   outputs = [ "out" "dev" ];
@@ -34,7 +39,7 @@ stdenv.mkDerivation rec {
   prePatch = ''
     substituteInPlace src/common/env.c \
         --replace "/bin/echo" "${coreutils}/bin/echo"
-  '' + (stdenv.lib.optionalString enableX11 ''
+  '' + (lib.optionalString enableX11 ''
     substituteInPlace src/common/x11_util.c \
         --replace '"/usr/bin/xauth"' '"${xorg.xauth}/bin/xauth"'
   '');
@@ -44,24 +49,30 @@ stdenv.mkDerivation rec {
   # this doesn't fix tests completely at least makes slurmd to launch
   hardeningDisable = [ "bindnow" ];
 
-  nativeBuildInputs = [ pkgconfig libtool python3 ];
+  nativeBuildInputs = [ pkg-config libtool python3 perl ];
   buildInputs = [
-    curl python3 munge perl pam zlib
-      libmysqlclient ncurses gtk2 lz4 rdma-core
-      lua hwloc numactl readline freeipmi shadow.su
-      pmix
-  ] ++ stdenv.lib.optionals enableX11 [ xorg.xauth ];
+    curl python3 munge pam
+    libmysqlclient ncurses lz4 rdma-core
+    lua hwloc numactl readline freeipmi shadow.su
+    pmix json_c libjwt libyaml dbus libbpf
+    http-parser
+  ] ++ lib.optionals enableX11 [ xorg.xauth ]
+  ++ lib.optionals enableGtk2 [ gtk2 ];
 
-  configureFlags = with stdenv.lib;
+  configureFlags = with lib;
     [ "--with-freeipmi=${freeipmi}"
+      "--with-http-parser=${http-parser}"
       "--with-hwloc=${hwloc.dev}"
+      "--with-json=${json_c.dev}"
+      "--with-jwt=${libjwt}"
       "--with-lz4=${lz4.dev}"
       "--with-munge=${munge}"
-      "--with-zlib=${zlib}"
+      "--with-yaml=${libyaml}"
       "--with-ofed=${rdma-core}"
       "--sysconfdir=/etc/slurm"
       "--with-pmix=${pmix}"
-    ] ++ (optional (gtk2 == null)  "--disable-gtktest")
+      "--with-bpf=${libbpf}"
+    ] ++ (optional enableGtk2  "--disable-gtktest")
       ++ (optional (!enableX11) "--disable-x11");
 
 
@@ -78,11 +89,11 @@ stdenv.mkDerivation rec {
 
   passthru.tests.slurm = nixosTests.slurm;
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     homepage = "http://www.schedmd.com/";
     description = "Simple Linux Utility for Resource Management";
     platforms = platforms.linux;
-    license = licenses.gpl2;
+    license = licenses.gpl2Only;
     maintainers = with maintainers; [ jagajaga markuskowa ];
   };
 }

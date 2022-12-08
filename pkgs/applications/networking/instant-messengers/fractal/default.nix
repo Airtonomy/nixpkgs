@@ -1,12 +1,11 @@
 { stdenv
+, lib
 , fetchFromGitLab
-, nix-update-script
 , fetchpatch
+, nix-update-script
 , meson
 , ninja
 , gettext
-, cargo
-, rustc
 , python3
 , rustPlatform
 , pkg-config
@@ -24,7 +23,7 @@
 , wrapGAppsHook
 }:
 
-rustPlatform.buildRustPackage rec {
+stdenv.mkDerivation rec {
   pname = "fractal";
   version = "4.4.0";
 
@@ -33,19 +32,36 @@ rustPlatform.buildRustPackage rec {
     owner = "GNOME";
     repo = "fractal";
     rev = version;
-    sha256 = "DSNVd9YvI7Dd3s3+M0+wE594tmL1yPNMnD1W9wLhSuw=";
+    hash = "sha256-To6lr2I+JVrxvuK++2gLWntFGnEBm+B6KTRuOvjASek=";
   };
 
-  cargoSha256 = "xim5sOzeXJjRXbTOg2Gk/LHU0LioiyMK5nSr1LwMPjc=";
+  patches = [
+    # Fix build with meson 0.61
+    # fractal-gtk/res/meson.build:5:0: ERROR: Function does not take positional arguments.
+    (fetchpatch {
+      url = "https://gitlab.gnome.org/GNOME/fractal/-/commit/6fa1a23596d65d94aa889efe725174e6cd2903f0.patch";
+      hash = "sha256-3OzU9XL2V1VNOkvL1j677K3HNoBqPMQudQDmiDxYfAc=";
+    })
+
+    # This is in fractal v4.4.1b1+ so can be removed when fractal is updated.
+    ./update-socket2-for-rust-1.64.diff
+  ];
+
+  cargoDeps = rustPlatform.fetchCargoTarball {
+    inherit src patches;
+    name = "${pname}-${version}";
+    hash = "sha256-d99zSaxp22YyLP3Wckgcm7wlz7nFrLJDHq2xPJmZFf0=";
+  };
 
   nativeBuildInputs = [
-    cargo
     gettext
     meson
     ninja
     pkg-config
     python3
-    rustc
+    rustPlatform.rust.cargo
+    rustPlatform.cargoSetupHook
+    rustPlatform.rust.rustc
     wrapGAppsHook
     glib
   ];
@@ -76,23 +92,16 @@ rustPlatform.buildRustPackage rec {
     patchShebangs scripts/meson_post_install.py scripts/test.sh
   '';
 
-  # Don't use buildRustPackage phases, only use it for rust deps setup
-  configurePhase = null;
-  buildPhase = null;
-  checkPhase = null;
-  installPhase = null;
-
   passthru = {
     updateScript = nix-update-script {
       attrPath = pname;
     };
   };
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Matrix group messaging app";
     homepage = "https://gitlab.gnome.org/GNOME/fractal";
     license = licenses.gpl3;
-    broken = stdenv.isDarwin;
-    maintainers = with maintainers; [ dtzWill worldofpeace ];
+    maintainers = teams.gnome.members ++ (with maintainers; [ dtzWill ]);
   };
 }

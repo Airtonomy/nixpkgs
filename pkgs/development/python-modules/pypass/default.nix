@@ -1,4 +1,6 @@
-{ buildPythonPackage
+{ stdenv
+, lib
+, buildPythonPackage
 , click
 , colorama
 , enum34
@@ -11,16 +13,13 @@
 , pexpect
 , pythonAtLeast
 , pythonOlder
-, stdenv
 , substituteAll
 , tree
 , xclip
 }:
 
-# NOTE: pypass can also be used as an application, but probably the most
-# important usecase is as a library. So, let's use buildPythonPackage and
-# support any Python version instead of defining it as an application with
-# buildPythonApplication.
+# Use the `pypass` top-level attribute, if you're interested in the
+# application
 buildPythonPackage rec {
   pname = "pypass";
   version = "0.2.1";
@@ -43,7 +42,7 @@ buildPythonPackage rec {
   ];
 
   # Remove enum34 requirement if Python >= 3.4
-  postPatch = stdenv.lib.optionalString (pythonAtLeast "3.4") ''
+  postPatch = lib.optionalString (pythonAtLeast "3.4") ''
     substituteInPlace requirements.txt --replace "enum34" ""
   '';
 
@@ -53,7 +52,7 @@ buildPythonPackage rec {
     click
     colorama
     pexpect
-  ] ++ stdenv.lib.optional (pythonOlder "3.4") enum34;
+  ] ++ lib.optional (pythonOlder "3.4") enum34;
 
   checkInputs = [ nose ];
 
@@ -74,11 +73,12 @@ buildPythonPackage rec {
     runHook postCheck
   '';
 
-  meta = {
+  meta = with lib; {
+    broken = stdenv.isDarwin;
     description = "Password manager pass in Python";
     homepage = "https://github.com/aviau/python-pass";
-    license = stdenv.lib.licenses.gpl3Plus;
-    platforms = stdenv.lib.platforms.all;
-    maintainers = with stdenv.lib.maintainers; [ jluttine ];
+    license = licenses.gpl3Plus;
+    platforms = platforms.all;
+    maintainers = with maintainers; [ jluttine ];
   };
 }

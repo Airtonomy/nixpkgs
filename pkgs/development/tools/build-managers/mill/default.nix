@@ -1,12 +1,12 @@
-{ stdenv, fetchurl, jre, makeWrapper }:
+{ lib, stdenv, fetchurl, jre, makeWrapper }:
 
 stdenv.mkDerivation rec {
   pname = "mill";
-  version = "0.9.3";
+  version = "0.10.8";
 
   src = fetchurl {
-    url = "https://github.com/lihaoyi/mill/releases/download/${version}/${version}";
-    sha256 = "0x9mvcm5znyi7w6cpiasj2v6f63y7d8qdck7lx03p2k6i9aa2f77";
+    url = "https://github.com/com-lihaoyi/mill/releases/download/${version}/${version}-assembly";
+    hash = "sha256-5mJc5cLT9xkixB8mbDYuJYel+fNeCwr1PMzU/ZCncK0=";
   };
 
   nativeBuildInputs = [ makeWrapper ];
@@ -14,6 +14,9 @@ stdenv.mkDerivation rec {
   dontUnpack = true;
   dontConfigure = true;
   dontBuild = true;
+
+  # this is mostly downloading a pre-built artifact
+  preferLocal = true;
 
   installPhase = ''
     runHook preInstall
@@ -25,8 +28,15 @@ stdenv.mkDerivation rec {
     runHook postInstall
   '';
 
-  meta = with stdenv.lib; {
-    homepage = "https://www.lihaoyi.com/mill";
+  doInstallCheck = true;
+  # The default release is a script which will do an impure download
+  # just ensure that the application can run without network
+  installCheckPhase = ''
+    $out/bin/mill --help > /dev/null
+  '';
+
+  meta = with lib; {
+    homepage = "https://com-lihaoyi.github.io/mill/";
     license = licenses.mit;
     description = "A build tool for Scala, Java and more";
     longDescription = ''
@@ -37,6 +47,6 @@ stdenv.mkDerivation rec {
       modules (written in Java or Scala) or through an external subprocesses.
     '';
     maintainers = with maintainers; [ scalavision ];
-    platforms = stdenv.lib.platforms.all;
+    platforms = lib.platforms.all;
   };
 }

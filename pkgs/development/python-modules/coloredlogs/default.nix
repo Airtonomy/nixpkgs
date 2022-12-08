@@ -1,32 +1,53 @@
 { lib
+, stdenv
 , buildPythonPackage
 , fetchFromGitHub
 , humanfriendly
 , verboselogs
 , capturer
-, pytest
+, pytestCheckHook
 , mock
 , util-linux
 }:
 
 buildPythonPackage rec {
   pname = "coloredlogs";
-  version = "14.0";
+  version = "15.0.1";
 
   src = fetchFromGitHub {
     owner = "xolox";
     repo = "python-coloredlogs";
     rev = version;
-    sha256 = "0rnmxwrim4razlv4vi3krxk5lc5ksck6h5374j8avqwplika7q2x";
+    hash = "sha256-TodI2Wh8M0qMM2K5jzqlLmUKILa5+5qq4ByLttmAA7E=";
   };
 
-  checkPhase = ''
-    PATH=$PATH:$out/bin pytest . -k "not test_plain_text_output_format \
-                                     and not test_auto_install"
-  '';
-  checkInputs = [ pytest mock util-linux ];
+  propagatedBuildInputs = [
+    humanfriendly
+  ];
 
-  propagatedBuildInputs = [ humanfriendly verboselogs capturer ];
+  checkInputs = [
+    pytestCheckHook
+    mock
+    util-linux
+    verboselogs
+    capturer
+  ];
+
+  # capturer is broken on darwin / py38, so we skip the test until a fix for
+  # https://github.com/xolox/python-capturer/issues/10 is released.
+  doCheck = !stdenv.isDarwin;
+
+  preCheck = ''
+    # Required for the CLI test
+    PATH=$PATH:$out/bin
+  '';
+
+  disabledTests = [
+    "test_plain_text_output_format"
+    "test_auto_install"
+  ];
+
+  pythonImportsCheck = [ "coloredlogs" ];
 
   meta = with lib; {
     description = "Colored stream handler for Python's logging module";

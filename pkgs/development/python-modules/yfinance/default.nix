@@ -1,31 +1,44 @@
 { lib
+, appdirs
 , buildPythonPackage
-, fetchPypi
+, fetchFromGitHub
 , multitasking
 , numpy
 , pandas
+, pythonOlder
 , requests
+, lxml
 }:
 
 buildPythonPackage rec {
   pname = "yfinance";
-  version = "0.1.55";
+  version = "0.1.77";
+  format = "setuptools";
 
-  # GitHub source releases aren't tagged
-  src = fetchPypi {
-    inherit pname version;
-    sha256 = "65d39bccf16bef35f6a08bf0df33650c0515b5ce8ea3c53924601f5fe00590cb";
+  disabled = pythonOlder "3.7";
+
+  src = fetchFromGitHub {
+    owner = "ranaroussi";
+    repo = pname;
+    rev = "refs/tags/${version}";
+    hash = "sha256-gg9wX3WWacS5BmbR1wgdicFxhPN5b45KH0+obWmJ65g=";
   };
 
   propagatedBuildInputs = [
+    appdirs
     multitasking
     numpy
     pandas
     requests
+    lxml
   ];
 
-  doCheck = false;  # Tests require internet access
-  pythonImportsCheck = [ "yfinance" ];
+  # Tests require internet access
+  doCheck = false;
+
+  pythonImportsCheck = [
+    "yfinance"
+  ];
 
   meta = with lib; {
     description = "Yahoo! Finance market data downloader (+faster Pandas Datareader)";

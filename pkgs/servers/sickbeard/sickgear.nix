@@ -1,35 +1,43 @@
-{ stdenv, fetchFromGitHub, python2, makeWrapper }:
+{ lib, stdenv, fetchFromGitHub, python3, makeWrapper, libarchive }:
 
 let
-  pythonEnv = python2.withPackages(ps: with ps; [ cheetah ]);
+  pythonEnv = python3.withPackages(ps: with ps; [ cheetah3 lxml ]);
 in stdenv.mkDerivation rec {
   pname = "sickgear";
-  version = "0.23.5";
+  version = "0.25.47";
 
   src = fetchFromGitHub {
     owner = "SickGear";
     repo = "SickGear";
     rev = "release_${version}";
-    sha256 = "03wxrf9iyaianlnlcx8ks04r0snpg32a3qbq36cykcq2x55qnczq";
+    sha256 = "sha256-CnAJ2qpE+k8TvBD06WbZWOvlF740Xgx/Q0JWf3rJcWI=";
   };
+
+  patches = [
+    ./patches/override-python-version-check.patch
+  ];
 
   dontBuild = true;
   doCheck = false;
 
   nativeBuildInputs = [ makeWrapper ];
-  buildInputs = [ pythonEnv ];
+  buildInputs = [ pythonEnv libarchive ];
 
-  installPhase = ''
-    mkdir -p $out/bin
-    cp -R {autoProcessTV,gui,lib,sickbeard,sickgear.py,SickBeard.py} $out/
-
-    makeWrapper $out/SickBeard.py $out/bin/sickgear
+  postPatch = ''
+    substituteInPlace sickgear.py --replace "/usr/bin/env python2" "/usr/bin/env python"
   '';
 
-  meta = with stdenv.lib; {
+  installPhase = ''
+    mkdir -p $out/bin $out/opt/sickgear
+    cp -R {autoProcessTV,gui,lib,sickbeard,sickgear.py} $out/opt/sickgear/
+
+    makeWrapper $out/opt/sickgear/sickgear.py $out/bin/sickgear
+  '';
+
+  meta = with lib; {
     description = "The most reliable stable TV fork of the great Sick-Beard to fully automate TV enjoyment with innovation";
     license     = licenses.gpl3;
     homepage    = "https://github.com/SickGear/SickGear";
-    maintainers = with stdenv.lib.maintainers; [ rembo10 ];
+    maintainers = with lib.maintainers; [ rembo10 ];
   };
 }

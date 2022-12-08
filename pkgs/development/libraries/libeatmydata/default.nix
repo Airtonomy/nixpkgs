@@ -1,4 +1,4 @@
-{ stdenv, fetchFromGitHub, autoreconfHook, strace, which }:
+{ lib, stdenv, fetchFromGitHub, autoreconfHook, strace, which }:
 
 stdenv.mkDerivation rec {
   pname = "libeatmydata";
@@ -13,7 +13,7 @@ stdenv.mkDerivation rec {
 
   patches = [ ./find-shell-lib.patch ];
 
-  patchFlags = "-p0";
+  patchFlags = [ "-p0" ];
 
   postPatch = ''
     substituteInPlace eatmydata.in \
@@ -24,7 +24,7 @@ stdenv.mkDerivation rec {
 
   nativeBuildInputs = [
     autoreconfHook
-  ] ++ stdenv.lib.optionals doCheck [ strace which ];
+  ] ++ lib.optionals doCheck [ strace which ];
 
   # while we can *build* in parallel, the tests also run in parallel which does
   # not work with v105. Later versions (unreleased) have a fix for that. The
@@ -32,10 +32,11 @@ stdenv.mkDerivation rec {
   enableParallelBuilding = true;
   doCheck = false;
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Small LD_PRELOAD library to disable fsync and friends";
     homepage = "https://www.flamingspork.com/projects/libeatmydata/";
     license = licenses.gpl3Plus;
+    mainProgram = "eatmydata";
     platforms = platforms.unix;
   };
 }

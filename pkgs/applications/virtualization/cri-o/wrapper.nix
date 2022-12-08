@@ -8,7 +8,6 @@
 , crun # Container runtime (default with cgroups v2 for podman/buildah)
 , conmon # Container runtime monitor
 , util-linux # nsenter
-, cni-plugins # not added to path
 , iptables
 }:
 
@@ -26,6 +25,8 @@ let
 in runCommand cri-o.name {
   name = "${cri-o.pname}-wrapper-${cri-o.version}";
   inherit (cri-o) pname version passthru;
+
+  preferLocalBuild = true;
 
   meta = builtins.removeAttrs cri-o.meta [ "outputsToInstall" ];
 

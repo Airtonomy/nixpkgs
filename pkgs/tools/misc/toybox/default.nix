@@ -1,22 +1,29 @@
 {
   stdenv, lib, fetchFromGitHub, which,
-  enableStatic ? false,
+  buildPackages, libxcrypt,
+  enableStatic ? stdenv.hostPlatform.isStatic,
   enableMinimal ? false,
   extraConfig ? ""
 }:
 
 stdenv.mkDerivation rec {
   pname = "toybox";
-  version = "0.8.4";
+  version = "0.8.8";
 
   src = fetchFromGitHub {
     owner = "landley";
     repo = pname;
     rev = version;
-    sha256 = "0cgbmv6qk1haj709hjx5q4sl7wgh91i459gzs1203adwc7rvk6jv";
+    sha256 = "sha256-T3qE9xlcEoZOcY52XfYPpN34zzQl6mfcRnyuldnIvCk=";
   };
 
-  buildInputs = lib.optionals enableStatic [ stdenv.cc.libc stdenv.cc.libc.static ];
+  depsBuildBuild = [ buildPackages.stdenv.cc ]; # needed for cross
+  buildInputs = [
+    libxcrypt
+  ] ++lib.optionals (enableStatic && stdenv.cc.libc ? static) [
+    stdenv.cc.libc
+    stdenv.cc.libc.static
+  ];
 
   postPatch = "patchShebangs .";
 
@@ -55,7 +62,7 @@ stdenv.mkDerivation rec {
 
   NIX_CFLAGS_COMPILE = "-Wno-error";
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Lightweight implementation of some Unix command line utilities";
     homepage = "https://landley.net/toybox/";
     license = licenses.bsd0;

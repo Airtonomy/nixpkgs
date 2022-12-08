@@ -1,23 +1,48 @@
-{ lib, buildPythonPackage, fetchPypi, isPy27, flask, pytest, pytestcov, pytest-xprocess, pytestcache }:
+{ lib
+, buildPythonPackage
+, pythonOlder
+, fetchPypi
+, cachelib
+, flask
+, pytest-asyncio
+, pytest-xprocess
+, pytestCheckHook
+}:
 
 buildPythonPackage rec {
   pname = "Flask-Caching";
-  version = "1.9.0";
-  disabled = isPy27; # invalid python2 syntax
+  version = "2.0.1";
+  format = "setuptools";
+  disabled = pythonOlder "3.7";
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "a0356ad868b1d8ec2d0e675a6fe891c41303128f8904d5d79e180d8b3f952aff";
+    sha256 = "sha256-EN8gCgPwMq9gB3vv5Bd53ZSJi2fIIEDTTochC3G6Jjg=";
   };
 
-  propagatedBuildInputs = [ flask ];
-
-  checkInputs = [ pytest pytestcov pytest-xprocess pytestcache ];
-
-  # backend_cache relies on pytest-cache, which is a stale package from 2013
-  checkPhase = ''
-    pytest -k 'not backend_cache'
+  postPatch = ''
+    substituteInPlace setup.py \
+      --replace "Flask <= 2.1.2" "Flask <= 2.2"
   '';
+
+  propagatedBuildInputs = [
+    cachelib
+    flask
+  ];
+
+  checkInputs = [
+    pytest-asyncio
+    pytest-xprocess
+    pytestCheckHook
+  ];
+
+  disabledTests = [
+    # backend_cache relies on pytest-cache, which is a stale package from 2013
+    "backend_cache"
+    # optional backends
+    "Redis"
+    "Memcache"
+  ];
 
   meta = with lib; {
     description = "Adds caching support to your Flask application";

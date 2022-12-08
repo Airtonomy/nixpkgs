@@ -1,31 +1,82 @@
-{ boto3, buildPythonPackage, crc32c, fetchFromGitHub, lib, matplotlib, moto
-, numpy, pillow, pytorch, protobuf, six, pytestCheckHook
-, tensorflow-tensorboard, torchvision }:
+{ boto3
+, buildPythonPackage
+, crc32c
+, which
+, fetchFromGitHub
+, lib
+, matplotlib
+, moto
+, numpy
+, pillow
+, protobuf
+, pytestCheckHook
+, torch
+, six
+, soundfile
+, tensorboard
+, torchvision
+}:
 
 buildPythonPackage rec {
   pname = "tensorboardx";
-  version = "2.0";
+  version = "2.5.1";
+  format = "setuptools";
 
   src = fetchFromGitHub {
     owner = "lanpa";
     repo = "tensorboardX";
-    rev = "v${version}";
-    sha256 = "0qqalq0fhbx0wnd8wdwhyhkkv2brvj9qbk3373vk3wjxbribf5c7";
+    rev = "refs/tags/v${version}";
+    hash = "sha256-Np0Ibn51qL0ORwq1IY8lUle05MQDdb5XkI1uzGOKJno=";
   };
-
-  checkInputs = [
-    pytestCheckHook boto3 crc32c matplotlib moto pillow pytorch tensorflow-tensorboard torchvision
-  ];
-
-  propagatedBuildInputs = [ numpy protobuf six ];
 
   # apparently torch API changed a bit at 1.6
   postPatch = ''
-    substituteInPlace tensorboardX/pytorch_graph.py --replace "torch.onnx.set_training(model, False)" "torch.onnx.select_model_mode_for_export(model, torch.onnx.TrainingMode.EVAL)"
+    substituteInPlace tensorboardX/pytorch_graph.py --replace \
+      "torch.onnx.set_training(model, False)" \
+      "torch.onnx.select_model_mode_for_export(model, torch.onnx.TrainingMode.EVAL)"
+
+    # Version detection seems broken here, the version reported by python is
+    # newer than the protobuf package itself.
+    sed -i -e "s/'protobuf[^']*'/'protobuf'/" setup.py
   '';
 
+  nativeBuildInputs = [
+    which
+    protobuf
+  ];
 
-  disabledTests = [ "test_TorchVis"  "test_onnx_graph" ];
+  # required to make tests deterministic
+  PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION = "python";
+
+  propagatedBuildInputs = [
+    crc32c
+    numpy
+    six
+    soundfile
+  ];
+
+  checkInputs = [
+    boto3
+    matplotlib
+    moto
+    pillow
+    pytestCheckHook
+    torch
+    tensorboard
+    torchvision
+  ];
+
+  disabledTests = [
+    # ImportError: Visdom visualization requires installation of Visdom
+    "test_TorchVis"
+    # Requires network access (FileNotFoundError: [Errno 2] No such file or directory: 'wget')
+    "test_onnx_graph"
+  ];
+
+  disabledTestPaths = [
+    # we are not interested in linting errors
+    "tests/test_lint.py"
+  ];
 
   meta = with lib; {
     description = "Library for writing tensorboard-compatible logs";

@@ -7,36 +7,28 @@
 , astropy
 , scipy
 , pandas
-, codecov
-, pytest
-, pytestcov
-, pytestrunner
-, coveralls
-, twine
-, check-manifest
+, pytestCheckHook
 , lib
 }:
 
 buildPythonPackage rec {
   pname   = "hickle";
-  version = "4.0.1";
+  version = "5.0.2";
   disabled = pythonOlder "3.5";
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "fcf2c4f9e4b7f0d9dae7aa6c59a58473884017875d3b17898d56eaf8a9c1da96";
+    hash = "sha256-2+7OF/a89jK/zLhbk/Q2A+zsKnfRbq3YMKGycEWsLEQ=";
   };
 
   postPatch = ''
-    substituteInPlace requirements_test.txt \
-      --replace 'astropy<3.1;' 'astropy;' --replace 'astropy<3.0;' 'astropy;'
+    substituteInPlace tox.ini --replace "--cov=./hickle" ""
   '';
 
   propagatedBuildInputs = [ h5py numpy dill ];
 
-  doCheck = false; # incompatible with latest astropy
   checkInputs = [
-    pytest pytestcov pytestrunner coveralls scipy pandas astropy twine check-manifest codecov
+    pytestCheckHook scipy pandas astropy
   ];
 
   pythonImportsCheck = [ "hickle" ];

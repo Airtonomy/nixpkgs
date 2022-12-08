@@ -1,4 +1,4 @@
-{ stdenv, fetchFromGitLab, pkg-config, xorg, imlib2, makeWrapper }:
+{ lib, stdenv, fetchFromGitLab, pkg-config, xorg, imlib2, makeWrapper }:
 
 stdenv.mkDerivation rec {
   pname = "xteddy";
@@ -30,10 +30,10 @@ stdenv.mkDerivation rec {
   postFixup = ''
     # this is needed, because xteddy expects images to reside
     # in the current working directory
-    wrapProgram $out/bin/xteddy --run "cd $out/share/images/"
+    wrapProgram $out/bin/xteddy --chdir "$out/share/images/"
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Cuddly teddy bear for your X desktop";
     homepage = "https://weber.itn.liu.se/~stegu/xteddy/";
     license = licenses.gpl2;

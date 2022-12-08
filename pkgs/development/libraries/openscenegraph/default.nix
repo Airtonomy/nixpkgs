@@ -1,7 +1,8 @@
-{ stdenv, lib, fetchFromGitHub, cmake, pkgconfig, doxygen,
+{ stdenv, lib, fetchFromGitHub, cmake, pkg-config, doxygen,
   libX11, libXinerama, libXrandr, libGLU, libGL,
   glib, ilmbase, libxml2, pcre, zlib,
   AGL, Carbon, Cocoa, Foundation,
+  boost,
   jpegSupport ? true, libjpeg,
   exrSupport ? false, openexr,
   gifSupport ? true, giflib,
@@ -9,9 +10,9 @@
   tiffSupport ? true, libtiff,
   gdalSupport ? false, gdal,
   curlSupport ? true, curl,
-  colladaSupport ? false, opencollada,
+  colladaSupport ? false, collada-dom,
   opencascadeSupport ? false, opencascade,
-  ffmpegSupport ? false, ffmpeg_3,
+  ffmpegSupport ? false, ffmpeg,
   nvttSupport ? false, nvidia-texture-tools,
   freetypeSupport ? true, freetype,
   svgSupport ? false, librsvg,
@@ -20,23 +21,23 @@
   lasSupport ? false, libLAS,
   luaSupport ? false, lua,
   sdlSupport ? false, SDL2,
-  restSupport ? false, asio, boost,
+  restSupport ? false, asio,
   withApps ? false,
-  withExamples ? false, fltk, wxGTK,
+  withExamples ? false, fltk, wxGTK30-gtk3,
 }:
 
 stdenv.mkDerivation rec {
   pname = "openscenegraph";
-  version = "3.6.4";
+  version = "3.6.5";
 
   src = fetchFromGitHub {
     owner = "openscenegraph";
     repo = "OpenSceneGraph";
     rev = "OpenSceneGraph-${version}";
-    sha256 = "0x8hdbzw0b71j91fzp9cwmy9a7ava8v8wwyj8nxijq942vdx1785";
+    sha256 = "00i14h82qg3xzcyd8p02wrarnmby3aiwmz0z43l50byc9f8i05n1";
   };
 
-  nativeBuildInputs = [ pkgconfig cmake doxygen ];
+  nativeBuildInputs = [ pkg-config cmake doxygen ];
 
   buildInputs = [
     libX11 libXinerama libXrandr libGLU libGL
@@ -48,9 +49,9 @@ stdenv.mkDerivation rec {
     ++ lib.optional tiffSupport libtiff
     ++ lib.optional gdalSupport gdal
     ++ lib.optional curlSupport curl
-    ++ lib.optional colladaSupport opencollada
+    ++ lib.optional colladaSupport collada-dom
     ++ lib.optional opencascadeSupport opencascade
-    ++ lib.optional ffmpegSupport ffmpeg_3
+    ++ lib.optional ffmpegSupport ffmpeg
     ++ lib.optional nvttSupport nvidia-texture-tools
     ++ lib.optional freetypeSupport freetype
     ++ lib.optional svgSupport librsvg
@@ -59,14 +60,15 @@ stdenv.mkDerivation rec {
     ++ lib.optional lasSupport libLAS
     ++ lib.optional luaSupport lua
     ++ lib.optional sdlSupport SDL2
-    ++ lib.optionals restSupport [ asio boost ]
-    ++ lib.optionals withExamples [ fltk wxGTK ]
+    ++ lib.optional restSupport asio
+    ++ lib.optionals withExamples [ fltk wxGTK30-gtk3 ]
     ++ lib.optionals stdenv.isDarwin [ AGL Carbon Cocoa Foundation ]
+    ++ lib.optional (restSupport || colladaSupport) boost
   ;
 
   cmakeFlags = lib.optional (!withApps) "-DBUILD_OSG_APPLICATIONS=OFF" ++ lib.optional withExamples "-DBUILD_OSG_EXAMPLES=ON";
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "A 3D graphics toolkit";
     homepage = "http://www.openscenegraph.org/";
     maintainers = with maintainers; [ aanderse raskin ];

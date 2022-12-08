@@ -1,19 +1,11 @@
-{ stdenv
+{ lib, stdenv
 , fetchurl
 , fetchpatch
-, pkgconfig
+, pkg-config
 , mono
 , glib
 , pango
 , gtk3
-, GConf ? null
-, libglade ? null
-, libgtkhtml ? null
-, gtkhtml ? null
-, libgnomecanvas ? null
-, libgnomeui ? null
-, libgnomeprint ? null
-, libgnomeprintui ? null
 , libxml2
 , monoDLLFixer
 }:
@@ -24,14 +16,14 @@ stdenv.mkDerivation rec {
 
   builder = ./builder.sh;
   src = fetchurl {
-    url = "mirror://gnome/sources/${pname}/${stdenv.lib.versions.majorMinor version}/${pname}-${version}.tar.xz";
+    url = "mirror://gnome/sources/${pname}/${lib.versions.majorMinor version}/${pname}-${version}.tar.xz";
     sha256 = "18n3l9zcldyvn4lwi8izd62307mkhz873039nl6awrv285qzah34";
   };
 
-  nativeBuildInputs = [ pkgconfig ];
+  nativeBuildInputs = [ pkg-config ];
   buildInputs = [
-    mono glib pango gtk3 GConf libglade libgnomecanvas
-    libgtkhtml libgnomeui libgnomeprint libgnomeprintui gtkhtml libxml2
+    mono glib pango gtk3
+    libxml2
   ];
 
   patches = [
@@ -41,6 +33,12 @@ stdenv.mkDerivation rec {
       name = "MONO_PROFILE_ENTER_LEAVE.patch";
       url = "https://github.com/mono/gtk-sharp/commit/401df51bc461de93c1a78b6a7a0d5adc63cf186c.patch";
       sha256 = "0hrkcr5a7wkixnyp60v4d6j3arsb63h54rd30lc5ajfjb3p92kcf";
+    })
+    # @see https://github.com/mono/gtk-sharp/pull/263
+    (fetchpatch {
+      name = "disambiguate_Gtk.Range.patch";
+      url = "https://github.com/mono/gtk-sharp/commit/a00552ad68ae349e89e440dca21b86dbd6bccd30.patch";
+      sha256 = "1ylplr9g9x7ybsgrydsgr6p3g7w6i46yng1hnl3afgn4vj45rag2";
     })
   ];
 
@@ -53,6 +51,6 @@ stdenv.mkDerivation rec {
   };
 
   meta = {
-    platforms = stdenv.lib.platforms.linux;
+    platforms = lib.platforms.linux;
   };
 }

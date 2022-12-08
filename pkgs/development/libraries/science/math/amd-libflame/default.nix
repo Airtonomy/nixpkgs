@@ -6,17 +6,21 @@
 , amd-blis
 
 , withOpenMP ? true
+, blas64 ? false
 }:
+
+# right now only LP64 is supported
+assert !blas64;
 
 stdenv.mkDerivation rec {
   pname = "amd-libflame";
-  version = "2.2";
+  version = "3.0";
 
   src = fetchFromGitHub {
     owner = "amd";
     repo = "libflame";
     rev = version;
-    sha256 = "1s8zvq6p843jb52lrbxra7vv0wzmifs4j36z9bp7wf3xr20a0zi5";
+    hash = "sha256-jESae5NqANw90RBbIHH2oGEq5/mudc4IONv50P/AeQ0=";
   };
 
   patches = [
@@ -25,6 +29,8 @@ stdenv.mkDerivation rec {
     # This patch adds lapacke.a to the shared library as well.
     ./add-lapacke.diff
   ];
+
+  passthru = { inherit blas64; };
 
   nativeBuildInputs = [ gfortran python3 ];
 
@@ -62,11 +68,11 @@ stdenv.mkDerivation rec {
     ln -s $out/lib/libflame.so.${version} $out/lib/liblapacke.so.3
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "LAPACK-compatible linear algebra library optimized for AMD CPUs";
     homepage = "https://developer.amd.com/amd-aocl/blas-library/";
     license = licenses.bsd3;
-    maintainers = with maintainers; [ danieldk ];
+    maintainers = with maintainers; [ ];
     platforms = [ "x86_64-linux" ];
   };
 }

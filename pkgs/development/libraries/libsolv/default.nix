@@ -1,14 +1,16 @@
-{ stdenv, fetchFromGitHub, cmake, ninja, zlib, expat, rpm, db }:
+{ lib, stdenv, fetchFromGitHub, cmake, ninja, pkg-config
+, zlib, xz, bzip2, zchunk, zstd
+, expat, rpm, db }:
 
 stdenv.mkDerivation rec {
-  version  = "0.7.16";
+  version  = "0.7.22";
   pname = "libsolv";
 
   src = fetchFromGitHub {
     owner  = "openSUSE";
     repo   = "libsolv";
     rev    = version;
-    sha256 = "1arw7p83s5yq36pw94b76zfiqsh90fjjnayni54a5wgm0zvbkki8";
+    sha256 = "sha256-rqWQJz3gZuhcNblyFWiYCC17miNY8F5xguAJwDk3xFE=";
   };
 
   cmakeFlags = [
@@ -17,12 +19,17 @@ stdenv.mkDerivation rec {
     "-DENABLE_RPMDB=true"
     "-DENABLE_PUBKEY=true"
     "-DENABLE_RPMDB_BYRPMHEADER=true"
+    "-DENABLE_LZMA_COMPRESSION=true"
+    "-DENABLE_BZIP2_COMPRESSION=true"
+    "-DENABLE_ZSTD_COMPRESSION=true"
+    "-DENABLE_ZCHUNK_COMPRESSION=true"
+    "-DWITH_SYSTEM_ZCHUNK=true"
   ];
 
-  nativeBuildInputs = [ cmake ninja ];
-  buildInputs = [ zlib expat rpm db ];
+  nativeBuildInputs = [ cmake ninja pkg-config ];
+  buildInputs = [ zlib xz bzip2 zchunk zstd expat rpm db ];
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "A free package dependency solver";
     homepage    = "https://github.com/openSUSE/libsolv";
     license     = licenses.bsd3;

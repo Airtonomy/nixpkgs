@@ -1,7 +1,6 @@
-{ stdenv
+{ lib
 , buildPythonPackage
 , fetchPypi
-, unittest2
 , colander
 , sqlalchemy
 }:
@@ -20,7 +19,7 @@ buildPythonPackage rec {
   # Tests are not included in Pypi
   doCheck = false;
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Autogenerate Colander schemas based on SQLAlchemy models";
     homepage = "https://github.com/stefanofontanelli/ColanderAlchemy";
     license = licenses.mit;

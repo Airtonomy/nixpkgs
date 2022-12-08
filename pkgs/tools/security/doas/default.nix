@@ -1,8 +1,9 @@
-{ stdenv
-, lib
+{ lib
+, stdenv
 , fetchFromGitHub
 , bison
 , pam
+, libxcrypt
 
 , withPAM ? true
 , withTimestamp ? true
@@ -10,13 +11,13 @@
 
 stdenv.mkDerivation rec {
   pname = "doas";
-  version = "6.8";
+  version = "6.8.2";
 
   src = fetchFromGitHub {
     owner = "Duncaen";
     repo = "OpenDoas";
     rev = "v${version}";
-    sha256 = "1dlwnvy8r6slxcy260gfkximp1ms510wdslpfq9y6xvd2qi5izcb";
+    sha256 = "9uOQ2Ta5HzEpbCz2vbqZEEksPuIjL8lvmfmynfqxMeM=";
   };
 
   # otherwise confuses ./configure
@@ -25,7 +26,6 @@ stdenv.mkDerivation rec {
   configureFlags = [
     (lib.optionalString withTimestamp "--with-timestamp") # to allow the "persist" setting
     (lib.optionalString (!withPAM) "--without-pam")
-    "--pamdir=${placeholder "out"}/etc/pam.d"
   ];
 
   patches = [
@@ -38,7 +38,10 @@ stdenv.mkDerivation rec {
     sed -i '/\(chown\|chmod\)/d' GNUmakefile
   '';
 
-  buildInputs = [ bison pam ];
+  nativeBuildInputs = [ bison ];
+  buildInputs = [ ]
+    ++ lib.optional withPAM pam
+    ++ lib.optional (!withPAM) libxcrypt;
 
   meta = with lib; {
     description = "Executes the given command as another user";

@@ -1,31 +1,15 @@
-{ stdenv, lib, fetchurl, autoPatchelfHook, dpkg, wrapGAppsHook, nixosTests
-, gnome2, gtk3, atk, at-spi2-atk, cairo, pango, gdk-pixbuf, glib, freetype, fontconfig
+{ stdenv, lib, fetchurl, autoPatchelfHook, dpkg, wrapGAppsHook, makeWrapper, nixosTests
+, gtk3, atk, at-spi2-atk, cairo, pango, gdk-pixbuf, glib, freetype, fontconfig
 , dbus, libX11, xorg, libXi, libXcursor, libXdamage, libXrandr, libXcomposite
-, libXext, libXfixes, libXrender, libXtst, libXScrnSaver, nss, nspr, alsaLib
-, cups, expat, libuuid, at-spi2-core, libappindicator-gtk3
+, libXext, libXfixes, libXrender, libXtst, libXScrnSaver, nss, nspr, alsa-lib
+, cups, expat, libuuid, at-spi2-core, libappindicator-gtk3, mesa
 # Runtime dependencies:
-, systemd, libnotify, libdbusmenu, libpulseaudio
-# Unfortunately this also overwrites the UI language (not just the spell
-# checking language!):
-, hunspellDicts, spellcheckerLanguage ? null # E.g. "de_DE"
-# For a full list of available languages:
-# $ cat pkgs/development/libraries/hunspell/dictionaries.nix | grep "dictFileName =" | awk '{ print $3 }'
+, systemd, libnotify, libdbusmenu, libpulseaudio, xdg-utils
 }:
 
-let
-  customLanguageWrapperArgs = (with lib;
-    let
-      # E.g. "de_DE" -> "de-de" (spellcheckerLanguage -> hunspellDict)
-      spellLangComponents = splitString "_" spellcheckerLanguage;
-      hunspellDict = elemAt spellLangComponents 0 + "-" + toLower (elemAt spellLangComponents 1);
-    in if spellcheckerLanguage != null
-      then ''
-        --set HUNSPELL_DICTIONARIES "${hunspellDicts.${hunspellDict}}/share/hunspell" \
-        --set LC_MESSAGES "${spellcheckerLanguage}"''
-      else "");
-in stdenv.mkDerivation rec {
+stdenv.mkDerivation rec {
   pname = "signal-desktop";
-  version = "1.39.4"; # Please backport all updates to the stable channel.
+  version = "5.63.0"; # Please backport all updates to the stable channel.
   # All releases have a limited lifetime and "expire" 90 days after the release.
   # When releases "expire" the application becomes unusable until an update is
   # applied. The expiration date for the current release can be extracted with:
@@ -35,17 +19,17 @@ in stdenv.mkDerivation rec {
 
   src = fetchurl {
     url = "https://updates.signal.org/desktop/apt/pool/main/s/signal-desktop/signal-desktop_${version}_amd64.deb";
-    sha256 = "11rjz0vawwyny4rpdqsqyfh8pi177xykm69xxcj6kgcncxaxg0vb";
+    sha256 = "sha256-f8gQUnmI/VU0FteoMVY0k0RK1R7Ho7JRx+WoMhKki4s=";
   };
 
   nativeBuildInputs = [
     autoPatchelfHook
     dpkg
-    wrapGAppsHook
+    (wrapGAppsHook.override { inherit makeWrapper; })
   ];
 
   buildInputs = [
-    alsaLib
+    alsa-lib
     at-spi2-atk
     at-spi2-core
     atk
@@ -57,7 +41,6 @@ in stdenv.mkDerivation rec {
     freetype
     gdk-pixbuf
     glib
-    gnome2.GConf
     gtk3
     libX11
     libXScrnSaver
@@ -73,17 +56,21 @@ in stdenv.mkDerivation rec {
     libappindicator-gtk3
     libnotify
     libuuid
+    mesa # for libgbm
     nspr
     nss
     pango
     systemd
     xorg.libxcb
+    xorg.libxshmfence
   ];
 
   runtimeDependencies = [
     (lib.getLib systemd)
+    libappindicator-gtk3
     libnotify
     libdbusmenu
+    xdg-utils
   ];
 
   unpackPhase = "dpkg-deb -x $src .";
@@ -96,6 +83,8 @@ in stdenv.mkDerivation rec {
   dontAutoPatchelf = true;
 
   installPhase = ''
+    runHook preInstall
+
     mkdir -p $out/lib
 
     mv usr/share $out/share
@@ -109,12 +98,18 @@ in stdenv.mkDerivation rec {
     # Symlink to bin
     mkdir -p $out/bin
     ln -s $out/lib/Signal/signal-desktop $out/bin/signal-desktop
+
+    # Create required symlinks:
+    ln -s libGLESv2.so $out/lib/Signal/libGLESv2.so.2
+
+    runHook postInstall
   '';
 
   preFixup = ''
     gappsWrapperArgs+=(
-      --prefix LD_LIBRARY_PATH : "${stdenv.lib.makeLibraryPath [ stdenv.cc.cc ] }"
-      ${customLanguageWrapperArgs}
+      --prefix LD_LIBRARY_PATH : "${lib.makeLibraryPath [ stdenv.cc.cc ] }"
+      --add-flags "\''${NIXOS_OZONE_WL:+\''${WAYLAND_DISPLAY:+--ozone-platform-hint=auto --enable-features=WaylandWindowDecorations}}"
+      --suffix PATH : ${lib.makeBinPath [ xdg-utils ]}
     )
 
     # Fix the desktop link
@@ -122,7 +117,7 @@ in stdenv.mkDerivation rec {
       --replace /opt/Signal/signal-desktop $out/bin/signal-desktop
 
     autoPatchelf --no-recurse -- $out/lib/Signal/
-    patchelf --add-needed ${libpulseaudio}/lib/libpulse.so $out/lib/Signal/resources/app.asar.unpacked/node_modules/ringrtc/build/linux/libringrtc.node
+    patchelf --add-needed ${libpulseaudio}/lib/libpulse.so $out/lib/Signal/resources/app.asar.unpacked/node_modules/ringrtc/build/linux/libringrtc-x64.node
   '';
 
   # Tests if the application launches and waits for "Link your phone to Signal Desktop":
@@ -136,8 +131,9 @@ in stdenv.mkDerivation rec {
     '';
     homepage    = "https://signal.org/";
     changelog   = "https://github.com/signalapp/Signal-Desktop/releases/tag/v${version}";
-    license     = lib.licenses.gpl3;
-    maintainers = with lib.maintainers; [ ixmatus primeos equirosa ];
+    license     = lib.licenses.agpl3Only;
+    maintainers = with lib.maintainers; [ mic92 equirosa ];
     platforms   = [ "x86_64-linux" ];
+    sourceProvenance = with lib.sourceTypes; [ binaryNativeCode ];
   };
 }

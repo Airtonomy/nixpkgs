@@ -1,4 +1,5 @@
-{ stdenv
+{ lib
+, stdenv
 , python3Packages
 , makeWrapper
 , coreutils
@@ -10,27 +11,30 @@
 
 python3Packages.buildPythonApplication rec {
   pname = "sshuttle";
-  version = "1.0.3";
+  version = "1.1.1";
 
   src = python3Packages.fetchPypi {
     inherit pname version;
-    sha256 = "0fff1c88669a20bb6a4e7331960673a3a02a2e04ff163e4c9299496646edcf61";
+    sha256 = "sha256-9aPtHlqxITx6bfhgr0HxqQOrLK+/73Hzcazc/yHmnuY=";
   };
 
   patches = [ ./sudo.patch ];
 
-  nativeBuildInputs = [ makeWrapper python3Packages.setuptools_scm ];
+  postPatch = ''
+    substituteInPlace setup.cfg \
+      --replace '--cov=sshuttle --cov-branch --cov-report=term-missing' ""
+  '';
 
-  checkInputs = with python3Packages; [ mock pytest pytestcov pytestrunner flake8 ];
+  nativeBuildInputs = [ makeWrapper python3Packages.setuptools-scm ];
 
-  runtimeDeps = [ coreutils openssh procps ] ++ stdenv.lib.optionals stdenv.isLinux [ iptables nettools ];
+  checkInputs = with python3Packages; [ pytestCheckHook ];
 
   postInstall = ''
     wrapProgram $out/bin/sshuttle \
-      --prefix PATH : "${stdenv.lib.makeBinPath runtimeDeps}" \
+      --prefix PATH : "${lib.makeBinPath ([ coreutils openssh procps ] ++ lib.optionals stdenv.isLinux [ iptables nettools ])}" \
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     homepage = "https://github.com/sshuttle/sshuttle/";
     description = "Transparent proxy server that works as a poor man's VPN";
     longDescription = ''
@@ -38,8 +42,7 @@ python3Packages.buildPythonApplication rec {
       target network (though it does require Python 2.7, Python 3.5 or later at both ends).
       Works with Linux and Mac OS and supports DNS tunneling.
     '';
-    license = licenses.gpl2;
-    maintainers = with maintainers; [ domenkozar carlosdagos ];
-    platforms = platforms.unix;
+    license = licenses.lgpl21;
+    maintainers = with maintainers; [ domenkozar carlosdagos SuperSandro2000 ];
   };
 }

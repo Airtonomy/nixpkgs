@@ -1,27 +1,55 @@
-{ lib, buildPythonPackage, fetchPypi, pytestCheckHook, pytestrunner, pytestcov, pytest-flakes, sphinx, six }:
+{ lib
+, buildPythonPackage
+, fetchFromGitHub
+, loguru
+, pytest-asyncio
+, pytest-mypy
+, pytestCheckHook
+, pythonOlder
+}:
 
 buildPythonPackage rec {
   pname = "python-utils";
-  version = "2.4.0";
+  version = "3.4.5";
+  format = "setuptools";
 
-  src = fetchPypi {
-    inherit pname version;
-    sha256 = "12c0glzkm81ljgf6pwh0d4rmdm1r7vvgg3ifzp8yp9cfyngw07zj";
+  disabled = pythonOlder "3.7";
+
+  src = fetchFromGitHub {
+    owner = "WoLpH";
+    repo = pname;
+    rev = "refs/tags/v${version}";
+    hash = "sha256-O/+jvdzzxUFaQdAfUM9p40fPPDNN+stTauCD993HH6Y=";
   };
 
   postPatch = ''
-    rm -r tests/__pycache__
-    rm tests/*.pyc
-    substituteInPlace pytest.ini --replace "--pep8" ""
+    sed -i '/--cov/d' pytest.ini
   '';
 
-  checkInputs = [ pytestCheckHook pytestrunner pytestcov pytest-flakes sphinx ];
+  passthru.optional-dependencies = {
+    loguru = [
+      loguru
+    ];
+  };
 
-  propagatedBuildInputs = [ six ];
+  checkInputs = [
+    pytest-asyncio
+    pytest-mypy
+    pytestCheckHook
+  ] ++ passthru.optional-dependencies.loguru;
+
+  pythonImportsCheck = [
+    "python_utils"
+  ];
+
+  pytestFlagsArray = [
+    "_python_utils_tests"
+  ];
 
   meta = with lib; {
     description = "Module with some convenient utilities";
     homepage = "https://github.com/WoLpH/python-utils";
     license = licenses.bsd3;
+    maintainers = with maintainers; [ ];
   };
 }

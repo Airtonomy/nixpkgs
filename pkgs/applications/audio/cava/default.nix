@@ -1,34 +1,28 @@
-{ stdenv, fetchFromGitHub, autoreconfHook, alsaLib, fftw,
-  libpulseaudio, ncurses }:
+{ lib, stdenv, fetchFromGitHub, autoreconfHook, alsa-lib, fftw,
+  libpulseaudio, ncurses, iniparser }:
 
 stdenv.mkDerivation rec {
   pname = "cava";
-  version = "0.7.3";
+  version = "0.8.2";
 
   buildInputs = [
-    alsaLib
+    alsa-lib
     fftw
     libpulseaudio
     ncurses
+    iniparser
   ];
 
   src = fetchFromGitHub {
     owner = "karlstav";
     repo = "cava";
     rev = version;
-    sha256 = "04j5hb29hivcbk542sfsx9m57dbnj2s6qpvy9fs488zvgjbgxrai";
+    sha256 = "sha256-5nguoC2MrcNHMQ6rMOIRdSPtjA6bx5OrMGYdU/H08z0=";
   };
 
   nativeBuildInputs = [ autoreconfHook ];
 
-  postConfigure = ''
-    substituteInPlace Makefile.am \
-      --replace "-L/usr/local/lib -Wl,-rpath /usr/local/lib" ""
-    substituteInPlace configure.ac \
-      --replace "/usr/share/consolefonts" "$out/share/consolefonts"
-  '';
-
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Console-based Audio Visualizer for Alsa";
     homepage = "https://github.com/karlstav/cava";
     license = licenses.mit;

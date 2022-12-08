@@ -1,14 +1,14 @@
-{ stdenv
+{ lib, stdenv
 , fetchurl
 , ladspaH
 }:
 
 stdenv.mkDerivation rec {
-  name = "cmt";
+  pname = "cmt";
   version = "1.17";
 
   src = fetchurl {
-    url = "http://www.ladspa.org/download/${name}_${version}.tgz";
+    url = "http://www.ladspa.org/download/cmt_${version}.tgz";
     sha256 = "07xd0xmwpa0j12813jpf87fr9hwzihii5l35mp8ady7xxfmxfmpb";
   };
 
@@ -23,7 +23,7 @@ stdenv.mkDerivation rec {
     mkdir -p $out/lib/ladspa
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Computer Music Toolkit";
     homepage = "https://www.ladspa.org/cmt";
     license = licenses.gpl2;

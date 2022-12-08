@@ -1,11 +1,10 @@
-{ stdenv
+{ lib, stdenv
 , fetchFromGitHub
-, fetchpatch
 , meson
 , ninja
 , python3
-, pkgconfig
-, dmd
+, pkg-config
+, ldc
 , dconf
 , dbus
 , gsettings-desktop-schemas
@@ -13,20 +12,21 @@
 , gettext
 , gtkd
 , libsecret
-, glib
 , wrapGAppsHook
 , libunwind
+, appstream
+, nixosTests
 }:
 
-stdenv.mkDerivation {
+stdenv.mkDerivation rec {
   pname = "tilix";
-  version = "unstable-2019-10-02";
+  version = "1.9.5";
 
   src = fetchFromGitHub {
     owner = "gnunn1";
     repo = "tilix";
-    rev = "ffcd31e3c0e1a560ce89468152d8726065e8fb1f";
-    sha256 = "1bzv7xiqhyblz1rw8ln4zpspmml49vnshn1zsv9di5q7kfgpqrgq";
+    rev = version;
+    sha256 = "sha256-sPVL5oYDOmloRVm/nONKkC20vZc907c7ixBF6E2PQ8Y=";
   };
 
   # Default upstream else LDC fails to link
@@ -36,12 +36,13 @@ stdenv.mkDerivation {
 
   nativeBuildInputs = [
     desktop-file-utils
-    dmd
+    ldc
     meson
     ninja
-    pkgconfig
+    pkg-config
     python3
     wrapGAppsHook
+    appstream
   ];
 
   buildInputs = [
@@ -64,11 +65,13 @@ stdenv.mkDerivation {
       --replace "Exec=tilix" "Exec=$out/bin/tilix"
   '';
 
-  meta = with stdenv.lib; {
+  passthru.tests.test = nixosTests.terminal-emulators.tilix;
+
+  meta = with lib; {
     description = "Tiling terminal emulator following the Gnome Human Interface Guidelines";
     homepage = "https://gnunn1.github.io/tilix-web";
     license = licenses.mpl20;
-    maintainers = with maintainers; [ midchildan worldofpeace ];
+    maintainers = with maintainers; [ midchildan ];
     platforms = platforms.linux;
   };
 }

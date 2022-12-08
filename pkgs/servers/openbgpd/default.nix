@@ -1,4 +1,4 @@
-{ stdenv, fetchFromGitHub, autoconf, automake, libtool, m4, yacc }:
+{ lib, stdenv, fetchFromGitHub, autoconf, automake, libtool, m4, bison }:
 
 let
   openbsd_version =
@@ -21,7 +21,7 @@ in stdenv.mkDerivation rec {
     sha256 = "sha256-TKs6tt/SCWes6kYAGIrSShZgOLf7xKh26xG3Zk7wCCw=";
   };
 
-  nativeBuildInputs = [ autoconf automake libtool m4 yacc ];
+  nativeBuildInputs = [ autoconf automake libtool m4 bison ];
 
   preConfigure = ''
     mkdir ./openbsd
@@ -35,7 +35,13 @@ in stdenv.mkDerivation rec {
     ./autogen.sh
   '';
 
-  meta = with stdenv.lib; {
+  # Workaround build failure on -fno-common toolchains like upstream
+  # gcc-10. Otherwise build fails as:
+  #   ld: bgpd-rde_peer.o:/build/source/src/bgpd/bgpd.h:133: multiple definition of `bgpd_process';
+  #     bgpd-bgpd.o:/build/source/src/bgpd/bgpd.h:133: first defined here
+  NIX_CFLAGS_COMPILE = "-fcommon";
+
+  meta = with lib; {
     description =
       "A free implementation of the Border Gateway Protocol, Version 4. It allows ordinary machines to be used as routers exchanging routes with other systems speaking the BGP protocol";
     license = licenses.isc;

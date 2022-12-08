@@ -1,12 +1,12 @@
-{ stdenv, fetchurl, nixosTests }:
+{ lib, stdenv, fetchurl, nixosTests, writeScript }:
 
 stdenv.mkDerivation rec {
   pname = "wordpress";
-  version = "5.5.3";
+  version = "6.0.2";
 
   src = fetchurl {
     url = "https://wordpress.org/${pname}-${version}.tar.gz";
-    sha256 = "sTkmdr9Mulw7XwNEMJBU81rwNV/agNpBjCznGuObrtQ=";
+    sha256 = "sha256-UG5FYlJowBy71DJHgoDE1/lIIndp0qx1yFlDIeMV0Og=";
   };
 
   installPhase = ''
@@ -18,7 +18,15 @@ stdenv.mkDerivation rec {
     inherit (nixosTests) wordpress;
   };
 
-  meta = with stdenv.lib; {
+  passthru.updateScript = writeScript "update.sh" ''
+    #!/usr/bin/env nix-shell
+    #!nix-shell -i bash -p common-updater-scripts jq
+    set -eu -o pipefail
+    version=$(curl --globoff "https://api.wordpress.org/core/version-check/1.7/" | jq -r '.offers[0].version')
+    update-source-version wordpress $version
+  '';
+
+  meta = with lib; {
     homepage = "https://wordpress.org";
     description = "WordPress is open source software you can use to create a beautiful website, blog, or app";
     license = [ licenses.gpl2 ];

@@ -3,24 +3,27 @@
 , groff
 , less
 , fetchFromGitHub
+, nix-update-script
 }:
+
 let
   py = python3.override {
     packageOverrides = self: super: {
-      botocore = super.botocore.overridePythonAttrs (oldAttrs: rec {
-        version = "2.0.0dev75";
-        src = fetchFromGitHub {
-          owner = "boto";
-          repo = "botocore";
-          rev = "1a4caa8d1c232e9463febec406a8fedc71cb065c";
-          sha256 = "0z2c9i2ci3f8979si8gcgnsz44ylchjax1f3dhj7pzyb2kcw6zri";
+      awscrt = super.awscrt.overridePythonAttrs (oldAttrs: rec {
+        version = "0.14.0";
+        src = self.fetchPypi {
+          inherit (oldAttrs) pname;
+          inherit version;
+          hash = "sha256-MGLTFcsWVC/gTdgjny6LwyOO6QRc1QcLkVzy677Lqqw=";
         };
       });
-      prompt_toolkit = super.prompt_toolkit.overridePythonAttrs (oldAttrs: rec {
-        version = "2.0.10";
-        src = oldAttrs.src.override {
+
+      prompt-toolkit = super.prompt-toolkit.overridePythonAttrs (oldAttrs: rec {
+        version = "3.0.28";
+        src = self.fetchPypi {
+          pname = "prompt_toolkit";
           inherit version;
-          sha256 = "1nr990i4b04rnlw1ghd0xmgvvvhih698mb6lb6jylr76cs7zcnpi";
+          hash = "sha256-nxzRax6GwpaPJRnX+zHdnWaZFvUVYSwmnRTp7VK1FlA=";
         };
       });
     };
@@ -29,43 +32,52 @@ let
 in
 with py.pkgs; buildPythonApplication rec {
   pname = "awscli2";
-  version = "2.1.7"; # N.B: if you change this, change botocore to a matching version too
+  version = "2.8.9"; # N.B: if you change this, check if overrides are still up-to-date
+  format = "pyproject";
 
   src = fetchFromGitHub {
     owner = "aws";
     repo = "aws-cli";
     rev = version;
-    sha256 = "0sxdbc8y5yqcvsk2bxkywdh4fsq90vlsmcm45y0sa3rpza64xs3r";
+    sha256 = "sha256-7So0zPknO5rIiWY7o82HXl+Iw2+fQmhYvrfrFMCDdDE=";
   };
 
-  postPatch = ''
-    substituteInPlace setup.py --replace "colorama>=0.2.5,<0.4.4" "colorama>=0.2.5"
-    substituteInPlace setup.py --replace "cryptography>=2.8.0,<=2.9.0" "cryptography>=2.8.0"
-    substituteInPlace setup.py --replace "docutils>=0.10,<0.16" "docutils>=0.10"
-    substituteInPlace setup.py --replace "ruamel.yaml>=0.15.0,<0.16.0" "ruamel.yaml>=0.15.0"
-    substituteInPlace setup.py --replace "wcwidth<0.2.0" "wcwidth"
-  '';
-
-  # No tests included
-  doCheck = false;
+  nativeBuildInputs = [
+    flit-core
+  ];
 
   propagatedBuildInputs = [
+    awscrt
     bcdoc
-    botocore
     colorama
     cryptography
     distro
     docutils
     groff
     less
-    prompt_toolkit
+    prompt-toolkit
     pyyaml
     rsa
-    ruamel_yaml
-    s3transfer
-    six
+    ruamel-yaml
     wcwidth
+    python-dateutil
+    jmespath
+    urllib3
   ];
+
+  checkInputs = [
+    jsonschema
+    mock
+    pytestCheckHook
+  ];
+
+  postPatch = ''
+    substituteInPlace pyproject.toml \
+      --replace "colorama>=0.2.5,<0.4.4" "colorama" \
+      --replace "distro>=1.5.0,<1.6.0" "distro" \
+      --replace "docutils>=0.10,<0.16" "docutils" \
+      --replace "wcwidth<0.2.0" "wcwidth"
+  '';
 
   postInstall = ''
     mkdir -p $out/${python3.sitePackages}/awscli/data
@@ -80,13 +92,42 @@ with py.pkgs; buildPythonApplication rec {
     rm $out/bin/aws.cmd
   '';
 
-  passthru.python = py; # for aws_shell
+  doCheck = true;
+
+  preCheck = ''
+    export PATH=$PATH:$out/bin
+    export HOME=$(mktemp -d)
+  '';
+
+  pytestFlagsArray = [
+    "-Wignore::DeprecationWarning"
+  ];
+
+  disabledTestPaths = [
+    # Integration tests require networking
+    "tests/integration"
+
+    # Disable slow tests (only run unit tests)
+    "tests/backends"
+    "tests/functional"
+  ];
+
+  pythonImportsCheck = [
+    "awscli"
+  ];
+
+  passthru = {
+    python = py; # for aws_shell
+    updateScript = nix-update-script {
+      attrPath = pname;
+    };
+  };
 
   meta = with lib; {
     homepage = "https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2.html";
     changelog = "https://github.com/aws/aws-cli/blob/${version}/CHANGELOG.rst";
     description = "Unified tool to manage your AWS services";
     license = licenses.asl20;
-    maintainers = with maintainers; [ bhipple davegallant ];
+    maintainers = with maintainers; [ bhipple davegallant bryanasdev000 devusb anthonyroussel ];
   };
 }

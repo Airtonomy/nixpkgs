@@ -1,20 +1,20 @@
-{ stdenv, fetchFromGitHub, autoconf, bison, flex, libtool, pkgconfig, which
-, libnl, protobuf, protobufc, shadow
+{ lib, stdenv, fetchFromGitHub, autoconf, bison, flex, libtool, pkg-config, which
+, libnl, protobuf, protobufc, shadow, installShellFiles
 }:
 
 stdenv.mkDerivation rec {
   pname = "nsjail";
-  version = "3.0";
+  version = "3.2";
 
   src = fetchFromGitHub {
     owner           = "google";
     repo            = "nsjail";
     rev             = version;
     fetchSubmodules = true;
-    sha256          = "1w6x8xcrs0i1y3q41gyq8z3cq9x24qablklc4jiydf855lhqn4dh";
+    sha256          = "sha256-SFRnCEPawMKEIdmrOnJ45IIb17W1d4qCceuRdWTDTQU=";
   };
 
-  nativeBuildInputs = [ autoconf bison flex libtool pkgconfig which ];
+  nativeBuildInputs = [ autoconf bison flex libtool pkg-config which installShellFiles ];
   buildInputs = [ libnl protobuf protobufc ];
   enableParallelBuilding = true;
 
@@ -23,12 +23,11 @@ stdenv.mkDerivation rec {
   '';
 
   installPhase = ''
-    mkdir -p $out/bin $out/share/man/man1
-    install nsjail $out/bin/
-    install nsjail.1 $out/share/man/man1/
+    install -Dm755 nsjail "$out/bin/nsjail"
+    installManPage nsjail.1
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "A light-weight process isolation tool, making use of Linux namespaces and seccomp-bpf syscall filters";
     homepage    = "http://nsjail.com/";
     license     = licenses.asl20;

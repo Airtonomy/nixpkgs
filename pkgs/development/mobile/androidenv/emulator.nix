@@ -2,32 +2,35 @@
 
 deployAndroidPackage {
   inherit package os;
-  buildInputs = [ autoPatchelfHook makeWrapper ]
-  ++ lib.optional (os == "linux") [
-    pkgs.glibc
-    pkgs.xlibs.libX11
-    pkgs.xlibs.libXext
-    pkgs.xlibs.libXdamage
-    pkgs.xlibs.libXfixes
-    pkgs.xlibs.libxcb
-    pkgs.xlibs.libXcomposite
-    pkgs.xlibs.libXcursor
-    pkgs.xlibs.libXi
-    pkgs.xlibs.libXrender
-    pkgs.xlibs.libXtst
-    pkgs.libcxx
-    pkgs.libGL
-    pkgs.libpulseaudio
-    pkgs.zlib
-    pkgs.ncurses5
-    pkgs.stdenv.cc.cc
-    pkgs_i686.glibc
-    pkgs.expat
-    pkgs.freetype
-    pkgs.nss
-    pkgs.nspr
-    pkgs.alsaLib
-  ];
+  nativeBuildInputs = [ makeWrapper ]
+    ++ lib.optionals (os == "linux") [ autoPatchelfHook ];
+  buildInputs = lib.optionals (os == "linux") (with pkgs; [
+      glibc
+      libcxx
+      libGL
+      libpulseaudio
+      libuuid
+      zlib
+      ncurses5
+      stdenv.cc.cc
+      pkgs_i686.glibc
+      expat
+      freetype
+      nss
+      nspr
+      alsa-lib
+    ]) ++ (with pkgs.xorg; [
+      libX11
+      libXext
+      libXdamage
+      libXfixes
+      libxcb
+      libXcomposite
+      libXcursor
+      libXi
+      libXrender
+      libXtst
+    ]);
   patchInstructions = lib.optionalString (os == "linux") ''
     addAutoPatchelfSearchPath $packageBaseDir/lib
     addAutoPatchelfSearchPath $packageBaseDir/lib64
@@ -38,7 +41,7 @@ deployAndroidPackage {
 
     # Wrap emulator so that it can load required libraries at runtime
     wrapProgram $out/libexec/android-sdk/emulator/emulator \
-      --prefix LD_LIBRARY_PATH : ${lib.makeLibraryPath [ 
+      --prefix LD_LIBRARY_PATH : ${lib.makeLibraryPath [
         pkgs.dbus
         pkgs.systemd
       ]} \

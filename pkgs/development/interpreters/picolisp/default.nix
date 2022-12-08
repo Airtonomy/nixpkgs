@@ -1,5 +1,5 @@
-{ stdenv, fetchurl, jdk, w3m, openssl, makeWrapper }:
-with stdenv.lib;
+{ lib, stdenv, fetchurl, jdk, w3m, openssl, makeWrapper }:
+with lib;
 
 stdenv.mkDerivation rec {
   pname = "picoLisp";
@@ -8,7 +8,8 @@ stdenv.mkDerivation rec {
     url = "https://www.software-lab.de/${pname}-${version}.tgz";
     sha256 = "0l51x98bn1hh6kv40sdgp0x09pzg5i8yxbcjvm9n5bxsd6bbk5w2";
   };
-  buildInputs = [makeWrapper openssl] ++ optional stdenv.is64bit jdk;
+  nativeBuildInputs = [ makeWrapper ];
+  buildInputs = [openssl] ++ optional stdenv.is64bit jdk;
   patchPhase = ''
     sed -i "s/which java/command -v java/g" mkAsm
 
@@ -49,12 +50,13 @@ stdenv.mkDerivation rec {
   '';
 
   meta = {
+    # darwin: build times out
+    broken = (stdenv.isLinux && stdenv.isAarch64) || stdenv.isDarwin;
     description = "A simple Lisp with an integrated database";
     homepage = "https://picolisp.com/";
     license = licenses.mit;
+    maintainers = with maintainers; [ raskin ];
     platforms = platforms.all;
-    broken = stdenv.isDarwin; # times out
-    maintainers = with maintainers; [ raskin tohl ];
   };
 
   passthru = {

@@ -1,18 +1,28 @@
-{ stdenv, python3Packages, fetchFromGitHub }:
+{ pkgs, nodejs, lib, python3Packages, fetchFromGitHub, nixosTests }:
+let
+  nodeEnv = import ./node-env.nix {
+    inherit (pkgs) stdenv lib python2 runCommand writeTextFile;
+    inherit pkgs nodejs;
+    libtool = if pkgs.stdenv.isDarwin then pkgs.darwin.cctools else null;
+  };
+  nodePackages = import ./node-packages.nix {
+    inherit (pkgs) fetchurl nix-gitignore stdenv lib fetchgit;
+    inherit nodeEnv;
+  };
 
+  nodeDependencies = (nodePackages.shell.override (old: {
+  })).nodeDependencies;
+in
 with python3Packages; buildPythonApplication rec {
 
   pname = "isso";
-  # Can not use 0.12.2 because of:
-  # https://github.com/posativ/isso/issues/617
-  version = "unstable-2020-09-14";
+  version = "0.12.6.2";
 
-  # no tests on PyPI
   src = fetchFromGitHub {
     owner = "posativ";
     repo = pname;
-    rev = "f4d2705d4f1b51f444d0629355a6fcbcec8d57b5";
-    sha256 = "02jgfzq3svd54zj09jj7lm2r7ypqqjynzxa9dgnnm0pqvq728wzr";
+    rev = "refs/tags/${version}";
+    sha256 = "sha256-T5T3EJS8ef8uo+P9qkC+7I70qv+4PFrnhImr04Fz57U=";
   };
 
   propagatedBuildInputs = [
@@ -25,21 +35,33 @@ with python3Packages; buildPythonApplication rec {
     flask-caching
   ];
 
-  buildInputs = [
+  nativeBuildInputs = [
     cffi
+    nodejs
   ];
 
-  checkInputs = [ nose ];
+  preBuild = ''
+    ln -s ${nodeDependencies}/lib/node_modules ./node_modules
+    export PATH="${nodeDependencies}/bin:$PATH"
 
-  checkPhase = ''
-    ${python.interpreter} setup.py nosetests
+    make js
   '';
 
-  meta = with stdenv.lib; {
+  checkInputs = [
+    pytest
+    pytest-cov
+  ];
+
+  checkPhase = ''
+    pytest
+  '';
+
+  passthru.tests = { inherit (nixosTests) isso; };
+
+  meta = with lib; {
     description = "A commenting server similar to Disqus";
     homepage = "https://posativ.org/isso/";
     license = licenses.mit;
     maintainers = with maintainers; [ fgaz ];
   };
 }
-

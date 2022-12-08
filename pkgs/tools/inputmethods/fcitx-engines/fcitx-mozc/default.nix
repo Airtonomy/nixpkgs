@@ -1,5 +1,5 @@
-{ clangStdenv, fetchFromGitHub, fetchurl, fetchpatch, gyp, which, ninja,
-  python, pkgconfig, protobuf, gtk2, zinnia, qt5, libxcb, tegaki-zinnia-japanese,
+{ lib, clangStdenv, fetchFromGitHub, fetchurl, fetchpatch, gyp, which, ninja,
+  python, pkg-config, protobuf, gtk2, zinnia, qt5, libxcb, tegaki-zinnia-japanese,
   fcitx, gettext }:
 let
   japanese_usage_dictionary = fetchFromGitHub {
@@ -13,7 +13,7 @@ let
     sha256 = "10bdjn481jsh32vll7r756l392anz44h6207vjqwby3rplk31np1";
   };
 in clangStdenv.mkDerivation rec {
-  name    = "fcitx-mozc-${version}";
+  pname = "fcitx-mozc";
   version = "2.23.2815.102";
 
   src = fetchFromGitHub {
@@ -23,7 +23,7 @@ in clangStdenv.mkDerivation rec {
     sha256 = "0w2dy2j9x5nc7x3g95j17r3m60vbfyn5j617h7js9xryv33yzpgx";
   };
 
-  nativeBuildInputs = [ gyp which ninja python pkgconfig qt5.wrapQtAppsHook ];
+  nativeBuildInputs = [ gyp which ninja python pkg-config qt5.wrapQtAppsHook ];
   buildInputs = [ protobuf gtk2 zinnia qt5.qtbase libxcb fcitx gettext ];
 
   postUnpack = ''
@@ -100,7 +100,7 @@ in clangStdenv.mkDerivation rec {
     install    -m 644 fcitx-mozc-icons/*.png                 $out/share/fcitx/mozc/icon/
   '';
 
-  meta = with clangStdenv.lib; {
+  meta = with lib; {
     isFcitxEngine = true;
     description   = "Fcitx engine for Google japanese input method";
     homepage      = "https://github.com/google/mozc";

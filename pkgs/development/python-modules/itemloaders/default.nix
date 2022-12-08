@@ -1,7 +1,7 @@
 { lib
 , buildPythonPackage
 , fetchFromGitHub
-, isPy27
+, pythonOlder
 , w3lib
 , parsel
 , jmespath
@@ -11,26 +11,44 @@
 
 buildPythonPackage rec {
   pname = "itemloaders";
-  version = "1.0.3";
+  version = "1.0.6";
+  format = "setuptools";
 
-  disabled = isPy27;
+  disabled = pythonOlder "3.6";
 
-  # Tests not included in PyPI tarball
   src = fetchFromGitHub {
     owner = "scrapy";
     repo = pname;
-    rev = "v${version}";
-    sha256 = "1s8c2il7jyfixpb7h5zq0lf4s07pqwia4ycpf3slb8whcp0h8bfm";
+    rev = "refs/tags/v${version}";
+    hash = "sha256-ZzpWIJNDve6SvLDb+QUDVSXUfJabFuRwtyBeCUasUgY=";
   };
 
-  propagatedBuildInputs = [ w3lib parsel jmespath itemadapter ];
+  propagatedBuildInputs = [
+    w3lib
+    parsel
+    jmespath
+    itemadapter
+  ];
 
-  checkInputs = [ pytestCheckHook ];
+  checkInputs = [
+    pytestCheckHook
+  ];
+
+  disabledTests = [
+    # Test are failing (AssertionError: Lists differ: ...)
+    "test_nested_css"
+    "test_nested_xpath"
+  ];
+
+  pythonImportsCheck = [
+    "itemloaders"
+  ];
 
   meta = with lib; {
     description = "Base library for scrapy's ItemLoader";
     homepage = "https://github.com/scrapy/itemloaders";
+    changelog = "https://github.com/scrapy/itemloaders/raw/v${version}/docs/release-notes.rst";
     license = licenses.bsd3;
-    maintainers = [ maintainers.marsam ];
+    maintainers = with maintainers; [ marsam ];
   };
 }

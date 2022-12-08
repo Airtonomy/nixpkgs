@@ -1,28 +1,28 @@
 { fetchFromGitHub
-, stdenv
+, lib, stdenv
 , ncurses, neovim, procps
-, pandoc, lua51Packages, util-linux
+, scdoc, lua51Packages, util-linux
 }:
 
 stdenv.mkDerivation rec {
   pname = "nvimpager";
-  version = "0.9";
+  version = "0.11.0";
 
   src = fetchFromGitHub {
     owner = "lucc";
     repo = pname;
     rev = "v${version}";
-    sha256 = "1xy5387szfw0bp8dr7d4z33wd4xva7q219rvz8gc0vvv1vsy73va";
+    sha256 = "sha256-tjnmY7dJUE5k8hlAfNKcHqmpw0ciS6T5WJOpDvvt2V0=";
   };
 
   buildInputs = [
     ncurses # for tput
     procps # for nvim_get_proc() which uses ps(1)
   ];
-  nativeBuildInputs = [ pandoc ];
+  nativeBuildInputs = [ scdoc ];
 
   makeFlags = [ "PREFIX=$(out)" ];
-  buildFlags = [ "nvimpager.configured" ];
+  buildFlags = [ "nvimpager.configured" "nvimpager.1" ];
   preBuild = ''
     patchShebangs nvimpager
     substituteInPlace nvimpager --replace ':-nvim' ':-${neovim}/bin/nvim'
@@ -30,9 +30,15 @@ stdenv.mkDerivation rec {
 
   doCheck = true;
   checkInputs = [ lua51Packages.busted util-linux neovim ];
-  checkPhase = ''script -c "busted --lpath './?.lua' test"'';
+  # filter out one test that fails in the sandbox of nix
+  checkPhase = ''
+    runHook preCheck
+    script -ec "busted --lpath './?.lua' --filter-out 'handles man' test"
+    runHook postCheck
+  '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
+    broken = stdenv.isDarwin;
     description = "Use neovim as pager";
     longDescription = ''
       Use neovim as a pager to view manpages, diffs, etc with nvim's syntax

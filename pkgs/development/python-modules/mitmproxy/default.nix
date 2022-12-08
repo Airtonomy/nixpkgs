@@ -1,69 +1,64 @@
-{ stdenv
+{ lib
 , fetchFromGitHub
-, buildPythonPackage
-, isPy27
 , fetchpatch
-# Mitmproxy requirements
+, buildPythonPackage
+, pythonOlder
+  # Mitmproxy requirements
+, asgiref
 , blinker
 , brotli
 , certifi
 , click
 , cryptography
 , flask
+, h11
 , h2
 , hyperframe
 , kaitaistruct
 , ldap3
+, msgpack
 , passlib
 , protobuf
-, pyasn1
+, publicsuffix2
 , pyopenssl
 , pyparsing
 , pyperclip
-, ruamel_yaml
+, ruamel-yaml
 , setuptools
 , sortedcontainers
 , tornado
 , urwid
 , wsproto
-, publicsuffix2
 , zstandard
-# Additional check requirements
-, beautifulsoup4
-, glibcLocales
-, pytest
-, requests
-, asynctest
+  # Additional check requirements
+, hypothesis
 , parver
 , pytest-asyncio
-, hypothesis
-, asgiref
-, msgpack
+, pytest-timeout
+, pytest-xdist
+, pytestCheckHook
+, requests
 }:
 
 buildPythonPackage rec {
   pname = "mitmproxy";
-  version = "5.3.0";
-  disabled = isPy27;
+  version = "8.1.1";
+  disabled = pythonOlder "3.8";
 
   src = fetchFromGitHub {
-    owner  = pname;
-    repo   = pname;
-    rev    = "v${version}";
-    sha256 = "04y7fxxssrs14i7zl7fwlwrpnms39i7a6m18481sg8vlrkbagxjr";
+    owner = pname;
+    repo = pname;
+    rev = "refs/tags/v${version}";
+    sha256 = "sha256-nW/WfiY6uF67qNa95tvNvSv/alP2WmzTk34LEBma/04=";
   };
 
-  postPatch = ''
-    # remove dependency constraints
-    sed 's/>=\([0-9]\.\?\)\+\( \?, \?<\([0-9]\.\?\)\+\)\?\( \?, \?!=\([0-9]\.\?\)\+\)\?//' -i setup.py
-  '';
-
-  doCheck = (!stdenv.isDarwin);
-
-  checkPhase = ''
-    export HOME=$(mktemp -d)
-    pytest -k 'not test_get_version' # expects a Git repository
-  '';
+  patches = [
+    # Fix onboarding addon tests failing with Flask >= v2.2
+    (fetchpatch {
+      url = "https://github.com/mitmproxy/mitmproxy/commit/bc370276a19c1d1039e7a45ecdc23c362626c81a.patch";
+      hash = "sha256-Cp7RnYpZEuRhlWYOk8BOnAKBAUa7Vy296UmQi3/ufes=";
+    })
+  ];
 
   propagatedBuildInputs = [
     setuptools
@@ -75,6 +70,7 @@ buildPythonPackage rec {
     click
     cryptography
     flask
+    h11
     h2
     hyperframe
     kaitaistruct
@@ -83,11 +79,10 @@ buildPythonPackage rec {
     passlib
     protobuf
     publicsuffix2
-    pyasn1
     pyopenssl
     pyparsing
     pyperclip
-    ruamel_yaml
+    ruamel-yaml
     sortedcontainers
     tornado
     urwid
@@ -96,21 +91,43 @@ buildPythonPackage rec {
   ];
 
   checkInputs = [
-    asynctest
-    beautifulsoup4
-    flask
-    glibcLocales
     hypothesis
     parver
-    pytest
     pytest-asyncio
+    pytest-timeout
+    pytest-xdist
+    pytestCheckHook
     requests
   ];
 
-  meta = with stdenv.lib; {
+  postPatch = ''
+    # remove dependency constraints
+    sed 's/>=\([0-9]\.\?\)\+\( \?, \?<\([0-9]\.\?\)\+\)\?\( \?, \?!=\([0-9]\.\?\)\+\)\?//' -i setup.py
+  '';
+
+  preCheck = ''
+    export HOME=$(mktemp -d)
+  '';
+
+  disabledTests = [
+    # Tests require a git repository
+    "test_get_version"
+    # https://github.com/mitmproxy/mitmproxy/commit/36ebf11916704b3cdaf4be840eaafa66a115ac03
+    # Tests require terminal
+    "test_integration"
+    "test_contentview_flowview"
+    "test_flowview"
+    # ValueError: Exceeds the limit (4300) for integer string conversion
+    "test_roundtrip_big_integer"
+  ];
+  dontUsePytestXdist = true;
+
+  pythonImportsCheck = [ "mitmproxy" ];
+
+  meta = with lib; {
     description = "Man-in-the-middle proxy";
-    homepage    = "https://mitmproxy.org/";
-    license     = licenses.mit;
-    maintainers = with maintainers; [ fpletz kamilchm ];
+    homepage = "https://mitmproxy.org/";
+    license = licenses.mit;
+    maintainers = with maintainers; [ kamilchm SuperSandro2000 ];
   };
 }

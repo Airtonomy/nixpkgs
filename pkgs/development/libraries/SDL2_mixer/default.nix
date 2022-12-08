@@ -1,4 +1,4 @@
-{ stdenv
+{ lib, stdenv
 , fetchurl
 , pkg-config
 , AudioToolbox
@@ -13,6 +13,7 @@
 , mpg123
 , opusfile
 , smpeg2
+, timidity
 }:
 
 stdenv.mkDerivation rec {
@@ -26,7 +27,7 @@ stdenv.mkDerivation rec {
 
   nativeBuildInputs = [ pkg-config ];
 
-  buildInputs = stdenv.lib.optionals stdenv.isDarwin [
+  buildInputs = lib.optionals stdenv.isDarwin [
     AudioToolbox
     AudioUnit
     CoreServices
@@ -42,7 +43,17 @@ stdenv.mkDerivation rec {
     mpg123
     opusfile
     smpeg2
+    # MIDI patterns
+    timidity
   ];
+
+  outputs = [ "out" "dev" ];
+
+  # fix default path to timidity.cfg so MIDI files could be played
+  postPatch = ''
+    substituteInPlace timidity/options.h \
+      --replace "/usr/share/timidity" "${timidity}/share/timidity"
+  '';
 
   configureFlags = [
     "--disable-music-ogg-shared"
@@ -51,12 +62,12 @@ stdenv.mkDerivation rec {
     "--disable-music-mp3-mpg123-shared"
     "--disable-music-opus-shared"
     "--disable-music-midi-fluidsynth-shared"
-  ] ++ stdenv.lib.optionals stdenv.isDarwin [
+  ] ++ lib.optionals stdenv.isDarwin [
     "--disable-sdltest"
     "--disable-smpegtest"
   ];
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "SDL multi-channel audio mixer library";
     platforms = platforms.unix;
     homepage = "https://www.libsdl.org/projects/SDL_mixer/";

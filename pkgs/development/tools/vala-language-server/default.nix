@@ -1,12 +1,13 @@
 { stdenv
+, lib
 , fetchFromGitHub
+, fetchpatch
 , nix-update-script
 , meson
 , ninja
 , pkg-config
 , scdoc
 , gnome-builder
-, gnused
 , glib
 , libgee
 , json-glib
@@ -16,14 +17,23 @@
 
 stdenv.mkDerivation rec {
   pname = "vala-language-server";
-  version = "0.48.1";
+  version = "0.48.5";
 
   src = fetchFromGitHub {
-    owner = "benwaffle";
+    owner = "vala-lang";
     repo = pname;
     rev = version;
-    sha256 = "12k095052jkvbiyz8gzkj6w7r7p16d5m18fyikl48yvh5nln8fw0";
+    sha256 = "sha256-gntGnz8uqGz2EGwWWyty/N1ImaUKAPtXVZcjgp73SQM=";
   };
+
+  patches = [
+    # Fix regex for links in comments
+    # https://github.com/vala-lang/vala-language-server/pull/268
+    (fetchpatch {
+      url = "https://github.com/vala-lang/vala-language-server/commit/b6193265d68b90755d57938c2ba1895841cf4b36.patch";
+      sha256 = "sha256-nWG+xQAPDVBXamuKQymvn/FBHEP7Ta9p/vhYjxxBGzI=";
+    })
+  ];
 
   passthru = {
     updateScript = nix-update-script {
@@ -37,7 +47,6 @@ stdenv.mkDerivation rec {
     pkg-config
     scdoc
     # GNOME Builder Plugin
-    gnused
     gnome-builder
   ];
 
@@ -49,11 +58,11 @@ stdenv.mkDerivation rec {
     vala
   ];
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Code Intelligence for Vala & Genie";
-    homepage = "https://github.com/benwaffle/vala-language-server";
+    homepage = "https://github.com/vala-lang/vala-language-server";
     license = licenses.lgpl21Plus;
-    maintainers = with maintainers; [ andreasfelix worldofpeace ];
+    maintainers = with maintainers; [ andreasfelix ];
     platforms = platforms.linux;
   };
 }

@@ -1,28 +1,26 @@
-{ stdenv, buildGoModule, fetchFromGitHub, olm }:
+{ lib, buildGoModule, fetchFromGitHub, olm }:
 
 buildGoModule rec {
   pname = "mautrix-whatsapp";
-  version = "0.1.4";
+  version = "0.7.1";
 
   src = fetchFromGitHub {
-    owner = "tulir";
-    repo = "mautrix-whatsapp";
+    owner = "mautrix";
+    repo = "whatsapp";
     rev = "v${version}";
-    sha256 = "1c77f3ffm6m9j8q9p1hb9i8zrqqpvfkr9ffamly44gs7xddmv9sv";
+    hash = "sha256-5wZtWFB5y695S4E1Cv8nTSPUy6rPQ/j91w6kI0DAkGs=";
   };
 
   buildInputs = [ olm ];
 
-  vendorSha256 = "01yr5321paqifmgzz235lknsa0w4hbs3182y6pxw8hqsvh18c48b";
+  vendorSha256 = "sha256-v2Zf9nmAzal/nAtbQLunGJR/CUcdbwSUQ1077e7hVrQ=";
 
   doCheck = false;
 
-  runVend = true;
-
-  meta = with stdenv.lib; {
+  meta = with lib; {
     homepage = "https://github.com/tulir/mautrix-whatsapp";
     description = "Matrix <-> Whatsapp hybrid puppeting/relaybot bridge";
-    license = licenses.agpl3;
-    maintainers = with maintainers; [ vskilet ma27 ];
+    license = licenses.agpl3Plus;
+    maintainers = with maintainers; [ vskilet ma27 chvp ];
   };
 }

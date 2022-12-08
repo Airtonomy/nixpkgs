@@ -1,29 +1,18 @@
-diff --git a/phonemizer/backend/espeak.py b/phonemizer/backend/espeak.py
-index 387c11c..ceb5e7e 100644
---- a/phonemizer/backend/espeak.py
-+++ b/phonemizer/backend/espeak.py
-@@ -81,10 +81,7 @@ class BaseEspeakBackend(BaseBackend):
-         if _ESPEAK_DEFAULT_PATH:
-             return _ESPEAK_DEFAULT_PATH
+diff --git a/phonemizer/backend/espeak/wrapper.py b/phonemizer/backend/espeak/wrapper.py
+index 84a79f5..8abcae1 100644
+--- a/phonemizer/backend/espeak/wrapper.py
++++ b/phonemizer/backend/espeak/wrapper.py
+@@ -143,12 +143,7 @@ class EspeakWrapper:
+                     f'is not a readable file')
+             return library.resolve()
  
--        espeak = distutils.spawn.find_executable('espeak-ng')
--        if not espeak:  # pragma: nocover
--            espeak = distutils.spawn.find_executable('espeak')
--        return espeak
-+        return "@espeak@"
+-        library = (
+-                ctypes.util.find_library('espeak-ng') or
+-                ctypes.util.find_library('espeak'))
+-        if not library:  # pragma: nocover
+-            raise RuntimeError(
+-                'failed to find espeak library')
++        library = '@libespeak@'
+         return library
  
-     @classmethod
-     def is_available(cls):
-diff --git a/phonemizer/backend/festival.py b/phonemizer/backend/festival.py
-index b5bc56d..0833160 100644
---- a/phonemizer/backend/festival.py
-+++ b/phonemizer/backend/festival.py
-@@ -78,7 +78,7 @@ class FestivalBackend(BaseBackend):
-         if _FESTIVAL_DEFAULT_PATH:
-             return _FESTIVAL_DEFAULT_PATH
- 
--        return distutils.spawn.find_executable('festival')
-+        return "@festival@"
- 
-     @classmethod
-     def is_available(cls):
+     def _fetch_version_and_path(self):
