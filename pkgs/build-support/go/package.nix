@@ -92,14 +92,14 @@ let
     GOHOSTARCH = go.GOHOSTARCH or null;
     GOHOSTOS = go.GOHOSTOS or null;
 
-    inherit CGO_ENABLED;
+    inherit CGO_ENABLED enableParallelBuilding;
 
     GO111MODULE = "off";
     GOFLAGS = lib.optionals (!allowGoReference) [ "-trimpath" ];
 
     GOARM = toString (lib.intersectLists [(stdenv.hostPlatform.parsed.cpu.version or "")] ["5" "6" "7"]);
 
-    configurePhase = args.configurePhase or ''
+    configurePhase = args.configurePhase or (''
       runHook preConfigure
 
       # Extract the source
@@ -107,7 +107,7 @@ let
       mkdir -p "go/src/$(dirname "$goPackagePath")"
       mv "$sourceRoot" "go/src/$goPackagePath"
 
-    '' + lib.optionalString (deleteVendor == true) ''
+    '' + lib.optionalString deleteVendor ''
       if [ ! -d "go/src/$goPackagePath/vendor" ]; then
         echo "vendor folder does not exist, 'deleteVendor' is not needed"
         exit 10
@@ -134,8 +134,14 @@ let
       export GOPATH=$NIX_BUILD_TOP/go:$GOPATH
       export GOCACHE=$TMPDIR/go-cache
 
+      # currently pie is only enabled by default in pkgsMusl
+      # this will respect the `hardening{Disable,Enable}` flags if set
+      if [[ $NIX_HARDENING_ENABLE =~ "pie" ]]; then
+        export GOFLAGS="-buildmode=pie $GOFLAGS"
+      fi
+
       runHook postConfigure
-    '';
+    '');
 
     renameImports = args.renameImports or (
       let
@@ -145,20 +151,38 @@ let
         renames = p: lib.concatMapStringsSep "\n" (rename p.goPackagePath) p.goPackageAliases;
       in lib.concatMapStringsSep "\n" renames inputsWithAliases);
 
-    buildPhase = args.buildPhase or ''
+    buildPhase = args.buildPhase or (''
       runHook preBuild
 
       runHook renameImports
 
+      exclude='\(/_\|examples\|Godeps\|testdata'
+      if [[ -n "$excludedPackages" ]]; then
+        IFS=' ' read -r -a excludedArr <<<$excludedPackages
+        printf -v excludedAlternates '%s\\|' "''${excludedArr[@]}"
+        excludedAlternates=''${excludedAlternates%\\|} # drop final \| added by printf
+        exclude+='\|'"$excludedAlternates"
+      fi
+      exclude+='\)'
+
       buildGoDir() {
-        local d; local cmd;
-        cmd="$1"
-        d="$2"
+        local cmd="$1" dir="$2"
+
         . $TMPDIR/buildFlagsArray
-        echo "$d" | grep -q "\(/_\|examples\|Godeps\)" && return 0
-        [ -n "$excludedPackages" ] && echo "$d" | grep -q "$excludedPackages" && return 0
+
+        declare -a flags
+        flags+=($buildFlags "''${buildFlagsArray[@]}")
+        flags+=(''${tags:+-tags=${lib.concatStringsSep "," tags}})
+        flags+=(''${ldflags:+-ldflags="$ldflags"})
+        flags+=("-p" "$NIX_BUILD_CORES")
+
+        if [ "$cmd" = "test" ]; then
+          flags+=(-vet=off)
+          flags+=($checkFlags)
+        fi
+
         local OUT
-        if ! OUT="$(go $cmd $buildFlags "''${buildFlagsArray[@]}" ''${tags:+-tags=${lib.concatStringsSep "," tags}} ''${ldflags:+-ldflags="$ldflags"} -v -p $NIX_BUILD_CORES $d 2>&1)"; then
+        if ! OUT="$(go $cmd "''${flags[@]}" $dir 2>&1)"; then
           if ! echo "$OUT" | grep -qE '(no( buildable| non-test)?|build constraints exclude all) Go (source )?files'; then
             echo "$OUT" >&2
             return 1
@@ -177,7 +201,7 @@ let
           echo "$subPackages" | sed "s,\(^\| \),\1$goPackagePath/,g"
         else
           pushd "$NIX_BUILD_TOP/go/src" >/dev/null
-          find "$goPackagePath" -type f -name \*$type.go -exec dirname {} \; | grep -v "/vendor/" | sort | uniq
+          find "$goPackagePath" -type f -name \*$type.go -exec dirname {} \; | grep -v "/vendor/" | sort | uniq | grep -v "$exclude"
           popd >/dev/null
         fi
       }
@@ -195,6 +219,7 @@ let
           export NIX_BUILD_CORES=1
       fi
       for pkg in $(getGoDirs ""); do
+        echo "Building subPackage $pkg"
         buildGoDir install "$pkg"
       done
     '' + lib.optionalString (stdenv.hostPlatform != stdenv.buildPlatform) ''
@@ -210,14 +235,16 @@ let
       )
     '' + ''
       runHook postBuild
-    '';
+    '');
 
     doCheck = args.doCheck or false;
     checkPhase = args.checkPhase or ''
       runHook preCheck
+      # We do not set trimpath for tests, in case they reference test assets
+      export GOFLAGS=''${GOFLAGS//-trimpath/}
 
       for pkg in $(getGoDirs test); do
-        buildGoDir test $checkFlags "$pkg"
+        buildGoDir test "$pkg"
       done
 
       runHook postCheck
@@ -251,8 +278,6 @@ let
     passthru = passthru //
       { inherit go; } //
       lib.optionalAttrs (goPackageAliases != []) { inherit goPackageAliases; };
-
-    enableParallelBuilding = enableParallelBuilding;
 
     meta = {
       # Add default meta information
